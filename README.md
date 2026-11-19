@@ -1,8 +1,8 @@
-# seofessionals three.js Demo 7
+# three.js Demo 7
 
 Die Vorderansicht eines Stadthauses, mit Tusche gezeichnet und mit 45°-Schraffur in jedem Schatten. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan das Papier in Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Hof.
 
-[**Live ansehen**](https://seofessionals-3js.github.io/seofessionals-threejs-demo-7/a-one-door/) · [**Startprompt**](PROMPT.md) · [**Alle Demos**](https://seofessionals-3js.github.io/seofessionals-threejs-demos/)
+[**Live ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/a-one-door/) · [**Startprompt**](PROMPT.md) · [**Alle Demos**](https://seofessionals-3js.github.io/threejs-demos/)
 
 Drei Varianten mit einer Engine:
 
@@ -36,6 +36,6 @@ Dann http://localhost:8000/ öffnen. Am besten auf einem Laptop mit aktuellem Br
 
 ## Herkunft und Lizenz
 
-Basiert auf „Sunlit Elevation“ aus [flat-to-3d](https://github.com/Sam1983Aing/flat-to-3d) von Samnang Aing, veröffentlicht unter der MIT-Lizenz, und für seofessionals ins Deutsche übersetzt. Die Lizenz liegt unverändert in [LICENSE](LICENSE).
+Basiert auf „Sunlit Elevation“ aus [flat-to-3d](https://github.com/Sam1983Aing/flat-to-3d) von Samnang Aing, veröffentlicht unter der MIT-Lizenz, und ins Deutsche übersetzt. Die Lizenz liegt unverändert in [LICENSE](LICENSE).
 
 Alle Büros, Häuser, Adressen und Kontaktdaten in der Demo sind erfunden. three.js (MIT) wird von einem CDN geladen, die Schriften Chakra Petch und IBM Plex Mono von Google Fonts (SIL Open Font License).
