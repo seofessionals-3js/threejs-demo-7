@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de" class="locked">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>seofessionals three.js Demo 7 · Eine Tür</title>
+  <meta name="description" content="Eine Vorderansicht, die Tiefe gewinnt, die Sonne einfängt und Sie bis zur Tür führt. Variante A von Die Ansicht." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../engine/page.css" />
+</head>
+<body>
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="loader" id="loader">
+    <p>PLAN // A-201 &nbsp;·&nbsp; No. 7 Albion Row</p>
+    <p class="soft">Plotte Vorderansicht 1:50 &nbsp;<span id="loadPct">0%</span></p>
+  </div>
+
+  <header class="topbar">
+    <a class="mark" href="#">No. 7<small>Albion Row · A-201</small></a>
+    <a class="pill" href="#">Besichtigung buchen</a>
+  </header>
+
+  <section class="hero" aria-label="No. 7 Albion Row, Vorderansicht">
+    <p class="kicker mono">No. 7 Albion Row <span class="soft">&nbsp;·&nbsp; Vorderansicht 1:50</span></p>
+    <h1><span class="mask"><span>Sechs Meter Straße.</span></span><span class="mask"><span>Eine <em>Tür.</em></span></span></h1>
+  </section>
+
+  <div class="pins" id="pins" aria-hidden="true"></div>
+
+  <div class="tb" aria-hidden="true">
+    <div><span>Projekt</span>No. 7 Albion Row</div>
+    <div><span>Zeichnung</span>Vorderansicht</div>
+    <div><span>Maßstab</span>1 : 50</div>
+    <div><span>Blatt</span>A-201</div>
+  </div>
+
+  <div class="hint" aria-hidden="true">Scrollen <i></i></div>
+  <div id="beats"></div>
+  <main class="track" id="track"></main>
+
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+    } }
+  </script>
+  <script type="module" src="page.js"></script>
+</body>
+</html>

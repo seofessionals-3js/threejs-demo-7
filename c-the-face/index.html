@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de" class="locked">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>seofessionals three.js Demo 7 · Die Fassade</title>
+  <meta name="description" content="Eine Detailansicht 1:20 einer Reliefziegelwand. Die Zeichnung verspricht das Relief, die Sonne beweist es. Variante C von Die Ansicht." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../engine/page.css" />
+</head>
+<body>
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="loader" id="loader">
+    <p>PLAN // D-104 &nbsp;·&nbsp; Kiln &amp; Course</p>
+    <p class="soft">Plotte Mauerwerksdetail 1:20 &nbsp;<span id="loadPct">0%</span></p>
+  </div>
+
+  <header class="topbar">
+    <a class="mark" href="#">Kiln &amp; Course<small>Reliefziegel · D-104</small></a>
+    <a class="pill" href="#">Musterplatte bestellen</a>
+  </header>
+
+  <section class="hero on-card" aria-label="KC-06 Diaper, Detailansicht">
+    <p class="kicker mono">KC-06 Diaper <span class="soft">&nbsp;·&nbsp; Detailansicht 1:20</span></p>
+    <h1><span class="mask"><span>Der Schatten</span></span><span class="mask"><span>ist das <em>Produkt.</em></span></span></h1>
+  </section>
+
+  <div class="pins" id="pins" aria-hidden="true"></div>
+
+  <div class="tb" aria-hidden="true">
+    <div><span>Produkt</span>KC-06 Diaper</div>
+    <div><span>Zeichnung</span>Detailansicht</div>
+    <div><span>Maßstab</span>1 : 20</div>
+    <div><span>Blatt</span>D-104</div>
+  </div>
+
+  <div class="hint" aria-hidden="true">Scrollen <i></i></div>
+  <div id="beats"></div>
+  <main class="track" id="track"></main>
+
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+    } }
+  </script>
+  <script type="module" src="page.js"></script>
+</body>
+</html>
