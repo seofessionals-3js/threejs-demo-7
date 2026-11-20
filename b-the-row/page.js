@@ -32,8 +32,8 @@ STATUS.forEach((s, i) => {
 // Plot 04 has its door on the right, so plot4.key() mirrors the walk that a-one-door takes.
 const ph = ({ t, fh, fov, yaw, pitch }) => ({ t, fh, fov, yaw, pitch });
 const KEYS = [
-  { p: 0, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [21, 2.6, 0], minW: 25 } },
-  { p: 18, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [21, 2.6, 0], minW: 25 } },
+  { p: 0, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [18, 2.6, 0], minW: 24 } },   // on a phone: four whole houses, 02 to 05
+  { p: 18, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [18, 2.6, 0], minW: 24 } },
   { p: 110, t: [17, 4.2, 0], fh: 12.6, fov: 14, yaw: 22, pitch: -4, phone: { t: [22, 4.2, 0], minW: 14, yaw: 28 } },
   { p: 252, t: [16.5, 4.0, 0], fh: 12.0, fov: 16, yaw: 16, pitch: -4, phone: { t: [17, 4, 0], minW: 13 } },
   { p: 330, t: [21, 4.5, -0.3], fh: 11.4, fov: 28, yaw: 0, pitch: -4, phone: { minW: 7.6 } },
