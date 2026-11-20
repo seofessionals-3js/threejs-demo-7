@@ -30,8 +30,8 @@ const pins = document.getElementById('pins');
 // than 40 cm to anything (window.__clear() measures it).
 const ph = ({ t, fh, fov, yaw, pitch }) => ({ t, fh, fov, yaw, pitch }); // a second view of the same moment, for a phone's upright frame
 const KEYS = [
-  { p: 0, t: [0.4, 4.6, 0], fh: 12.0, fov: 2, phone: { t: [3, 5.0, 0], fh: 10.6, minW: 7.8 } },
-  { p: 18, t: [0.4, 4.6, 0], fh: 12.0, fov: 2, phone: { t: [3, 5.0, 0], fh: 10.6, minW: 7.8 } },
+  { p: 0, t: [0.4, 4.6, 0], fh: 12.0, fov: 2, phone: { t: [3, 5.8, 0], fh: 10.6, minW: 7.8 } },
+  { p: 18, t: [0.4, 4.6, 0], fh: 12.0, fov: 2, phone: { t: [3, 5.8, 0], fh: 10.6, minW: 7.8 } },
   { p: 115, t: [3.1, 4.6, 0], fh: 11.0, fov: 16, yaw: 13, pitch: -5, phone: { t: [3.2, 4.6, 0], minW: 8.6 } },
   { p: 228, t: [2.9, 4.5, 0], fh: 11.0, fov: 18, yaw: 9, pitch: -5, phone: { t: [3.0, 4.5, 0], minW: 7.4 } },
   { p: 300, t: [2.3, 3.2, 0], fh: 8.0, fov: 26, yaw: 6, pitch: -6, phone: { t: [2.9, 3.7, 0], minW: 6.6 } },
@@ -77,7 +77,7 @@ run(S, {
     S.hemi.intensity = lerp(0.52, 0.48, m);
     // the two red leaves swing in, and at the back the glass wall slides open as the lens walks through
     h.setDoor(smooth(span(p, 345, 420)));
-    h.setGardenDoor(smooth(span(p, 600, 680)));
+    h.setGardenDoor(smooth(span(p, 672, 750))); // half open as the lens stands before it, clear as it walks through
   },
   beats: [
     { from: 72, to: 128, html: '<span class="n">01 &nbsp;·&nbsp; Relief</span><p>Der Eingang liegt 1,20 m zurück. Der Erker kragt 800 mm aus. Die Zeichnung hat es schon gesagt.</p>' },

@@ -653,6 +653,7 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
     transform: none !important;
   }
   #cad-map svg { height: 48px; }
+  #cm-lbl span { display: none; } /* at this width only the position fits */
   #cad-map .cm-pills { display: none; }
   #beats { left: var(--gut); right: var(--gut); bottom: 104px; }
   .beat { width: calc(100vw - 2 * var(--gut)); padding: 11px 14px 13px; }
@@ -661,4 +662,9 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
 
 /* B: the title block sits top right, the plots take the bottom */
 .tb.tb-top { top: 76px; bottom: auto; }
-@media (max-aspect-ratio: 4/5) { .tb.tb-top { display: none; } }
+/* on a phone the row is a narrow band: its title block goes under the plots and fills the sheet */
+@media (max-aspect-ratio: 4/5) {
+  .tb.tb-top { display: grid; top: auto; bottom: 23vh; left: var(--gut); right: auto; font-size: 8.5px; }
+  .tb.tb-top div { padding: 5px 7px 6px; }
+  .tb.tb-top span { font-size: 6.5px; }
+}

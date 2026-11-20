@@ -652,17 +652,18 @@ export function createStage(cfg = {}) {
 
     // 2. The hall: a folded stair of black steel plate up the west wall, seventeen risers
     {
-      const n = 17, rise = (L1 - G0) / n, go = 0.25, plate = [], bars = [];
+      const n = 17, rise = (L1 - G0) / n, go = 0.25, plate = [], bars = [], nos = [];
       for (let i = 0; i < n; i++) {
         const z = -1.9 - i * go, y = G0 + i * rise;
         plate.push(bM(0.26, y, z - 0.014, 1.16, y + rise, z + 0.014));
         plate.push(bM(0.26, y + rise - 0.028, z - (i === n - 1 ? 0.1 : go), 1.16, y + rise, z));
-        bars.push(bM(0.26, y + rise - 0.03, z - 0.02, 1.165, y + rise + 0.004, z + 0.016));                       // the nosing: a dark edge that draws each step
+        nos.push(bM(0.26, y + rise - 0.03, z - 0.02, 1.165, y + rise + 0.004, z + 0.016));                        // the nosing: a dark edge that draws each step
         if (i % 2 === 0) bars.push(bM(1.146, y + rise, z - 0.13, 1.16, y + rise + 0.95, z - 0.116));
         if (i < n - 1) bars.push(bM(1.136, y + rise * 1.5 + 0.935, z - go - 0.02, 1.166, y + rise * 1.5 + 0.965, z + 0.02));
       }
       many(plate, mat('steel', { color: 0x8a8c91 }), 0.5, O);
       many(bars, steel, 0.35, O);
+      many(nos, steel, 0);
     }
     // a large framed drawing over the stair, a cluster of three lamps hanging in the height of the hall
     addM(0.262, 3.75, -4.7, 0.3, 5.45, -2.3, steel, 0.5, O);
@@ -915,7 +916,7 @@ export function createStage(cfg = {}) {
     }
 
     let gardenDoors = null;
-    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, { parent: g, lineColor: lc }); // (inside, the lines of an outlined house are not kept once it is real)
+    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, { parent: g, lineColor: lc, realLines: rl }); // the outlined house keeps its lines indoors too
     else add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
 
     if (v.relief) {
