@@ -36,12 +36,13 @@ const KEYS = [
   { p: 228, t: [2.9, 4.5, 0], fh: 11.0, fov: 18, yaw: 9, pitch: -5, phone: { t: [3.0, 4.5, 0], minW: 7.4 } },
   { p: 300, t: [2.3, 3.2, 0], fh: 8.0, fov: 26, yaw: 6, pitch: -6, phone: { t: [2.9, 3.7, 0], minW: 6.6 } },
   h.key(385, [1.78, 1.72, 1.55], 2, -1, 54, 2.65),      // on the pavement, in front of the two steps
-  h.key(455, [2.1, 1.96, -2.35], 0, -9, 56, 2.2),       // through the door, looking up into the hall
-  h.key(498, [2.15, 1.95, -2.95], -40, -2, 58, 2.3),     // (turning: this key keeps the lens clear of the stair)
+  h.key(455, [2.0, 1.96, -2.35], 0, -9, 56, 2.2),       // through the door, looking up into the hall
+  h.key(498, [2.1, 1.95, -2.95], -40, -2, 58, 2.3),     // (turning: this key keeps the lens clear of the stair)
   { ...h.key(540, [1.7, 1.94, -3.6], -76, 4, 60, 2.4), phone: ph(h.key(540, [1.7, 1.94, -4.2], -86, 15, 74, 2.4)) }, // turned to the sitting room under the gallery
   h.key(640, [2.75, 2.0, -6.4], -3, 3, 58, 2.5),        // in the kitchen, the table and the garden ahead
-  h.key(700, [2.4, 2.0, -9.6], -10, 3, 57, 2.5),        // before the glass wall as it slides open
-  h.key(760, [1.7, 2.0, -12.6], -33, -1, 56, 2.45),     // a step into the garden, turned to the maple
+  h.key(700, [2.8, 2.0, -9.9], -8, 3, 57, 2.5),         // before the glass wall as it slides open
+  h.key(735, [2.75, 2.0, -11.95], -18, 1, 56, 2.5),     // through the middle of the opening
+  h.key(768, [1.9, 2.0, -13.2], -36, -1, 56, 2.45),     // a step into the garden, turned to the maple
 ];
 
 const LATE = new THREE.Vector3(-0.9, 0.62, 1.2).normalize(); // 16:40, the sun lower and further round to the front: it reaches in through the door
