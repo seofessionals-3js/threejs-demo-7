@@ -9,7 +9,7 @@
 // the hatching moves.
 //
 // Only three.js: the scroll is the page's own, eased in run().
-// URL: ?at=VH jumps to a scroll position (vh) and skips the intro, ?skip skips the intro,
+// URL: ?at=VH jumps to a scroll position (vh) and skips the intro, ?skip skips the intro, ?intro=S holds it at second S,
 //      ?nosmooth follows the scroll without easing (recordings), ?debug shows p in the corner.
 import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
@@ -171,15 +171,15 @@ export function createStage(cfg = {}) {
     brick: { color: 0xe6e4e0, roughness: 0.88 },
     stone: { color: 0xd2d1ce, roughness: 0.76 },
     glass: { color: 0xffffff, roughness: 0.06, metalness: 0.05 },
-    zinc: { color: 0x3a3b3f, roughness: 0.48, metalness: 0.45 },
+    zinc: { color: 0x62656a, roughness: 0.55, metalness: 0.25 },
     wood: { color: 0x29292d, roughness: 0.44 },
-    paving: { color: 0x8a8a8d, roughness: 0.86 },
+    paving: { color: 0xb2b2b5, roughness: 0.86 },
     sky: { color: 0x0c0c0e, roughness: 1 },
     foliage: { color: 0x56585b, roughness: 0.88, flatShading: true },
     steel: { color: 0x161618, roughness: 0.38, metalness: 0.68 },
     plain: { color: 0xdedcd8, roughness: 0.84 },
     interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x5c5650, emissiveIntensity: 0.7 },
-    oakFloor: { color: 0x77777c, roughness: 0.46 },
+    oakFloor: { color: 0x8f8f94, roughness: 0.46 },
     plaster: { color: 0xf1f0ed, roughness: 0.86 },
     travertine: { color: 0xdad9d6, roughness: 0.5 },
     linen: { color: 0xe6e4e0, roughness: 0.92 },
@@ -190,7 +190,7 @@ export function createStage(cfg = {}) {
     const key = kind + JSON.stringify(o);
     if (MATS[key]) return MATS[key];
     const m = new THREE.MeshStandardMaterial({ ...BASE[kind], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    m.envMapIntensity = ({ glass: 1.55, steel: 1.25, zinc: 0.95, wood: 1.0, oakFloor: 0.65, travertine: 0.55, lacquer: 0.8 }[kind] || 0.45) * (cfg.envScale || 1);
+    m.envMapIntensity = ({ glass: 1.55, steel: 1.25, zinc: 0.5, wood: 1.0, oakFloor: 0.65, travertine: 0.55, lacquer: 0.8 }[kind] || 0.45) * (cfg.envScale || 1);
     if (o.color) m.color.setHex(o.color);
     // clear glass: a sheet you can see through once the scan has made it real. On the drawing it is paper like everything else
     const clear = o.clear ? 1 : 0;
@@ -421,6 +421,9 @@ export function createStage(cfg = {}) {
               // depth cue: what sits back gets a little grey, so the relief reads before the lens moves
               col += uDepthCue * 0.055 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
               float hatchK = FAINT == 1 ? 0.10 : 0.6;
+              #if KIND == 3
+                hatchK *= 0.45; // glass in shadow stays glass: a lighter hatch
+              #endif
               float hl = lineAt(q.x + q.y, uHatch, uLinePx * 0.95);
               float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
               hl = mix(hl, 0.32, dense);
@@ -433,7 +436,7 @@ export function createStage(cfg = {}) {
                   float c1 = lineAt(q.y, 0.075, uLinePx * 0.6) * lineFade(q.y, 0.075, 7.0);
                   float crs = floor(q.y / 0.075);
                   float c2 = lineAt(q.x + mod(crs, 2.0) * 0.1125, 0.225, uLinePx * 0.6) * lineFade(q.y, 0.075, 9.0);
-                  col = mix(col, uInk, max(max(c4 * 0.17, c1 * 0.15), c2 * 0.12) * det);
+                  col = mix(col, uInk, max(max(c4 * 0.26, c1 * 0.22), c2 * 0.18) * det);
                 }
               #elif KIND == 4
                 col = mix(col, uInk, lineAt(q.x, 0.43, uLinePx * 0.7) * 0.3 * lineFade(q.x, 0.43, 5.0) * det);
@@ -657,7 +660,7 @@ export function createStage(cfg = {}) {
         if (i % 2 === 0) bars.push(bM(1.135, y + rise, z - 0.135, 1.16, y + rise + 0.95, z - 0.11));
         if (i < n - 1) bars.push(bM(1.125, y + rise * 1.5 + 0.93, z - go - 0.02, 1.17, y + rise * 1.5 + 0.975, z + 0.02));
       }
-      many(plate, mat('steel', { color: 0x2c2c31 }), 0.5, O);
+      many(plate, mat('steel', { color: 0x8a8c91 }), 0.5, O);
       many(bars, steel, 0.35, O);
     }
     // a large framed drawing over the stair, a cluster of three lamps hanging in the height of the hall
@@ -699,6 +702,12 @@ export function createStage(cfg = {}) {
     addM(5.38, G0, -2.82, 5.42, 1.86, -2.78, steel, 0);
     add(new THREE.SphereGeometry(0.13, 14, 10).translate(X(5.4), 1.95, -2.8), glow, 0, { parent: g, cast: false });
     addM(3.3, L1 - 0.262, -5.4, 3.38, L1 - 0.25, -1.0, glow, 0, { cast: false });
+    // black battens across the ceiling, here and on over the dining table
+    {
+      const slats = [];
+      for (let x = 3.56; x <= 5.62; x += 0.2) slats.push(bM(x, L1 - 0.305, -5.9, x + 0.06, L1 - 0.25, -0.6), bM(x, L1 - 0.305, -11.8, x + 0.06, L1 - 0.25, -6.5));
+      many(slats, black, 0, { cast: false });
+    }
 
     // 4. Kitchen and dining, under the upper rooms
     addM(0.24, G0, -7.3, 0.88, 2.6, -6.4, black, 0.6, O);       // tall units
@@ -780,7 +789,7 @@ export function createStage(cfg = {}) {
     addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
     addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
     addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
-    tree(ox + X(4.68), (v.setback || 0) - 16.15, 6.3, 1.5, 0xb3141f);
+    tree(ox + X(4.68), (v.setback || 0) - 16.15, 3.8, 1.3, 0xb3141f);   // a Japanese maple: low and wide, so its crown shows through the glass from deep in the house
     addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
     addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
     addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
@@ -790,8 +799,9 @@ export function createStage(cfg = {}) {
     // 7. Lamps that are on
     const ptHall = new THREE.PointLight(0xfff6ee, 3.4, 10.5, 1.3); ptHall.position.set(X(1.9), 3.6, -3.5);
     const ptSit = new THREE.PointLight(0xfff6ee, 3.2, 8.5, 1.3); ptSit.position.set(X(4.2), 2.5, -4.2);
-    const ptBack = new THREE.PointLight(0xfff6ee, 4.4, 12, 1.2); ptBack.position.set(X(3.2), 2.6, -9.0);
-    g.add(ptHall, ptSit, ptBack);
+    const ptBack = new THREE.PointLight(0xfff6ee, 3.6, 12, 1.2); ptBack.position.set(X(3.2), 2.1, -9.0);
+    const ptGarden = new THREE.PointLight(0xfff6ee, 5.5, 11, 1.3); ptGarden.position.set(X(2.3), 2.7, -15.1);
+    g.add(ptHall, ptSit, ptBack, ptGarden);
 
     return { gDoorL, gDoorR };
   }
@@ -839,7 +849,7 @@ export function createStage(cfg = {}) {
       // the house number on the cheek, a line of light in the soffit (real mode only)
       const px = X(EX[1]) + (doorL ? -0.013 : 0);
       add(box(px, 1.58, -0.36, px + 0.013, 1.74, -0.18), st, 0.5, { parent: g });
-      add(bx((EX[0] + EX[1]) / 2 - 0.7, 2.985, -0.74, (EX[0] + EX[1]) / 2 + 0.7, 3.0, -0.66), mat('interior', { realOnly: true }), 0, { parent: g, cast: false });
+      add(bx((EX[0] + EX[1]) / 2 - 0.7, 2.985, -0.74, (EX[0] + EX[1]) / 2 + 0.7, 3.0, -0.66), mat('interior', { realOnly: true, color: 0x8a8884 }), 0, { parent: g, cast: false });
     }
 
     // the door: a black steel portal, and in it two leaves of glass in red frames, 2.0 m by 2.55 m together
@@ -903,7 +913,7 @@ export function createStage(cfg = {}) {
     }
 
     let gardenDoors = null;
-    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, O);
+    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, { parent: g, lineColor: lc }); // (inside, the lines of an outlined house are not kept once it is real)
     else add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
 
     if (v.relief) {
@@ -1113,7 +1123,7 @@ export function run(S, o) {
       `<button type="button" class="cm-btn" data-id="${z.id}" data-tag="${z.tag}" data-at="${z.at}">${z.label}</button>`
     ).join('');
     cm.innerHTML = `
-      <div id="cm-lbl"><span>CAD-GRUNDRISS // 1:100</span><b id="cm-pos">STRASSE ±0.00M</b></div>
+      <div id="cm-lbl"><span>PLAN 1:100</span><b id="cm-pos">STRASSE ±0.00M</b></div>
       <svg viewBox="-4.2 -0.6 22.4 7.2">
         ${zoneRects}
         <!-- the plan: plot walls, the facade with its porch, the glass wall to the garden -->
@@ -1164,7 +1174,7 @@ export function run(S, o) {
     p = scrollP(now);
     // intro clock
     if (introT >= 0 && !skip) {
-      const t = (now - introT) / 1000;
+      const t = Q.has('intro') ? num('intro', 0) : (now - introT) / 1000; // ?intro=1.4 holds the intro at that second
       S.U.uDraw.value = Math.min(1.2, ease(span(t, 0, 3.3)) * 1.2);
       S.U.uHatchIn.value = ease(span(t, 2.4, 3.8));
       S.U.uDetailIn.value = ease(span(t, 2.6, 3.8));
