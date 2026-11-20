@@ -1,12 +1,14 @@
-/* The Elevation: architectural CAD sheet & specification chrome shared by a-one-door, b-the-row, c-the-face */
+/* The Elevation: the sheet and its chrome, shared by a-one-door, b-the-row, c-the-face.
+   A black sheet, white ink, one red. Chips are white with black type, cards are dark with white type. */
 :root {
-  --paper: #f2efe7;
-  --paper-hi: #f8f6f0;
-  --ink: #1d1c19;
-  --soft: #6e6a60;
-  --rule: #cfcabd;
-  --accent: #e85d04;
-  --accent-hi: #ff7b29;
+  --paper: #0c0c0e;
+  --paper-hi: #141417;
+  --ink: #f1eeea;
+  --soft: #96938f;
+  --rule: #34343a;
+  --accent: #e5202e;
+  --accent-hi: #ff4d57;
+  --card: rgba(20, 20, 23, 0.92);
   --hero-out: 0;
   --ease: cubic-bezier(.16, 1, .3, 1);
   --gut: 28px;
@@ -33,10 +35,10 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: .38;
-  mix-blend-mode: multiply;
+  opacity: .5;
+  mix-blend-mode: screen;
   z-index: 1;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .55  0 0 0 0 .52  0 0 0 0 .47  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .9  0 0 0 0 .92  0 0 0 .055 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 /* CAD sheet registration frame & corner brackets */
@@ -51,7 +53,7 @@ body {
   position: absolute;
   width: 14px;
   height: 14px;
-  border-color: rgba(29, 28, 25, 0.55);
+  border-color: rgba(241, 238, 234, 0.55);
   border-style: solid;
 }
 .sheet-frame .reg.tl { top: -1px; left: -1px; border-width: 1.5px 0 0 1.5px; }
@@ -75,7 +77,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 .sheet-frame .sheet-hud b {
-  color: var(--accent-hi);
+  color: var(--accent);
   font-weight: 600;
 }
 .sheet-frame .scale-bar {
@@ -88,7 +90,7 @@ body {
   width: 26px;
   height: 4px;
   border: 1px solid var(--paper);
-  background: linear-gradient(90deg, var(--accent-hi) 50%, transparent 50%);
+  background: linear-gradient(90deg, var(--accent) 50%, transparent 50%);
 }
 
 .track { position: relative; z-index: 0; pointer-events: none; }
@@ -171,10 +173,10 @@ html.in .topbar { opacity: 1; transform: none; }
   font: 500 10px/1 var(--font-mono);
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: rgba(242, 239, 231, 0.72);
+  color: rgba(12, 12, 14, 0.72);
   margin-left: 10px;
   padding-left: 10px;
-  border-left: 1px solid rgba(242, 239, 231, 0.24);
+  border-left: 1px solid rgba(12, 12, 14, 0.24);
 }
 
 .pill {
@@ -189,7 +191,7 @@ html.in .topbar { opacity: 1; transform: none; }
   font: 600 10.5px/1 var(--font-mono);
   letter-spacing: .12em;
   text-transform: uppercase;
-  background: rgba(242, 239, 231, 0.94);
+  background: rgba(12, 12, 14, 0.9);
   pointer-events: auto;
   transition: background .16s ease, color .16s ease, border-color .16s ease;
 }
@@ -208,21 +210,22 @@ html.in .topbar { opacity: 1; transform: none; }
   transform: translateX(2px);
   color: var(--accent-hi);
 }
-.pill.solid {
+.pill:hover::after { color: var(--accent); }
+.pill.solid, .topbar .pill {
   background: var(--ink);
   color: var(--paper);
   border-color: var(--ink);
 }
-.pill.solid::after {
-  color: var(--accent-hi);
+.pill.solid::after, .topbar .pill::after {
+  color: var(--accent);
 }
-.pill.solid:hover {
+.pill.solid:hover, .topbar .pill:hover {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--paper);
+  color: var(--ink);
 }
-.pill.solid:hover::after {
-  color: var(--paper);
+.pill.solid:hover::after, .topbar .pill:hover::after {
+  color: var(--ink);
 }
 
 /* hero words: masked slide-up, then they leave as the drawing turns */
@@ -239,7 +242,7 @@ html.in .topbar { opacity: 1; transform: none; }
 html.in .hero { visibility: visible; }
 .hero.on-card {
   padding: 14px 18px 16px;
-  background: rgba(242, 239, 231, 0.92);
+  background: rgba(12, 12, 14, 0.9);
   border: 1.5px solid var(--ink);
   border-left: 3.5px solid var(--accent);
 }
@@ -271,7 +274,7 @@ html.in .hero .kicker { opacity: 1; }
 .hero h1 em {
   font-style: normal;
   color: var(--accent);
-  background: rgba(232, 93, 4, 0.1);
+  background: rgba(229, 32, 46, 0.16);
   padding: 0 8px;
   border-left: 3px solid var(--accent);
   text-decoration: none;
@@ -324,13 +327,13 @@ html.in .pins > * { opacity: 1; }
 .lv b {
   font-weight: 600;
   color: var(--ink);
-  background: rgba(242, 239, 231, 0.9);
+  background: rgba(12, 12, 14, 0.9);
   padding: 1px 5px;
   border: 1px solid var(--rule);
 }
 .lv span {
   color: var(--soft);
-  background: rgba(242, 239, 231, 0.84);
+  background: rgba(12, 12, 14, 0.84);
   padding: 1px 4px;
   font-size: 9.5px;
 }
@@ -339,7 +342,7 @@ html.in .pins > * { opacity: 1; }
   text-align: center;
   margin-left: -43px;
   width: 86px;
-  background: rgba(242, 239, 231, 0.94);
+  background: rgba(12, 12, 14, 0.92);
   border: 1px solid var(--ink);
   padding: 5px 6px 5px;
 }
@@ -359,16 +362,16 @@ html.in .pins > * { opacity: 1; }
 }
 .plot.on {
   border: 1.5px solid var(--accent);
-  background: rgba(29, 28, 25, 0.93);
+  background: var(--ink);
 }
 .plot.on b {
   color: var(--paper);
   font-weight: 700;
 }
 .plot.on span {
-  color: var(--accent-hi);
+  color: var(--accent);
   font-weight: 600;
-  border-top-color: rgba(232, 93, 4, 0.4);
+  border-top-color: rgba(229, 32, 46, 0.4);
 }
 
 /* CAD title block */
@@ -405,14 +408,14 @@ html.in .tb {
   margin-bottom: 2px;
 }
 
-/* Live CAD townhouse plan/section radar (bottom-right, matching 10 Section Sweep v4) */
+/* the little plan, bottom right: where the lens is */
 #cad-map {
   position: fixed;
   right: var(--gut);
   bottom: 26px;
   width: 236px;
-  background: rgba(29, 28, 25, 0.93);
-  color: var(--paper);
+  background: var(--card);
+  color: var(--ink);
   border: 1px solid var(--accent);
   padding: 8px 10px 9px;
   font: 500 8.5px/1.3 var(--font-mono);
@@ -432,7 +435,7 @@ html.in #cad-map {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: var(--paper);
+  color: var(--ink);
   margin-bottom: 4px;
 }
 #cad-map #cm-lbl b {
@@ -446,19 +449,19 @@ html.in #cad-map {
   overflow: visible;
 }
 #cad-map .cm-zone {
-  fill: rgba(232, 93, 4, 0.0);
+  fill: rgba(229, 32, 46, 0.0);
   stroke: none;
   cursor: pointer;
   transition: fill .15s ease;
 }
 #cad-map .cm-zone.active {
-  fill: rgba(232, 93, 4, 0.18);
-  stroke: rgba(232, 93, 4, 0.55);
+  fill: rgba(229, 32, 46, 0.18);
+  stroke: rgba(229, 32, 46, 0.55);
   stroke-width: 0.18;
 }
 #cad-map .cm-zone:hover {
-  fill: rgba(232, 93, 4, 0.34);
-  stroke: #ff7b29;
+  fill: rgba(229, 32, 46, 0.34);
+  stroke: #ff4d57;
   stroke-width: 0.25;
 }
 #cad-map .cm-pills {
@@ -467,13 +470,13 @@ html.in #cad-map {
   gap: 3px;
   margin-top: 5px;
   padding-top: 5px;
-  border-top: 1px solid rgba(242, 239, 231, 0.16);
+  border-top: 1px solid rgba(241, 238, 234, 0.16);
 }
 #cad-map .cm-btn {
   appearance: none;
-  border: 1px solid rgba(242, 239, 231, 0.22);
-  background: rgba(242, 239, 231, 0.04);
-  color: rgba(242, 239, 231, 0.78);
+  border: 1px solid rgba(241, 238, 234, 0.22);
+  background: rgba(241, 238, 234, 0.04);
+  color: rgba(241, 238, 234, 0.78);
   font: 500 7.5px/1 var(--font-mono);
   letter-spacing: .06em;
   text-transform: uppercase;
@@ -482,10 +485,14 @@ html.in #cad-map {
   text-align: center;
   transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
-#cad-map .cm-btn:hover,
-#cad-map .cm-btn.active {
-  background: rgba(232, 93, 4, 0.24);
+#cad-map .cm-btn:hover {
+  background: rgba(229, 32, 46, 0.3);
   border-color: var(--accent);
+  color: var(--ink);
+}
+#cad-map .cm-btn.active {
+  background: var(--ink);
+  border-color: var(--ink);
   color: var(--paper);
 }
 
@@ -499,8 +506,8 @@ html.in #cad-map {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: rgba(242, 239, 231, 0.88);
-  border: 1px solid rgba(29, 28, 25, 0.25);
+  background: rgba(12, 12, 14, 0.88);
+  border: 1px solid rgba(241, 238, 234, 0.25);
   padding: 5px 10px;
   font: 500 10px var(--font-mono);
   letter-spacing: .2em;
@@ -525,7 +532,7 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
 }
 @keyframes hint { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
 
-/* beats: dark/amber architectural room & detail callout cards (matching 10 Section Sweep v4) */
+/* beats: dark cards with a red edge, for the rooms and the details */
 #beats { position: fixed; left: var(--gut); bottom: 52px; z-index: 4; pointer-events: none; }
 .beat {
   opacity: 0;
@@ -535,10 +542,10 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
   bottom: 0;
   width: min(430px, calc(100vw - 2 * var(--gut)));
   padding: 14px 18px 16px;
-  background: rgba(29, 28, 25, 0.93);
-  color: var(--paper);
+  background: var(--card);
+  color: var(--ink);
   border-left: 3px solid var(--accent);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
 }
 .beat .n {
   display: flex;
@@ -553,7 +560,7 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
 .beat .n::after {
   content: 'CAD // ELV.02';
   font-size: 8.5px;
-  color: rgba(242, 239, 231, 0.48);
+  color: rgba(241, 238, 234, 0.48);
   font-weight: 500;
 }
 .beat p {
@@ -561,12 +568,12 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
   font: 600 21px/1.18 var(--font-display);
   letter-spacing: 0.01em;
   text-transform: uppercase;
-  color: var(--paper);
+  color: var(--ink);
 }
 .beat p em {
   font-style: normal;
   color: var(--accent-hi);
-  background: rgba(232, 93, 4, 0.16);
+  background: rgba(229, 32, 46, 0.16);
   padding: 0 6px;
   border-left: 2px solid var(--accent);
   text-decoration: none;
@@ -575,16 +582,16 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   margin-top: 12px;
-  border: 1px solid rgba(242, 239, 231, 0.22);
-  background: rgba(242, 239, 231, 0.04);
+  border: 1px solid rgba(241, 238, 234, 0.22);
+  background: rgba(241, 238, 234, 0.04);
 }
 .beat .row div {
   padding: 6px 10px 7px;
-  border-left: 1px solid rgba(242, 239, 231, 0.22);
+  border-left: 1px solid rgba(241, 238, 234, 0.22);
   font: 600 10px/1.35 var(--font-mono);
   letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--paper);
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 .beat .row div:first-child { border-left: 0; }
@@ -597,20 +604,6 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
 }
 .beat .pill {
   margin-top: 12px;
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--paper);
-}
-.beat .pill::after {
-  color: var(--paper);
-}
-.beat .pill:hover {
-  background: var(--accent-hi);
-  border-color: var(--accent-hi);
-  color: var(--ink);
-}
-.beat .pill:hover::after {
-  color: var(--ink);
 }
 
 .debug {
@@ -630,10 +623,11 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
   .sheet-frame { inset: 8px; }
   .sheet-frame .sheet-hud { display: none; }
   .topbar { top: 14px; right: 14px; }
-  .mark { font-size: 11.5px; padding: 6px 10px; }
-  .mark::after { font-size: 9.5px; }
+  .topbar { gap: 10px; }
+  .mark { font-size: 11.5px; padding: 6px 10px; white-space: nowrap; }
+  .mark::after { content: ' ]'; font-size: 9.5px; }
   .mark small { display: none; }
-  .pill { padding: 6px 10px; font-size: 9px; }
+  .pill { padding: 6px 10px; font-size: 9px; white-space: nowrap; }
   .hero { top: 58px; right: var(--gut); }
   .hero h1 { font-size: 34px; }
   .hero .kicker { margin-bottom: 8px; font-size: 9.5px; }

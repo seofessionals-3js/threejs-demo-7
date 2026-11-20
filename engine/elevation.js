@@ -1,21 +1,21 @@
-// The Elevation engine, shared by the three pages in 02 (a-one-door, b-the-row, c-the-face).
+// The Elevation engine, shared by the three pages (a-one-door, b-the-row, c-the-face).
 //
-// One model, drawn two ways. Every surface is paper with 45 degree ink hatching wherever
-// the sun does not reach, or its real lit material. A diagonal sweep decides which, pixel
+// One model, drawn two ways. Every surface is black paper with 45 degree hatching in white ink
+// wherever the sun does not reach, or its real lit material. A diagonal sweep decides which, pixel
 // by pixel. The sun starts at the drawing convention (45 degrees in plan and elevation,
 // 35.26 degrees high), so the hatched areas and the real shadows are the same areas.
 //
 // The hatching is never drawn by hand: it is read from the shadow map. Move the sun and
 // the hatching moves.
 //
+// Only three.js: the scroll is the page's own, eased in run().
 // URL: ?at=VH jumps to a scroll position (vh) and skips the intro, ?skip skips the intro,
-//      ?nolenis uses native scroll (recordings), ?debug shows p in the corner.
+//      ?nosmooth follows the scroll without easing (recordings), ?debug shows p in the corner.
 import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import Lenis from 'https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.mjs';
 
 export { THREE, mergeGeometries };
 export const Q = new URLSearchParams(location.search);
@@ -92,7 +92,7 @@ export function createStage(cfg = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(DPR);
   renderer.setSize(W, H, false);
-  renderer.setClearColor(0xf2efe7, 1);
+  renderer.setClearColor(0x0c0c0e, 1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -105,9 +105,9 @@ export function createStage(cfg = {}) {
     uSun: { value: CONVENTION.clone() },
     uSweep: { value: new THREE.Vector4(Math.SQRT1_2, -Math.SQRT1_2, -999, cfg.soft || 0.8) },
     uReal: { value: num('real', 0) },
-    uPaper: { value: raw(0xf2efe7) },
-    uInk: { value: raw(0x1d1c19) },
-    uAccent: { value: raw(0xe85d04) },
+    uPaper: { value: raw(0x0c0c0e) },
+    uInk: { value: raw(0xf1eeea) },
+    uAccent: { value: raw(0xe5202e) },
     uHatch: { value: hatch0 * (DPR < 1.5 ? 1.3 : 1) },
     uLinePx: { value: 1.05 * DPR },
     uDraw: { value: 1 },
@@ -129,20 +129,20 @@ export function createStage(cfg = {}) {
       fragmentShader: `varying vec3 vP; void main() {
         vec3 d = normalize(vP);
         float h = d.y;
-        vec3 horizon = vec3(0.88, 0.86, 0.82);
-        vec3 zenith = vec3(0.28, 0.44, 0.68);
-        vec3 ground = mix(vec3(0.34, 0.31, 0.28), vec3(0.52, 0.47, 0.41), smoothstep(-0.8, 0.0, h));
+        vec3 horizon = vec3(0.60, 0.60, 0.62);
+        vec3 zenith = vec3(0.13, 0.135, 0.15);
+        vec3 ground = mix(vec3(0.16, 0.16, 0.17), vec3(0.30, 0.30, 0.31), smoothstep(-0.8, 0.0, h));
         vec3 sky = mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), 0.65));
         float sunGlow = pow(max(0.0, dot(d, normalize(vec3(-0.7, 0.55, 0.7)))), 12.0);
-        sky += vec3(0.32, 0.24, 0.14) * sunGlow;
+        sky += vec3(0.30, 0.29, 0.28) * sunGlow;
         gl_FragColor = vec4(h > 0.0 ? sky : ground, 1.0);
       }`,
     })));
     scene.environment = new THREE.PMREMGenerator(renderer).fromScene(envScene, 0.015).texture;
   }
-  const sun = new THREE.DirectionalLight(0xfff1dc, 3.5);
+  const sun = new THREE.DirectionalLight(0xfff6ee, 3.5);
   scene.add(sun, sun.target);
-  const hemi = new THREE.HemisphereLight(0xdce7f3, 0xbba98e, 0.52); scene.add(hemi);
+  const hemi = new THREE.HemisphereLight(0xd4d7dc, 0x8c8c90, 0.52); scene.add(hemi);
   const sunAim = { t: new THREE.Vector3(), ext: 24 };
   function aimSun(cx, cy, ext, map = 4096) {
     sunAim.t.set(cx, cy, -3.5); sunAim.ext = ext;
@@ -164,32 +164,38 @@ export function createStage(cfg = {}) {
   /* ---------- materials ---------- */
   const KIND = {
     plain: 0, brick: 1, stone: 2, glass: 3, zinc: 4, wood: 5, paving: 6,
-    sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14,
+    sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14, lacquer: 15,
   };
   const BASE = {
-    brick: { color: 0xc8b196, roughness: 0.88 },
-    stone: { color: 0xdad3c4, roughness: 0.76 },
+    // black, white, and one red: white brick, pale stone, anthracite zinc, black oak, a red lacquer
+    brick: { color: 0xe6e4e0, roughness: 0.88 },
+    stone: { color: 0xd2d1ce, roughness: 0.76 },
     glass: { color: 0xffffff, roughness: 0.06, metalness: 0.05 },
-    zinc: { color: 0x676b6f, roughness: 0.48, metalness: 0.45 },
-    wood: { color: 0x96643e, roughness: 0.58 },
-    paving: { color: 0xc5beb0, roughness: 0.86 },
-    sky: { color: 0xbfd2e3, roughness: 1 },
-    foliage: { color: 0x5c7144, roughness: 0.88, flatShading: true },
-    steel: { color: 0x262523, roughness: 0.38, metalness: 0.68 },
-    plain: { color: 0xe8e2d6, roughness: 0.84 },
-    interior: { color: 0xf4e3c6, roughness: 0.9, emissive: 0x523618, emissiveIntensity: 0.65 },
-    oakFloor: { color: 0xc69c6d, roughness: 0.52 },
-    plaster: { color: 0xf1ede4, roughness: 0.86 },
-    travertine: { color: 0xdcd3c3, roughness: 0.58 },
-    linen: { color: 0xe3dcd0, roughness: 0.92 },
+    zinc: { color: 0x3a3b3f, roughness: 0.48, metalness: 0.45 },
+    wood: { color: 0x29292d, roughness: 0.44 },
+    paving: { color: 0x8a8a8d, roughness: 0.86 },
+    sky: { color: 0x0c0c0e, roughness: 1 },
+    foliage: { color: 0x56585b, roughness: 0.88, flatShading: true },
+    steel: { color: 0x161618, roughness: 0.38, metalness: 0.68 },
+    plain: { color: 0xdedcd8, roughness: 0.84 },
+    interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x5c5650, emissiveIntensity: 0.7 },
+    oakFloor: { color: 0x77777c, roughness: 0.46 },
+    plaster: { color: 0xf1f0ed, roughness: 0.86 },
+    travertine: { color: 0xdad9d6, roughness: 0.5 },
+    linen: { color: 0xe6e4e0, roughness: 0.92 },
+    lacquer: { color: 0xc8121f, roughness: 0.36, metalness: 0.12 },
   };
   const MATS = {};
   function mat(kind, o = {}) {
     const key = kind + JSON.stringify(o);
     if (MATS[key]) return MATS[key];
     const m = new THREE.MeshStandardMaterial({ ...BASE[kind], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    m.envMapIntensity = ({ glass: 1.55, steel: 1.05, zinc: 0.95, wood: 0.55, oakFloor: 0.65, travertine: 0.55 }[kind] || 0.45) * (cfg.envScale || 1);
+    m.envMapIntensity = ({ glass: 1.55, steel: 1.25, zinc: 0.95, wood: 1.0, oakFloor: 0.65, travertine: 0.55, lacquer: 0.8 }[kind] || 0.45) * (cfg.envScale || 1);
     if (o.color) m.color.setHex(o.color);
+    // clear glass: a sheet you can see through once the scan has made it real. On the drawing it is paper like everything else
+    const clear = o.clear ? 1 : 0;
+    if (clear) { m.transparent = true; m.opacity = 0.17; m.depthWrite = !!o.door; }
+    m.userData.drawOnly = !!o.drawOnly; m.userData.sky = kind === 'sky';
     const K = KIND[kind];
     const faint = o.faint ? 1 : 0, realOnly = o.realOnly ? 1 : 0, drawOnly = o.drawOnly ? 1 : 0;
     m.onBeforeCompile = (sh) => {
@@ -201,7 +207,7 @@ export function createStage(cfg = {}) {
         #endif
         vWP = (modelMatrix * wpp).xyz;
         vWN = normalize(mat3(modelMatrix) * objectNormal);`);
-      sh.fragmentShader = `#define KIND ${K}\n#define FAINT ${faint}\n#define REAL_ONLY ${realOnly}\n#define DRAW_ONLY ${drawOnly}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump;\n${GLSL_COMMON}
+      sh.fragmentShader = `#define KIND ${K}\n#define FAINT ${faint}\n#define REAL_ONLY ${realOnly}\n#define DRAW_ONLY ${drawOnly}\n#define CLEAR ${clear}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump;\n${GLSL_COMMON}
         // brick: running bond 215 x 65, 10 mm joints. x: along the course, y: up
         vec4 brickAt(vec2 q) {
           float course = floor(q.y / 0.075);
@@ -278,11 +284,11 @@ export function createStage(cfg = {}) {
                 float h = hash12(b.xy), h2 = hash12(b.xy + 17.3), h3 = hash12(b.xy + 41.7), h4 = hash12(b.xy + 83.9);
                 vec3 base = diffuseColor.rgb * (0.95 + 0.09 * (vnoise(q * 0.65) - 0.5)) * (0.96 + 0.04 * smoothstep(0.0, 2.5, q.y));
                 float kilnDark = smoothstep(0.80, 0.98, h4) * 0.22;
-                vec3 bc = base * (0.85 + 0.26 * h - kilnDark) * vec3(1.0 + 0.08 * (h2 - 0.5), 1.0 - 0.025 * (h3 - 0.5), 1.0 - 0.10 * (h2 - 0.5));
+                vec3 bc = base * (0.87 + 0.22 * h - kilnDark) * (1.0 + 0.04 * (h2 - 0.5) - 0.02 * (h3 - 0.5));
                 bc *= 0.92 + 0.16 * vnoise(vec2(q.x * 55.0, q.y * 140.0) + b.xy * 3.1) * jointVis;
                 float bedShade = (1.0 - smoothstep(0.009, 0.015, b.w)) * step(0.009, b.w) * 0.14 * jointVis;
                 bc *= 1.0 - bedShade;
-                vec3 mortar = vec3(0.66, 0.63, 0.57) * (0.94 + 0.12 * vnoise(q * 180.0));
+                vec3 mortar = mix(vec3(0.60, 0.60, 0.61), diffuseColor.rgb * 1.5 + 0.12, step(dot(diffuseColor.rgb, vec3(0.333)), 0.3)) * (0.94 + 0.12 * vnoise(q * 180.0));
                 vec3 far = mix(base, mortar, 0.13);
                 vec3 mid = mix(bc, mortar, 0.13);
                 vec3 nearC = mix(bc, mortar * 0.92, joint);
@@ -321,12 +327,12 @@ export function createStage(cfg = {}) {
                 vec2 g = abs(fract(pq / vec2(0.9, 0.6) + 0.5) - 0.5) * vec2(0.9, 0.6);
                 float j = 1.0 - smoothstep(0.0, max(max(fwidth(q.x), fwidth(q.y)) * 1.2, 0.005), min(g.x, g.y));
                 float sh = hash12(cell);
-                vec3 flagCol = diffuseColor.rgb * (0.88 + 0.18 * sh) * vec3(1.0 + 0.04 * (sh - 0.5), 1.0, 1.0 - 0.04 * (sh - 0.5));
+                vec3 flagCol = diffuseColor.rgb * (0.88 + 0.18 * sh);
                 flagCol *= 0.95 + 0.09 * vnoise(q * 22.0);
-                diffuseColor.rgb = mix(flagCol, vec3(0.50, 0.48, 0.44), j * 0.65);
+                diffuseColor.rgb = mix(flagCol, vec3(0.24, 0.24, 0.25), j * 0.65);
               #elif KIND == 7
                 float k = clamp((vWP.y + 4.0) / 40.0, 0.0, 1.0);
-                diffuseColor.rgb = mix(vec3(0.86, 0.87, 0.85), vec3(0.42, 0.58, 0.76), pow(k, 0.8));
+                diffuseColor.rgb = mix(vec3(0.075, 0.075, 0.085), vec3(0.008, 0.008, 0.012), pow(k, 0.7));
               #elif KIND == 2
                 float blockJ = 1.0 - smoothstep(0.0, max(fwidth(q.x) * 1.3, 0.003), abs(fract(q.x / 0.9 + 0.5) - 0.5) * 0.9);
                 float bed = vnoise(vec2(q.x * 4.0, q.y * 26.0));
@@ -344,10 +350,10 @@ export function createStage(cfg = {}) {
                 diffuseColor.rgb *= 0.98 + weave;
               #elif KIND == 3
                 float k = fract((vWP.y - 0.45) / 3.0);
-                vec3 skyRefl = mix(vec3(0.10, 0.12, 0.14), vec3(0.32, 0.40, 0.48), smoothstep(0.22, 0.92, k));
+                vec3 skyRefl = mix(vec3(0.02, 0.02, 0.025), vec3(0.13, 0.135, 0.15), smoothstep(0.22, 0.92, k));
                 float warmZone = smoothstep(0.05, 0.45, k) * (1.0 - smoothstep(0.55, 0.92, k));
                 float roomVar = 0.6 + 0.4 * sin(vWP.x * 1.7 + floor((vWP.y - 0.45) / 3.0) * 2.3);
-                vec3 warmRoom = vec3(0.42, 0.30, 0.18) * warmZone * roomVar * (FAINT == 1 ? 0.25 : 0.75);
+                vec3 warmRoom = vec3(0.27, 0.265, 0.25) * warmZone * roomVar * (FAINT == 1 ? 0.25 : 0.75);
                 diffuseColor.rgb = skyRefl + warmRoom;
                 diffuseColor.rgb += 0.065 * smoothstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
               #elif KIND == 9
@@ -407,18 +413,18 @@ export function createStage(cfg = {}) {
               vec3 col = uPaper;
               float hw = hatchWipe(vWP) * step(0.001, uHatchIn);
               #if KIND == 3
-                col *= mix(1.0, 0.955, hw);
+                col += 0.032 * hw;
               #endif
               #if KIND == 7
                 shade = 0.0;
               #endif
               // depth cue: what sits back gets a little grey, so the relief reads before the lens moves
-              col *= 1.0 - uDepthCue * 0.11 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
-              float hatchK = FAINT == 1 ? 0.18 : 0.85;
+              col += uDepthCue * 0.055 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
+              float hatchK = FAINT == 1 ? 0.10 : 0.6;
               float hl = lineAt(q.x + q.y, uHatch, uLinePx * 0.95);
               float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
               hl = mix(hl, 0.32, dense);
-              col = mix(col, col * 0.93, shade * hw * (FAINT == 1 ? 0.3 : 1.0));
+              col += 0.03 * shade * hw * (FAINT == 1 ? 0.3 : 1.0);
               col = mix(col, uInk, hl * shade * hatchK * hw);
               float det = detailWipe(vWP) * (FAINT == 1 ? 0.3 : 1.0);
               #if KIND == 1
@@ -427,7 +433,7 @@ export function createStage(cfg = {}) {
                   float c1 = lineAt(q.y, 0.075, uLinePx * 0.6) * lineFade(q.y, 0.075, 7.0);
                   float crs = floor(q.y / 0.075);
                   float c2 = lineAt(q.x + mod(crs, 2.0) * 0.1125, 0.225, uLinePx * 0.6) * lineFade(q.y, 0.075, 9.0);
-                  col = mix(col, uInk, max(max(c4 * 0.22, c1 * 0.2), c2 * 0.16) * det);
+                  col = mix(col, uInk, max(max(c4 * 0.17, c1 * 0.15), c2 * 0.12) * det);
                 }
               #elif KIND == 4
                 col = mix(col, uInk, lineAt(q.x, 0.43, uLinePx * 0.7) * 0.3 * lineFade(q.x, 0.43, 5.0) * det);
@@ -440,23 +446,17 @@ export function createStage(cfg = {}) {
               gl_FragColor.rgb = mix(col, gl_FragColor.rgb, rv);
               #if KIND != 7
                 float fb = frontBand(vWP);
-                vec3 scanCol = mix(uAccent, vec3(1.0, 0.55, 0.18), smoothstep(0.42, 0.92, fb));
+                vec3 scanCol = mix(uAccent, vec3(1.0, 0.34, 0.38), smoothstep(0.42, 0.92, fb));
                 gl_FragColor.rgb = mix(gl_FragColor.rgb, scanCol, clamp(fb * 0.85, 0.0, 0.94));
+              #endif
+              #if CLEAR == 1
+                gl_FragColor.a = mix(1.0, max(gl_FragColor.a, fb), rv);
               #endif
             }`);
     };
-    m.customProgramCacheKey = () => `elev-${K}-${faint}-${realOnly}-${drawOnly}`;
+    m.customProgramCacheKey = () => `elev-${K}-${faint}-${realOnly}-${drawOnly}-${clear}`;
     return (MATS[key] = m);
   }
-
-  const clearGlassMat = new THREE.MeshStandardMaterial({
-    color: 0xdbe7f0,
-    roughness: 0.08,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.18,
-    depthWrite: false,
-  });
 
   // Lines draft themselves on: each segment starts at a time set by its height (bottom first)
   // and a little randomness, then grows along its length. o.first: drawn before everything (the ground line).
@@ -465,7 +465,7 @@ export function createStage(cfg = {}) {
   function lineMat(px, o = {}) {
     const key = px + JSON.stringify(o);
     if (lineCache[key]) return lineCache[key];
-    const m = new LineMaterial({ color: o.color || 0x1d1c19, linewidth: px * DPR, transparent: true, toneMapped: false });
+    const m = new LineMaterial({ color: o.color || 0xf1eeea, linewidth: px * DPR, transparent: true, toneMapped: false });
     m.resolution.set(W * DPR, H * DPR);
     const drawOnly = o.drawOnly ? 1 : 0, first = o.first ? 1 : 0;
     m.onBeforeCompile = (sh) => {
@@ -522,17 +522,18 @@ export function createStage(cfg = {}) {
   }
   const loop = (pts, z) => { const s = []; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s.push(a[0], a[1], z, b[0], b[1], z); } return s; };
 
-  /* ---------- the townhouse ---------- */
+  /* ---------- the house ---------- */
   // x along the street, y up, z towards the street. Facade plane z = 0 (or the setback).
-  // Ground floor +0.45 (three steps up), first +3.60, second +6.60, roof +9.10, parapet +10.00.
-  const T = 0.4;
+  // Two storeys: ground floor +0.30 (two steps up), upper floor +3.40, eaves +6.70, ridge +9.20.
+  // Every house is described with its door on the left; `door: 'right'` mirrors it.
+  const T = 0.4, G0 = 0.3, L1 = 3.4, CEIL = 6.25, RH = 2.5;
   function windowIn(g, x0, y0, x1, y1, recess, o) {
     const fw = 0.062, fw2 = 0.032, z1 = -recess, z0 = z1 - 0.075;
     const lw = o.faint ? 0 : 0.7;
     const fm = mat('steel', { faint: o.faint });
-    // outer architectural casement frame
+    // outer casement frame
     add(panel([x0, y0, x1, y1], [[x0 + fw, y0 + fw, x1 - fw, y1 - fw]], z0, z1), fm, lw, { parent: g, lineColor: o.lc, realLines: o.rl });
-    // inner stepped sash sub-frame for realistic architectural depth
+    // inner stepped sash frame, for depth
     if (!o.faint) {
       add(panel([x0 + fw, y0 + fw, x1 - fw, y1 - fw], [[x0 + fw + fw2, y0 + fw + fw2, x1 - fw - fw2, y1 - fw - fw2]], z0 - 0.015, z1 - 0.022), fm, 0, { parent: g, cast: false });
     }
@@ -562,513 +563,353 @@ export function createStage(cfg = {}) {
     }
   }
 
-  // Build full 3D townhouse interior + rear courtyard garden for active show houses
+  // The inside of a show house, and its walled garden.
+  // The hall behind the door is two storeys high (x 0.24..3.1, z -1.3..-6.0), a steel stair on its west wall,
+  // a gallery round it upstairs. East of it, under the gallery, the sitting room behind the street window.
+  // Behind both, kitchen and dining table, then a glass wall that slides open to the garden.
   function buildInterior(g, ox, v, doorL, PAR, O) {
     const X = (x) => (doorL ? x : 6 - x);
     const bM = (x0, y0, z0, x1, y1, z1) => (doorL ? box(x0, y0, z0, x1, y1, z1) : box(6 - x1, y0, z0, 6 - x0, y1, z1));
     const addM = (x0, y0, z0, x1, y1, z1, m, lw = 0, opts = {}) => add(bM(x0, y0, z0, x1, y1, z1), m, lw, { parent: g, ...opts });
+    const many = (list, m, lw = 0, opts = {}) => add(mergeGeometries(list), m, lw, { parent: g, ...opts });
 
-    const oakFl = mat('oakFloor', { color: 0xc49a6c });
-    const oakJoinery = mat('wood', { color: 0xb07d4f });
-    const darkWalnut = mat('wood', { color: 0x5c3e26 });
-    const plaster = mat('plaster', { color: 0xf1ede4 });
-    const plasterCeil = mat('plaster', { color: 0xf6f3ec });
-    const trav = mat('travertine', { color: 0xdcd3c3 });
-    const stone = mat('stone');
-    const brick = mat('brick', { color: v.brick || 0xc8b196 });
+    const floor = mat('oakFloor');
+    const black = mat('wood');                              // black-stained oak joinery
+    const plaster = mat('plaster');
+    const ceil = mat('plaster', { color: 0xf6f5f2 });
+    const slab = mat('travertine');                          // pale honed stone: worktops, table tops
+    const basalt = mat('stone', { color: 0x38383c });
+    const brick = mat('brick', { color: v.brick });
     const steel = mat('steel');
-    const linenSofa = mat('linen', { color: 0xe4ddd0 });
-    const woolRug = mat('linen', { color: 0xcfc5b3 });
-    const warmGlow = mat('interior', { realOnly: true });
+    const red = mat('lacquer');
+    const redCloth = mat('linen', { color: 0xb9141f });
+    const linen = mat('linen');
+    const coal = mat('linen', { color: 0x2b2b2f });
+    const rug = mat('linen', { color: 0x77777b });
+    const glow = mat('interior', { realOnly: true });
     const paving = mat('paving');
+    const clear = mat('glass', { clear: true });
 
-    // 1. Structural Shell: Ground floor oak slab, party walls, upper floor backing above z = -6.8
-    addM(0.0, 0.0, -12.0, 6.0, 0.45, -0.4, oakFl, 0.5, O);
-    // Honed stone entrance threshold mat inside the doorway
-    addM(0.55, 0.445, -1.55, 2.05, 0.455, -0.95, trav, 0);
-
-    // West & East Party Walls (x = 0..0.24 and x = 5.76..6.0)
-    addM(0.0, 0.45, -12.0, 0.24, 6.60, -0.4, plaster, 0.5, O);
-    addM(5.76, 0.45, -12.0, 6.0, 6.60, -0.4, plaster, 0.5, O);
-    // Upper stories solid backing above y = 6.60 so exterior windows on 2nd/roof floors stay backed
-    addM(0.0, 6.45, -12.0, 6.0, PAR - 0.9, -1.12, plaster, 0);
-
-    // Exposed London stock brick feature wall panel in the double-height dining atrium (east wall)
-    addM(5.71, 0.45, -11.8, 5.76, 6.40, -6.6, brick, 0.5, O);
-
-    // Shadow-gap dark steel & oak skirting along party walls
-    addM(0.24, 0.45, -11.9, 0.26, 0.54, -1.0, steel, 0);
-    addM(5.74, 0.45, -11.9, 5.76, 0.54, -0.4, steel, 0);
-
-    // Inner front facade plaster lining + deep oak window bench under the 3-pane front window
-    addM(2.15, 0.45, -0.46, 5.76, 0.92, -0.38, plaster, 0);
-    addM(2.55, 0.88, -0.68, 5.50, 0.96, -0.22, oakJoinery, 0.6, O);
-
-    // 2. First-Floor Slab & Ceiling over Hall & Reception Parlour (z = -6.8 .. -0.4, y = 3.45 .. 3.65)
-    addM(0.24, 3.45, -6.8, 5.76, 3.65, -0.4, plasterCeil, 0.6, O);
-    // Acoustic oak ceiling slat coffers in the Reception Parlour ceiling
-    const ceilingSlats = [];
-    for (let x = 2.55; x <= 5.35; x += 0.18) {
-      ceilingSlats.push(bM(x, 3.41, -5.8, x + 0.06, 3.45, -1.0));
-    }
-    add(mergeGeometries(ceilingSlats), oakJoinery, 0, { parent: g, cast: false });
-    // Warm recessed linear LED ceiling coves
-    addM(1.15, 3.43, -5.4, 1.30, 3.45, -1.4, warmGlow, 0, { cast: false });
-    addM(2.42, 3.43, -5.8, 2.50, 3.45, -1.0, warmGlow, 0, { cast: false });
-
-    // Mezzanine Gallery Balustrade overlooking the Double-Height Atrium at z = -6.8
-    addM(1.25, 3.65, -6.85, 5.76, 3.74, -6.72, oakJoinery, 0.6, O);
-    addM(1.25, 4.58, -6.84, 5.76, 4.64, -6.74, oakJoinery, 0.6, O);
-    const mezBars = [];
-    for (let x = 1.35; x <= 5.65; x += 0.16) {
-      mezBars.push(bM(x, 3.74, -6.80, x + 0.022, 4.58, -6.778));
-    }
-    add(mergeGeometries(mezBars), steel, 0, { parent: g });
-
-    // First-floor gallery wall backdrop (z = -5.2) with a framed architectural print visible from below
-    addM(2.2, 4.15, -4.4, 3.8, 5.45, -4.34, steel, 0.5, O);
-    addM(2.26, 4.21, -4.42, 3.74, 5.39, -4.39, plasterCeil, 0);
-    addM(2.55, 4.45, -4.43, 3.45, 5.15, -4.41, mat('plain', { color: 0xe85d04 }), 0);
-
-    // 3. Double-Height Atrium Roof & Glazed Rooflight Lantern (z = -12.0 .. -6.8, y = 6.40 .. 6.88)
-    addM(0.24, 6.40, -12.0, 1.55, 6.62, -6.8, plasterCeil, 0);
-    addM(4.55, 6.40, -12.0, 5.76, 6.62, -6.8, plasterCeil, 0);
-    addM(1.55, 6.40, -7.6, 4.55, 6.62, -6.8, plasterCeil, 0);
-    addM(1.55, 6.40, -12.0, 4.55, 6.62, -10.8, plasterCeil, 0);
-    // Rooflight steel upstand curb & oak rafters casting diagonal skylight bars
-    addM(1.50, 6.38, -10.85, 4.60, 6.85, -10.75, steel, 0.5, O);
-    addM(1.50, 6.38, -7.65, 4.60, 6.85, -7.55, steel, 0.5, O);
-    addM(1.50, 6.38, -10.85, 1.60, 6.85, -7.55, steel, 0.5, O);
-    addM(4.50, 6.38, -10.85, 4.60, 6.85, -7.55, steel, 0.5, O);
-    for (let z = -10.2; z <= -8.1; z += 0.68) {
-      addM(1.58, 6.42, z - 0.035, 4.52, 6.78, z + 0.035, oakJoinery, 0.4, O);
-    }
-    add(bM(1.58, 6.82, -10.75, 4.52, 6.85, -7.65), clearGlassMat, 0, { parent: g, cast: false, receive: false });
-
-    // 4. Entrance Hall & Architectural Portal into Reception Parlour (x = 2.04 .. 2.22)
-    // Front pier behind porch
-    addM(2.04, 0.45, -1.65, 2.22, 3.45, -0.4, plaster, 0.6, O);
-    // Portal header beam above the wide opening (z = -1.65 .. -5.15)
-    addM(2.04, 3.08, -5.15, 2.22, 3.45, -1.65, plaster, 0.6, O);
-    // Rear pier separating Parlour and Atrium
-    addM(2.04, 0.45, -6.35, 2.22, 3.45, -5.15, plaster, 0.6, O);
-    // Warm oak portal liner framing the wide opening between Hall and Parlour
-    addM(2.02, 0.45, -1.71, 2.24, 3.10, -1.65, oakJoinery, 0.5, O);
-    addM(2.02, 0.45, -5.15, 2.24, 3.10, -5.09, oakJoinery, 0.5, O);
-    addM(2.02, 3.04, -5.15, 2.24, 3.10, -1.65, oakJoinery, 0.5, O);
-
-    // Entrance Hall Console Table & Framed Elevation Artwork on West Wall (x = 0.24 .. 0.68, z = -2.0 .. -3.3)
-    addM(0.26, 1.18, -3.25, 0.66, 1.24, -1.95, trav, 0.5, O);
-    addM(0.30, 0.45, -3.18, 0.62, 1.18, -3.10, steel, 0.4, O);
-    addM(0.30, 0.45, -2.10, 0.62, 1.18, -2.02, steel, 0.4, O);
-    // Sculptural ceramic vessel on console
-    add(new THREE.CylinderGeometry(0.09, 0.07, 0.28, 12).translate(X(0.46), 1.38, -2.45), mat('stone', { color: 0xd8cfc0 }), 0.4, O);
-    // Framed architectural study on hall wall
-    addM(0.24, 1.52, -3.10, 0.28, 2.48, -2.10, steel, 0.5, O);
-    addM(0.28, 1.57, -3.05, 0.295, 2.43, -2.15, plasterCeil, 0);
-    addM(0.295, 1.72, -2.90, 0.305, 2.28, -2.30, mat('brick', { color: 0xb85a28 }), 0);
-
-    // Open-Riser Solid Oak & Blackened Steel Staircase (x = 0.28 .. 1.24, z = -3.55 .. -6.80, y = 0.45 .. 3.60)
-    const stairTreads = [], stairSteel = [];
-    const nSteps = 14;
-    for (let i = 0; i < nSteps; i++) {
-      const f = i / nSteps;
-      const sz0 = lerp(-3.55, -6.75, f), sz1 = sz0 - 0.24;
-      const sy = lerp(0.66, 3.58, f);
-      stairTreads.push(bM(0.30, sy - 0.045, sz1, 1.20, sy, sz0));
-      // Stringer supports & vertical balustrade spindles
-      stairSteel.push(bM(0.34, sy - 0.22, sz1 + 0.04, 0.40, sy - 0.045, sz0 - 0.04));
-      stairSteel.push(bM(1.10, sy - 0.22, sz1 + 0.04, 1.16, sy - 0.045, sz0 - 0.04));
-      stairSteel.push(bM(1.17, sy, sz0 - 0.12, 1.195, sy + 0.92, sz0 - 0.095));
-      // Slanted oak handrail segment
-      if (i < nSteps - 1) {
-        const syNext = lerp(0.66, 3.58, (i + 1) / nSteps);
-        stairTreads.push(bM(1.15, (sy + syNext) * 0.5 + 0.90, sz1 - 0.04, 1.21, (sy + syNext) * 0.5 + 0.95, sz0 + 0.04));
-      }
-    }
-    add(mergeGeometries(stairTreads), oakJoinery, 0.5, O);
-    add(mergeGeometries(stairSteel), steel, 0.4, O);
-
-    // 5. Front Reception Parlour & Bespoke Library (x = 2.22 .. 5.76, z = -0.4 .. -6.4)
-    // Floor-to-ceiling bespoke oak bookcase along East Wall (x = 5.34 .. 5.76, z = -0.65 .. -3.95)
-    addM(5.32, 0.45, -3.95, 5.76, 1.12, -0.65, oakJoinery, 0.6, O); // lower credenza cabinets
-    addM(5.30, 1.12, -3.97, 5.76, 1.16, -0.63, trav, 0.5, O); // travertine counter ledge
-    const shelfGeo = [];
-    for (let y = 1.58; y <= 3.38; y += 0.44) {
-      shelfGeo.push(bM(5.36, y, -3.95, 5.76, y + 0.032, -0.65));
-    }
-    for (let z = -3.95; z <= -0.65; z += 0.66) {
-      shelfGeo.push(bM(5.36, 1.16, z - 0.018, 5.76, 3.40, z + 0.018));
-    }
-    add(mergeGeometries(shelfGeo), oakJoinery, 0.5, O);
-
-    // Architectural monographs & books on the library shelves
-    const R = mulberry(71);
-    const booksA = [], booksB = [], booksC = [];
-    for (let s = 0; s < 4; s++) {
-      const sy = 1.16 + s * 0.44 + (s > 0 ? 0.032 : 0);
-      for (let b = 0; b < 5; b++) {
-        let bz = -3.88 + b * 0.66;
-        const zEnd = bz + 0.56;
-        while (bz < zEnd - 0.05) {
-          if (R() < 0.22) { bz += 0.08 + R() * 0.1; continue; }
-          const thick = 0.024 + R() * 0.028;
-          const bh = 0.22 + R() * 0.14;
-          const depth = 0.22 + R() * 0.06;
-          const gBook = bM(5.74 - depth, sy, bz, 5.74, sy + bh, bz + thick);
-          const pick = R();
-          if (pick < 0.42) booksA.push(gBook);
-          else if (pick < 0.76) booksB.push(gBook);
-          else booksC.push(gBook);
-          bz += thick + 0.004;
+    // 1. The shell: ground slab, party walls, ceiling, the upper floor with its hole over the hall
+    addM(0.0, 0.0, -12.0, 6.0, G0, -0.4, floor, 0.5, O);
+    addM(0.72, G0 - 0.005, -1.75, 2.68, G0 + 0.006, -1.3, basalt, 0);                    // a stone mat inside the door
+    addM(0.0, G0, -12.0, 0.24, CEIL, -0.4, plaster, 0.5, O);
+    addM(5.76, G0, -12.0, 6.0, CEIL, -0.4, plaster, 0.5, O);
+    addM(0.24, CEIL, -12.0, 5.76, CEIL + 0.2, -0.4, ceil, 0);
+    addM(0.24, G0, -1.3, 0.3, 3.0, -0.4, plaster, 0);                                     // between party wall and the porch cheek
+    addM(0.24, G0, -6.0, 0.262, CEIL, -1.3, brick, 0.5, O);                               // the hall's west wall: the brick left bare, two storeys of it
+    addM(5.738, G0, -11.9, 5.76, L1 - 0.25, -6.05, brick, 0.5, O);                        // and the east wall of the kitchen
+    addM(0.24, L1 - 0.25, -1.3, 3.1, L1, -0.4, ceil, 0.6, O);                             // the seat of the bay, over the porch
+    addM(3.1, L1 - 0.25, -6.0, 5.76, L1, -0.4, ceil, 0.6, O);                             // gallery over the sitting room
+    addM(0.24, L1 - 0.25, -12.0, 5.76, L1, -6.0, ceil, 0.6, O);                           // the rooms over the kitchen
+    addM(3.1, L1, -6.0, 5.76, L1 + 0.012, -0.4, floor, 0);                                // black boards on the gallery
+    addM(0.24, L1, -6.34, 5.76, L1 + 0.012, -6.0, floor, 0);
+    // skirtings: a shadow gap in black steel
+    addM(0.24, G0, -11.9, 0.26, G0 + 0.09, -1.3, steel, 0);
+    addM(5.74, G0, -11.9, 5.76, G0 + 0.09, -0.4, steel, 0);
+    // under the street window: lining and a deep bench in black oak
+    addM(3.1, G0, -0.46, 5.76, 0.94, -0.38, plaster, 0);
+    addM(3.3, 0.92, -0.74, 5.76, 1.0, -0.2, black, 0.6, O);
+    // upstairs, the wall of the rooms at the back, a door in it, and a wall of books along the gallery
+    addM(0.24, L1, -6.5, 5.76, CEIL, -6.34, plaster, 0.5, O);
+    addM(1.5, L1, -6.34, 2.4, 5.5, -6.31, black, 0.4, O);
+    addM(2.3, L1 + 1.0, -6.31, 2.34, L1 + 1.14, -6.28, steel, 0);
+    addM(5.34, L1, -5.7, 5.76, CEIL - 0.1, -0.7, black, 0.6, O);
+    {
+      const shelf = [], R = mulberry(71), bA = [], bB = [], bC = [];
+      for (let y = L1 + 0.5; y < CEIL - 0.3; y += 0.44) shelf.push(bM(5.3, y, -5.7, 5.36, y + 0.03, -0.7));
+      for (let z = -5.7; z <= -0.69; z += 1.0) shelf.push(bM(5.3, L1, z - 0.018, 5.36, CEIL - 0.1, z + 0.018));
+      many(shelf, black, 0.4, O);
+      for (let s = 0; s < 6; s++) {
+        const sy = L1 + 0.09 + s * 0.44 + (s > 0 ? 0.03 : 0) - (s > 0 ? 0.03 : 0);
+        for (let b = 0; b < 5; b++) {
+          let bz = -5.64 + b * 1.0;
+          const zEnd = bz + 0.9;
+          while (bz < zEnd - 0.05) {
+            if (R() < 0.2) { bz += 0.08 + R() * 0.1; continue; }
+            const thick = 0.024 + R() * 0.028, bh = 0.22 + R() * 0.14, depth = 0.2 + R() * 0.06;
+            const gBook = bM(5.34 - depth, sy, bz, 5.34, sy + bh, bz + thick);
+            const pick = R();
+            (pick < 0.44 ? bA : pick < 0.78 ? bB : bC).push(gBook);
+            bz += thick + 0.004;
+          }
         }
       }
+      if (bA.length) many(bA, linen, 0.3, O);
+      if (bB.length) many(bB, coal, 0.3, O);
+      if (bC.length) many(bC, redCloth, 0.3, O);
     }
-    if (booksA.length) add(mergeGeometries(booksA), mat('linen', { color: 0xd9d1c3 }), 0.35, O);
-    if (booksB.length) add(mergeGeometries(booksB), mat('plain', { color: 0x3b444b }), 0.35, O);
-    if (booksC.length) add(mergeGeometries(booksC), mat('brick', { color: 0xc25929 }), 0.35, O);
+    // balustrades round the hole: glass, a steel rail
+    const rail = (x0, z0, x1, z1) => {
+      const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0);
+      if (alongX) { addM(x0, L1, z0 - 0.012, x1, L1 + 1.0, z0 + 0.012, clear, 0, { cast: false }); addM(x0, L1 + 1.0, z0 - 0.03, x1, L1 + 1.045, z0 + 0.03, steel, 0.5, O); }
+      else { addM(x0 - 0.012, L1, z0, x0 + 0.012, L1 + 1.0, z1, clear, 0, { cast: false }); addM(x0 - 0.03, L1 + 1.0, z0, x0 + 0.03, L1 + 1.045, z1, steel, 0.5, O); }
+    };
+    rail(3.1, -6.0, 3.1, -1.3); rail(1.2, -6.0, 3.1, -6.0); rail(0.24, -1.3, 3.1, -1.3);
 
-    // Monolithic Fluted Limestone Fireplace & Hearth on East Wall (x = 5.22 .. 5.76, z = -4.15 .. -5.75)
-    addM(5.12, 0.45, -5.80, 5.76, 0.58, -4.10, trav, 0.6, O); // raised stone hearth slab
-    addM(5.26, 0.58, -5.68, 5.76, 3.45, -5.25, trav, 0.6, O); // left chimney breast cheek
-    addM(5.26, 0.58, -4.65, 5.76, 3.45, -4.22, trav, 0.6, O); // right chimney breast cheek
-    addM(5.26, 1.38, -5.25, 5.76, 3.45, -4.65, trav, 0.6, O); // chimney breast overmantel
-    addM(5.48, 0.58, -5.25, 5.76, 1.38, -4.65, steel, 0.4, O); // dark steel firebox
-    addM(5.54, 0.58, -5.12, 5.72, 0.78, -4.78, warmGlow, 0, { cast: false }); // warm amber fire glow
-
-    // Hand-loomed wool area rug in Reception Parlour (x = 3.15 .. 5.20, z = -1.35 .. -5.45)
-    addM(3.15, 0.45, -5.45, 5.20, 0.468, -1.35, woolRug, 0.4, O);
-
-    // Tailored Belgian-linen sofa (x = 3.42 .. 4.32, z = -1.55 .. -3.95, facing East library/hearth)
-    addM(3.44, 0.47, -3.95, 4.30, 0.58, -1.55, oakJoinery, 0.5, O); // solid oak plinth base
-    addM(3.42, 0.58, -3.95, 3.64, 1.24, -1.55, linenSofa, 0.6, O); // tailored back rest
-    addM(3.42, 0.58, -1.75, 4.30, 1.08, -1.55, linenSofa, 0.6, O); // north arm rest
-    addM(3.42, 0.58, -3.95, 4.30, 1.08, -3.75, linenSofa, 0.6, O); // south arm rest
-    // Three deep linen seat & back cushions
-    for (let i = 0; i < 3; i++) {
-      const cz0 = -1.76 - i * 0.66, cz1 = cz0 - 0.64;
-      addM(3.64, 0.58, cz1, 4.32, 0.86, cz0, linenSofa, 0.5, O);
-      addM(3.62, 0.86, cz1 + 0.03, 3.80, 1.28, cz0 - 0.03, linenSofa, 0.45, O);
-    }
-    // Terracotta & charcoal accent cushions
-    addM(3.76, 0.86, -2.18, 3.96, 1.16, -1.84, mat('brick', { color: 0xc85a28 }), 0.4, O);
-    addM(3.76, 0.86, -3.66, 3.96, 1.16, -3.32, mat('plain', { color: 0x3b444b }), 0.4, O);
-
-    // Honed Travertine Plinth Coffee Table (x = 4.46 .. 5.04, z = -2.05 .. -3.45)
-    addM(4.52, 0.47, -3.38, 4.98, 0.74, -2.12, oakJoinery, 0.4, O);
-    addM(4.46, 0.74, -3.45, 5.04, 0.82, -2.05, trav, 0.6, O);
-    // Architectural folio book & vessel on coffee table
-    addM(4.58, 0.82, -2.65, 4.88, 0.86, -2.28, mat('brick', { color: 0xd95818 }), 0.35, O);
-    add(new THREE.CylinderGeometry(0.08, 0.06, 0.16, 12).translate(X(4.74), 0.90, -3.05), steel, 0.35, O);
-
-    // Sculptural Oak & Linen Lounge Armchair near Hearth (x = 3.65 .. 4.42, z = -4.45 .. -5.22)
-    addM(3.65, 0.47, -5.22, 4.42, 0.78, -4.45, oakJoinery, 0.5, O);
-    addM(3.68, 0.72, -5.18, 4.38, 0.92, -4.48, linenSofa, 0.5, O);
-    addM(3.68, 0.92, -5.22, 4.38, 1.28, -5.02, linenSofa, 0.5, O);
-
-    // Minimalist Brass/Steel & Opal Pendant Chandelier in Parlour
-    addM(4.48, 2.75, -2.77, 4.52, 3.45, -2.73, steel, 0);
-    addM(4.15, 2.72, -3.15, 4.85, 2.76, -2.35, steel, 0.4, O);
-    add(new THREE.SphereGeometry(0.11, 14, 10).translate(X(4.22), 2.74, -2.42), warmGlow, 0, { parent: g, cast: false });
-    add(new THREE.SphereGeometry(0.11, 14, 10).translate(X(4.78), 2.74, -3.08), warmGlow, 0, { parent: g, cast: false });
-
-    // 6. Double-Height Kitchen & Dining Atrium (x = 0.24 .. 5.76, z = -6.4 .. -12.0, y = 0.45 .. 6.40)
-    // West Wall Bespoke Tall Walnut & Oak Kitchen Cabinetry (x = 0.24 .. 0.88, z = -7.1 .. -11.4)
-    addM(0.24, 0.45, -11.4, 0.88, 3.20, -10.4, darkWalnut, 0.6, O); // tall appliance tower S
-    addM(0.24, 0.45, -8.1, 0.88, 3.20, -7.1, darkWalnut, 0.6, O);  // tall pantry tower N
-    addM(0.24, 0.45, -10.4, 0.88, 1.35, -8.1, darkWalnut, 0.6, O);  // base cabinets
-    addM(0.24, 1.35, -10.4, 0.90, 1.41, -8.1, trav, 0.5, O);        // travertine worktop
-    addM(0.24, 1.41, -10.4, 0.32, 2.25, -8.1, trav, 0.4, O);        // travertine splashback
-    addM(0.24, 2.25, -10.4, 0.68, 3.20, -8.1, oakJoinery, 0.6, O);  // upper oak wall cabinets
-    addM(0.32, 2.22, -10.3, 0.58, 2.25, -8.2, warmGlow, 0, { cast: false }); // under-cabinet LED strip
-
-    // Monolithic Waterfall Honed-Travertine Kitchen Island (x = 1.35 .. 2.25, z = -7.6 .. -10.8, y = 0.45 .. 1.36)
-    addM(1.35, 0.45, -10.75, 2.15, 1.30, -7.65, darkWalnut, 0.5, O);
-    addM(1.33, 1.30, -10.80, 2.26, 1.37, -7.60, trav, 0.7, O);      // waterfall top slab
-    addM(1.33, 0.45, -7.68, 2.26, 1.30, -7.60, trav, 0.6, O);       // north waterfall leg
-    addM(1.33, 0.45, -10.80, 2.26, 1.30, -10.72, trav, 0.6, O);     // south waterfall leg
-    // Dark steel architectural tap & sink basin on island
-    addM(1.55, 1.37, -9.25, 1.59, 1.68, -9.21, steel, 0.4, O);
-    addM(1.55, 1.64, -9.25, 1.74, 1.68, -9.21, steel, 0.4, O);
-    // 3 Oak & Blackened-Steel Counter Stools along the island overhang
-    for (let i = 0; i < 3; i++) {
-      const sz = -8.15 - i * 0.95;
-      addM(2.18, 0.45, sz - 0.18, 2.52, 0.98, sz + 0.18, steel, 0.4, O);
-      addM(2.16, 0.98, sz - 0.20, 2.54, 1.04, sz + 0.20, oakJoinery, 0.5, O);
-    }
-    // Linear suspended brass/steel island pendant light
-    addM(1.76, 2.48, -10.3, 1.82, 2.54, -8.1, steel, 0.5, O);
-    addM(1.77, 2.45, -10.2, 1.81, 2.48, -8.2, warmGlow, 0, { cast: false });
-
-    // Sculptural Solid Oak Dining Table & 6 Chairs under the Atrium Rooflight (x = 3.50 .. 5.30, z = -7.8 .. -10.7)
-    addM(3.85, 1.16, -10.65, 4.95, 1.22, -7.85, oakJoinery, 0.7, O); // thick solid oak tabletop
-    addM(4.02, 0.45, -10.35, 4.78, 1.16, -10.25, oakJoinery, 0.5, O); // south trestle leg
-    addM(4.02, 0.45, -8.25, 4.78, 1.16, -8.15, oakJoinery, 0.5, O);   // north trestle leg
-    addM(4.36, 0.62, -10.25, 4.44, 0.69, -8.25, oakJoinery, 0.4, O);  // stretcher beam
-    // Sculptural travertine bowl centerpiece on dining table
-    add(new THREE.CylinderGeometry(0.22, 0.12, 0.11, 16).translate(X(4.40), 1.275, -9.25), trav, 0.4, O);
-
-    // 6 Architectural Oak Dining Chairs (3 on each side)
-    const chairsGeo = [], chairCushions = [];
-    for (let i = 0; i < 3; i++) {
-      const cz = -8.35 - i * 0.90;
-      // West side chairs (x = 3.48 .. 3.84)
-      chairsGeo.push(bM(3.48, 0.45, cz - 0.22, 3.54, 1.28, cz + 0.22)); // back & rear legs
-      chairsGeo.push(bM(3.78, 0.45, cz - 0.22, 3.84, 0.90, cz + 0.22)); // front legs
-      chairCushions.push(bM(3.50, 0.90, cz - 0.23, 3.85, 0.95, cz + 0.23));
-      // East side chairs (x = 4.96 .. 5.32)
-      chairsGeo.push(bM(5.26, 0.45, cz - 0.22, 5.32, 1.28, cz + 0.22)); // back & rear legs
-      chairsGeo.push(bM(4.96, 0.45, cz - 0.22, 5.02, 0.90, cz + 0.22)); // front legs
-      chairCushions.push(bM(4.95, 0.90, cz - 0.23, 5.30, 0.95, cz + 0.23));
-    }
-    add(mergeGeometries(chairsGeo), oakJoinery, 0.45, O);
-    add(mergeGeometries(chairCushions), linenSofa, 0.35, O);
-
-    // Cluster of 3 warm architectural pendant globes dropping from the double-height atrium
-    [[-8.6, 2.55], [-9.25, 2.38], [-9.9, 2.68]].forEach(([pz, py]) => {
-      addM(4.39, py, pz - 0.01, 4.41, 6.40, pz + 0.01, steel, 0);
-      add(new THREE.SphereGeometry(0.13, 14, 10).translate(X(4.40), py, pz), warmGlow, 0, { parent: g, cast: false });
-    });
-
-    // 7. Full-Width Crittall Steel & Glass Rear Garden Wall at z = -12.0 (x = 0.24 .. 5.76, y = 0.45 .. 6.40)
-    // Top plaster spandrel above y = 5.85
-    addM(0.24, 5.85, -12.08, 5.76, 6.40, -11.88, brick, 0.6, O);
-    addM(0.20, 5.76, -12.12, 5.80, 5.85, -11.86, stone, 0.6, O);
-    // Fixed Crittall side bays (x = 0.24..2.15 and x = 3.85..5.76) + upper transom bays (y = 2.65..5.76)
-    const crittall = [];
-    // Outer frame & main horizontal transoms at y = 0.45, 2.65, 3.70, 4.75, 5.76
-    [0.47, 2.65, 3.70, 4.75, 5.73].forEach((ty) => {
-      crittall.push(bM(0.24, ty - 0.03, -12.04, 5.76, ty + 0.03, -11.96));
-    });
-    // Vertical mullions across fixed bays and upper bays
-    [0.27, 1.20, 2.15, 3.85, 4.80, 5.73].forEach((mx) => {
-      crittall.push(bM(mx - 0.03, 0.45, -12.04, mx + 0.03, 5.76, -11.96));
-    });
-    // Center mullion in upper transom above the double garden doors (y = 2.65..5.76)
-    crittall.push(bM(2.97, 2.65, -12.04, 3.03, 5.76, -11.96));
-    // Intermediate Crittall glazing bars on fixed side panels
-    [1.15, 1.90].forEach((gy) => {
-      crittall.push(bM(0.27, gy - 0.018, -12.03, 2.15, gy + 0.018, -11.97));
-      crittall.push(bM(3.85, gy - 0.018, -12.03, 5.73, gy + 0.018, -11.97));
-    });
-    add(mergeGeometries(crittall), steel, 0.6, O);
-    // Clear glazing in fixed side & upper bays
-    add(bM(0.28, 0.48, -12.01, 2.14, 2.64, -11.99), clearGlassMat, 0, { parent: g, cast: false, receive: false });
-    add(bM(3.86, 0.48, -12.01, 5.72, 2.64, -11.99), clearGlassMat, 0, { parent: g, cast: false, receive: false });
-    add(bM(0.28, 2.66, -12.01, 5.72, 5.72, -11.99), clearGlassMat, 0, { parent: g, cast: false, receive: false });
-
-    // Pivoting Double Crittall Garden Doors (x = 2.15 .. 3.85, y = 0.45 .. 2.65, z = -12.0)
-    const gDoorL = new THREE.Group();
-    const gDoorR = new THREE.Group();
-    const gxL = X(2.15), gxR = X(3.85);
-    gDoorL.position.set( Math.min(gxL, gxR), 0, -12.0 );
-    gDoorR.position.set( Math.max(gxL, gxR), 0, -12.0 );
-    g.add(gDoorL, gDoorR);
+    // 2. The hall: a folded stair of black steel plate up the west wall, seventeen risers
     {
-      const dw = 0.84;
-      const lBars = [
-        box(0, 0.46, -0.03, dw, 0.54, 0.03),
-        box(0, 2.59, -0.03, dw, 2.64, 0.03),
-        box(0, 0.46, -0.03, 0.045, 2.64, 0.03),
-        box(dw - 0.045, 0.46, -0.03, dw, 2.64, 0.03),
-        box(0, 1.15, -0.02, dw, 1.18, 0.02),
-        box(0, 1.88, -0.02, dw, 1.91, 0.02),
-        box(dw - 0.08, 1.05, 0.02, dw - 0.05, 1.45, 0.06),
-      ];
-      add(mergeGeometries(lBars), steel, 0.6, { parent: gDoorL, lineColor: O.lineColor, realLines: O.realLines });
-      add(box(0.04, 0.52, -0.005, dw - 0.04, 2.60, 0.005), clearGlassMat, 0, { parent: gDoorL, cast: false, receive: false });
-
-      const rBars = [
-        box(-dw, 0.46, -0.03, 0, 0.54, 0.03),
-        box(-dw, 2.59, -0.03, 0, 2.64, 0.03),
-        box(-0.045, 0.46, -0.03, 0, 2.64, 0.03),
-        box(-dw, 0.46, -0.03, -dw + 0.045, 2.64, 0.03),
-        box(-dw, 1.15, -0.02, 0, 1.18, 0.02),
-        box(-dw, 1.88, -0.02, 0, 1.91, 0.02),
-        box(-dw + 0.05, 1.05, 0.02, -dw + 0.08, 1.45, 0.06),
-      ];
-      add(mergeGeometries(rBars), steel, 0.6, { parent: gDoorR, lineColor: O.lineColor, realLines: O.realLines });
-      add(box(-dw + 0.04, 0.52, -0.005, -0.04, 2.60, 0.005), clearGlassMat, 0, { parent: gDoorR, cast: false, receive: false });
+      const n = 17, rise = (L1 - G0) / n, go = 0.25, plate = [], bars = [];
+      for (let i = 0; i < n; i++) {
+        const z = -1.9 - i * go, y = G0 + i * rise;
+        plate.push(bM(0.26, y, z - 0.014, 1.16, y + rise, z + 0.014));
+        plate.push(bM(0.26, y + rise - 0.028, z - (i === n - 1 ? 0.1 : go), 1.16, y + rise, z));
+        if (i % 2 === 0) bars.push(bM(1.135, y + rise, z - 0.135, 1.16, y + rise + 0.95, z - 0.11));
+        if (i < n - 1) bars.push(bM(1.125, y + rise * 1.5 + 0.93, z - go - 0.02, 1.17, y + rise * 1.5 + 0.975, z + 0.02));
+      }
+      many(plate, mat('steel', { color: 0x2c2c31 }), 0.5, O);
+      many(bars, steel, 0.35, O);
     }
+    // a large framed drawing over the stair, a cluster of three lamps hanging in the height of the hall
+    addM(0.262, 3.75, -4.7, 0.3, 5.45, -2.3, steel, 0.5, O);
+    addM(0.3, 3.81, -4.64, 0.313, 5.39, -2.36, ceil, 0);
+    addM(0.313, 4.15, -4.2, 0.322, 5.05, -3.3, red, 0);
+    addM(0.313, 4.02, -3.18, 0.322, 5.18, -3.1, steel, 0);
+    [[-2.9, 3.35, 1.75], [-3.6, 4.1, 2.15], [-4.25, 3.0, 1.9]].forEach(([pz, py, px]) => {
+      addM(px - 0.006, py, pz - 0.006, px + 0.006, CEIL, pz + 0.006, steel, 0);
+      add(new THREE.SphereGeometry(0.15, 16, 12).translate(X(px), py, pz), glow, 0, { parent: g, cast: false });
+    });
 
-    // 8. Rear Courtyard Garden (x = 0.0 .. 6.0, z = -12.0 .. -17.8, y = 0.25 .. 2.75)
-    // Upper Yorkstone dining terrace (z = -12.0 .. -14.2) & lower garden terrace (z = -14.2 .. -17.8)
-    addM(0.0, 0.0, -14.2, 6.0, 0.42, -12.0, paving, 0.5, O);
-    addM(0.0, 0.0, -17.8, 6.0, 0.28, -14.2, paving, 0.5, O);
-    addM(0.22, 0.28, -14.26, 5.78, 0.43, -14.12, stone, 0.5, O); // dressed stone terrace step nosing
+    // 3. The sitting room, under the gallery: a red sofa on the east wall, a low stone table, a chair by the window
+    const SZ = -1.55; // how far back the group sits
+    addM(3.35, G0, -5.3 + SZ + 0.9, 5.6, G0 + 0.018, -1.5 + SZ, rug, 0.4, O);
+    addM(4.86, G0 + 0.02, -4.1 + SZ, 5.72, G0 + 0.14, -1.7 + SZ, black, 0.5, O);
+    addM(5.5, G0 + 0.14, -4.1 + SZ, 5.72, G0 + 0.84, -1.7 + SZ, redCloth, 0.6, O);
+    addM(4.86, G0 + 0.14, -1.9 + SZ, 5.5, G0 + 0.62, -1.7 + SZ, redCloth, 0.6, O);
+    addM(4.86, G0 + 0.14, -4.1 + SZ, 5.5, G0 + 0.62, -3.9 + SZ, redCloth, 0.6, O);
+    for (let i = 0; i < 3; i++) {
+      const cz0 = -1.92 - i * 0.66 + SZ, cz1 = cz0 - 0.64;
+      addM(4.84, G0 + 0.14, cz1, 5.5, G0 + 0.42, cz0, redCloth, 0.5, O);
+      addM(5.32, G0 + 0.42, cz1 + 0.03, 5.5, G0 + 0.84, cz0 - 0.03, redCloth, 0.45, O);
+    }
+    addM(5.14, G0 + 0.42, -2.34 + SZ, 5.34, G0 + 0.72, -2.0 + SZ, linen, 0.4, O);
+    addM(5.14, G0 + 0.42, -3.8 + SZ, 5.34, G0 + 0.72, -3.46 + SZ, coal, 0.4, O);
+    addM(3.95, G0 + 0.02, -3.5 + SZ, 4.45, G0 + 0.28, -2.3 + SZ, black, 0.4, O);
+    addM(3.9, G0 + 0.28, -3.56 + SZ, 4.5, G0 + 0.34, -2.24 + SZ, slab, 0.6, O);
+    addM(4.02, G0 + 0.34, -2.8 + SZ, 4.34, G0 + 0.38, -2.42 + SZ, red, 0.35, O);
+    add(new THREE.CylinderGeometry(0.08, 0.06, 0.16, 12).translate(X(4.2), G0 + 0.42, -3.2 + SZ), steel, 0.35, O);
+    addM(3.5, G0 + 0.02, -1.5, 4.2, G0 + 0.3, -0.85, black, 0.5, O);
+    addM(3.53, G0 + 0.26, -1.47, 4.17, G0 + 0.44, -0.9, linen, 0.5, O);
+    addM(3.53, G0 + 0.44, -1.0, 4.17, G0 + 0.84, -0.84, linen, 0.5, O);
+    // a painting over the sofa, a standing lamp, a line of light in the ceiling
+    addM(5.72, 1.55, -3.9 + SZ, 5.76, 2.75, -1.9 + SZ, steel, 0.5, O);
+    addM(5.705, 1.6, -3.85 + SZ, 5.72, 2.7, -1.95 + SZ, ceil, 0);
+    addM(5.696, 1.85, -3.45 + SZ, 5.706, 2.45, -2.85 + SZ, coal, 0);
+    add(new THREE.CylinderGeometry(0.26, 0.26, 0.012, 28).rotateZ(Math.PI / 2).translate(X(5.699), 2.25, -2.55 + SZ), red, 0, { parent: g, cast: false });
+    addM(5.38, G0, -2.82, 5.42, 1.86, -2.78, steel, 0);
+    add(new THREE.SphereGeometry(0.13, 14, 10).translate(X(5.4), 1.95, -2.8), glow, 0, { parent: g, cast: false });
+    addM(3.3, L1 - 0.262, -5.4, 3.38, L1 - 0.25, -1.0, glow, 0, { cast: false });
 
-    // London Stock Brick Courtyard Boundary Walls + Dressed Stone Coping
-    addM(0.0, 0.28, -17.8, 0.24, 2.65, -12.0, brick, 0.6, O);
-    addM(-0.02, 2.65, -17.82, 0.26, 2.73, -12.0, stone, 0.5, O);
-    addM(5.76, 0.28, -17.8, 6.0, 2.65, -12.0, brick, 0.6, O);
-    addM(5.74, 2.65, -17.82, 6.02, 2.73, -12.0, stone, 0.5, O);
-    addM(0.0, 0.28, -17.8, 6.0, 2.65, -17.52, brick, 0.6, O);
-    addM(-0.02, 2.65, -17.82, 6.02, 2.73, -17.50, stone, 0.5, O);
+    // 4. Kitchen and dining, under the upper rooms
+    addM(0.24, G0, -7.3, 0.88, 2.6, -6.4, black, 0.6, O);       // tall units
+    addM(0.24, G0, -11.5, 0.88, 2.6, -10.5, black, 0.6, O);
+    addM(0.24, G0, -10.5, 0.88, 1.2, -7.3, black, 0.6, O);      // base units
+    addM(0.24, 1.2, -10.5, 0.9, 1.26, -7.3, slab, 0.5, O);      // worktop
+    addM(0.24, 1.26, -10.5, 0.3, 1.9, -7.3, slab, 0.4, O);      // splashback
+    addM(0.24, 1.9, -10.5, 0.66, 2.6, -7.3, plaster, 0.6, O);   // wall units, white
+    addM(0.32, 1.875, -10.4, 0.58, 1.9, -7.4, glow, 0, { cast: false });
+    // the island, with a waterfall top
+    addM(1.4, G0, -9.25, 2.16, 1.14, -6.95, black, 0.5, O);
+    addM(1.38, 1.14, -9.3, 2.22, 1.21, -6.9, slab, 0.7, O);
+    addM(1.38, G0, -6.98, 2.22, 1.14, -6.9, slab, 0.6, O);
+    addM(1.38, G0, -9.3, 2.22, 1.14, -9.22, slab, 0.6, O);
+    addM(1.58, 1.21, -8.52, 1.62, 1.52, -8.48, steel, 0.4, O);
+    addM(1.58, 1.48, -8.52, 1.77, 1.52, -8.48, steel, 0.4, O);
+    for (let i = 0; i < 3; i++) {
+      const sz = -7.35 - i * 0.75;
+      addM(2.26, G0, sz - 0.16, 2.56, 0.84, sz + 0.16, steel, 0.4, O);
+      addM(2.24, 0.84, sz - 0.18, 2.58, 0.9, sz + 0.18, linen, 0.5, O);
+    }
+    addM(1.78, 2.3, -9.0, 1.84, 2.36, -7.2, steel, 0.5, O);
+    addM(1.79, 2.275, -8.9, 1.83, 2.3, -7.3, glow, 0, { cast: false });
+    addM(1.8, 2.36, -8.12, 1.82, L1 - 0.25, -8.08, steel, 0);
+    // a sideboard on the east wall, and on it the one red vessel
+    addM(5.3, G0, -8.7, 5.76, 1.05, -6.5, black, 0.6, O);
+    addM(5.28, 1.05, -8.72, 5.76, 1.09, -6.48, slab, 0.5, O);
+    add(new THREE.LatheGeometry([[0, 0], [0.07, 0], [0.125, 0.1], [0.115, 0.24], [0.05, 0.34], [0.06, 0.4]].map((q) => new THREE.Vector2(q[0], q[1])), 28).translate(X(5.52), 1.09, -7.1), red, 0, { parent: g });
+    add(new THREE.CylinderGeometry(0.07, 0.09, 0.2, 12).translate(X(5.52), 1.19, -7.9), mat('stone'), 0.4, O);
+    // the table by the garden glass, six chairs, three lamps over it
+    addM(3.95, 1.02, -11.5, 4.95, 1.08, -9.3, black, 0.7, O);
+    addM(4.07, G0, -11.2, 4.83, 1.02, -11.1, black, 0.5, O);
+    addM(4.07, G0, -9.7, 4.83, 1.02, -9.6, black, 0.5, O);
+    addM(4.41, 0.5, -11.1, 4.49, 0.57, -9.7, black, 0.4, O);
+    add(new THREE.CylinderGeometry(0.22, 0.12, 0.11, 16).translate(X(4.45), 1.135, -10.4), slab, 0.4, O);
+    {
+      const chairs = [], pads = [];
+      for (let i = 0; i < 3; i++) {
+        const cz = -9.75 - i * 0.65;
+        chairs.push(bM(3.5, G0, cz - 0.2, 3.55, 1.14, cz + 0.2), bM(3.82, G0, cz - 0.2, 3.87, 0.76, cz + 0.2));
+        pads.push(bM(3.52, 0.76, cz - 0.21, 3.88, 0.81, cz + 0.21));
+        chairs.push(bM(5.35, G0, cz - 0.2, 5.4, 1.14, cz + 0.2), bM(5.03, G0, cz - 0.2, 5.08, 0.76, cz + 0.2));
+        pads.push(bM(5.02, 0.76, cz - 0.21, 5.38, 0.81, cz + 0.21));
+      }
+      many(chairs, black, 0.45, O);
+      many(pads, linen, 0.35, O);
+    }
+    [[-9.8, 2.1], [-10.4, 1.96], [-11.0, 2.18]].forEach(([pz, py]) => {
+      addM(4.44, py, pz - 0.006, 4.452, L1 - 0.25, pz + 0.006, steel, 0);
+      add(new THREE.SphereGeometry(0.12, 14, 10).translate(X(4.446), py, pz), glow, 0, { parent: g, cast: false });
+    });
 
-    // Raised Limestone Courtyard Planter Bed & Multi-stem Courtyard Tree
-    addM(3.55, 0.28, -17.52, 5.76, 0.86, -14.35, trav, 0.6, O);
-    addM(3.68, 0.28, -17.40, 5.64, 0.80, -14.48, mat('foliage'), 0);
-    tree(ox + X(4.65), (v.setback || 0) - 15.6, 6.4, 1.9);
+    // 5. The back of the house: brick upstairs, and below it a wall of glass, four panels, the middle two sliding
+    addM(0.0, L1 - 0.25, -12.3, 6.0, PAR - 0.3, -12.0, brick, 0.6, O);
+    addM(-0.02, PAR - 0.3, -12.34, 6.02, PAR - 0.22, -11.98, mat('stone'), 0.5, O);
+    addM(0.24, 2.9, -12.08, 5.76, L1 - 0.25, -11.9, steel, 0.5, O);                        // the track and its beam
+    addM(0.24, G0 - 0.01, -12.08, 5.76, G0 + 0.02, -11.9, steel, 0);
+    const pane = (parent, x0, x1, z) => {
+      const f = 0.045, bars = [box(x0, G0 + 0.02, z - 0.025, x1, G0 + 0.02 + f, z + 0.025), box(x0, 2.9 - f, z - 0.025, x1, 2.9, z + 0.025), box(x0, G0 + 0.02, z - 0.025, x0 + f, 2.9, z + 0.025), box(x1 - f, G0 + 0.02, z - 0.025, x1, 2.9, z + 0.025)];
+      add(mergeGeometries(bars), steel, 0.6, { parent, lineColor: O.lineColor, realLines: O.realLines });
+      add(box(x0 + f, G0 + 0.02 + f, z - 0.006, x1 - f, 2.9 - f, z + 0.006), clear, 0, { parent, cast: false });
+    };
+    pane(g, 0.24, 1.64, -12.03); pane(g, 4.36, 5.76, -12.03);
+    const gDoorL = new THREE.Group(), gDoorR = new THREE.Group();
+    g.add(gDoorL, gDoorR);
+    pane(gDoorL, 1.62, 3.0, -11.96); pane(gDoorR, 3.0, 4.38, -11.96);
+    add(box(2.9, 1.1, -11.93, 2.93, 1.5, -11.9), steel, 0, { parent: gDoorL }); add(box(3.07, 1.1, -11.93, 3.1, 1.5, -11.9), steel, 0, { parent: gDoorR });
 
-    // Architectural Teak & Blackened-Steel Courtyard Bench (x = 0.48 .. 2.25, z = -15.4 .. -14.8)
-    addM(0.48, 0.70, -15.42, 2.25, 0.76, -14.82, oakJoinery, 0.5, O);
-    addM(0.56, 0.28, -15.36, 0.64, 0.70, -14.88, steel, 0.4, O);
-    addM(2.08, 0.28, -15.36, 2.16, 0.70, -14.88, steel, 0.4, O);
-    // Warm architectural garden bollard lantern
-    addM(3.25, 0.28, -14.65, 3.38, 0.92, -14.52, steel, 0.4, O);
-    addM(3.27, 0.76, -14.63, 3.36, 0.88, -14.54, warmGlow, 0, { cast: false });
+    // 6. The garden: a terrace, one step down to gravel, white brick walls, and a red maple in a raised bed
+    addM(0.0, 0.0, -14.4, 6.0, G0 - 0.02, -12.08, paving, 0.5, O);
+    addM(0.0, 0.0, -17.8, 6.0, 0.14, -14.4, paving, 0.5, O);
+    addM(0.22, 0.14, -14.46, 5.78, G0 - 0.015, -14.34, basalt, 0.5, O);
+    addM(0.0, 0.14, -17.8, 0.24, 2.5, -12.3, brick, 0.6, O);
+    addM(-0.02, 2.5, -17.82, 0.26, 2.58, -12.3, mat('stone'), 0.5, O);
+    addM(5.76, 0.14, -17.8, 6.0, 2.5, -12.3, brick, 0.6, O);
+    addM(5.74, 2.5, -17.82, 6.02, 2.58, -12.3, mat('stone'), 0.5, O);
+    addM(0.0, 0.14, -17.8, 6.0, 2.5, -17.52, brick, 0.6, O);
+    addM(-0.02, 2.5, -17.82, 6.02, 2.58, -17.5, mat('stone'), 0.5, O);
+    addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
+    addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
+    addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
+    tree(ox + X(4.68), (v.setback || 0) - 16.15, 6.3, 1.5, 0xb3141f);
+    addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
+    addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
+    addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
+    addM(3.28, 0.14, -14.84, 3.4, 0.78, -14.72, steel, 0.4, O);                             // a bollard lamp
+    addM(3.3, 0.62, -14.82, 3.38, 0.74, -14.74, glow, 0, { cast: false });
 
-    // 9. Warm Interior PointLights for rich specular & diffuse depth
-    const ptHall = new THREE.PointLight(0xffe2ba, 1.9, 7.5, 1.4);
-    ptHall.position.set(X(1.45), 2.85, -1.9);
-    const ptParlour = new THREE.PointLight(0xffdfba, 2.6, 9.5, 1.3);
-    ptParlour.position.set(X(3.85), 3.05, -3.5);
-    const ptAtrium = new THREE.PointLight(0xfff0d6, 3.2, 13.5, 1.2);
-    ptAtrium.position.set(X(3.25), 4.65, -9.2);
-    g.add(ptHall, ptParlour, ptAtrium);
+    // 7. Lamps that are on
+    const ptHall = new THREE.PointLight(0xfff6ee, 3.4, 10.5, 1.3); ptHall.position.set(X(1.9), 3.6, -3.5);
+    const ptSit = new THREE.PointLight(0xfff6ee, 3.2, 8.5, 1.3); ptSit.position.set(X(4.2), 2.5, -4.2);
+    const ptBack = new THREE.PointLight(0xfff6ee, 4.4, 12, 1.2); ptBack.position.set(X(3.2), 2.6, -9.0);
+    g.add(ptHall, ptSit, ptBack);
 
     return { gDoorL, gDoorR };
   }
 
   function house(ox, v = {}) {
     const g = new THREE.Group(); g.position.set(ox, 0, v.setback || 0); root.add(g);
-    const faint = !!v.faint, lc = faint ? 0xb9b3a8 : v.accent ? 0xe85d04 : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
+    const faint = !!v.faint, lc = faint ? 0x4a4a50 : v.accent ? 0xe5202e : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
     const rl = v.accent ? 0.75 : undefined;
-    const PAR = v.par || 10.0, ROOF = PAR - 0.9;
+    const PAR = v.par || 6.7;
     const doorL = v.door !== 'right';
-    const dx0 = doorL ? 0.6 : 4.0, dx1 = dx0 + 1.4;
-    const wx0 = doorL ? 2.7 : 0.6, wx1 = wx0 + 2.7;
-    const holes = [[dx0, 0.45, dx1, 3.1], [wx0, 0.95, wx1, 3.05]];
-    const first = v.first || 'balcony';
-    const ff = first === 'frame' ? [[0.9, 3.85, 5.1, 6.2]] : [[0.8, 3.75, 2.6, 6.25], [3.4, 3.75, 5.2, 6.25]];
-    const sf = [[0.8, 6.95, 1.9, 8.85], [2.45, 6.95, 3.55, 8.85], [4.1, 6.95, 5.2, 8.85]];
-    holes.push(...ff, ...sf);
+    const X = (x) => (doorL ? x : 6 - x);
+    const bx = (x0, y0, z0, x1, y1, z1) => (doorL ? box(x0, y0, z0, x1, y1, z1) : box(6 - x1, y0, z0, 6 - x0, y1, z1));
+    const R4 = (x0, y0, x1, y1) => (doorL ? [x0, y0, x1, y1] : [6 - x1, y0, 6 - x0, y1]);
+    const EX = [0.5, 2.9], DX = [0.7, 2.7], pz = -1.2;        // the porch, and the glass door at the back of it
+    const first = v.first || 'bay';
+    const holes = [R4(EX[0], G0, EX[1], 3.0), R4(3.55, 1.0, 5.5, 3.0)];
+    const ff = first === 'frame' ? [[0.9, 3.95, 5.1, 6.0]] : [R4(0.75, 3.9, 3.25, 5.9), R4(4.05, 3.9, 5.35, 6.0)];
+    holes.push(...ff);
     const brick = mat('brick', { faint, color: v.brick });
     const O = { parent: g, lineColor: lc, realLines: rl };
     add(panel([0, 0, 6, PAR], holes, -T, 0), brick, LW, O);
     const st = mat('stone', { faint });
+    const base = mat('stone', { faint, color: 0x38383c });
     const stm = mat('steel', { faint });
+    const zm = mat('zinc', { faint });
 
-    // dressed stone base plinth + top water-table cap ledge
-    add(box(0, 0, 0, dx0, 0.45, 0.026), st, lw, O);
-    add(box(dx1, 0, 0, 6, 0.45, 0.026), st, lw, O);
+    // a base course of dark stone, with a thin ledge on top
+    add(bx(0, 0, 0, EX[0], G0, 0.026), base, lw, O);
+    add(bx(EX[1], 0, 0, 6, G0, 0.026), base, lw, O);
     if (!faint) {
-      add(box(0, 0.43, 0.026, dx0, 0.46, 0.042), st, 0, { parent: g });
-      add(box(dx1, 0.43, 0.026, 6, 0.46, 0.042), st, 0, { parent: g });
+      add(bx(0, G0 - 0.02, 0.026, EX[0], G0 + 0.01, 0.042), base, 0, { parent: g });
+      add(bx(EX[1], G0 - 0.02, 0.026, 6, G0 + 0.01, 0.042), base, 0, { parent: g });
     }
 
-    // parapet coping stone + corbelled bed course + party-wall parapet upstands
-    add(box(0, PAR, -T - 0.04, 6, PAR + 0.085, 0.055), st, LW, O);
+    // the porch, set back 1.2 m: brick cheeks, a stone soffit, a stone floor, two steps up from the street
+    add(bx(EX[0] - 0.2, G0, pz, EX[0], 3.0, -T), brick, lw, O);
+    add(bx(EX[1], G0, pz, EX[1] + 0.2, 3.0, -T), brick, lw, O);
+    add(bx(EX[0] - 0.2, 3.0, pz, EX[1] + 0.2, 3.15, -T), st, lw, O);
+    add(bx(EX[0], G0 - 0.15, pz, EX[1], G0, 0), base, lw, O);
+    const sp = new THREE.Shape([[0, 0], [0.6, 0], [0.6, 0.15], [0.3, 0.15], [0.3, 0.3], [0, 0.3]].map((p) => new THREE.Vector2(p[0], p[1])));
+    add(new THREE.ExtrudeGeometry(sp, { depth: EX[1] - EX[0], bevelEnabled: false }).rotateY(-Math.PI / 2).translate(Math.max(X(EX[0]), X(EX[1])), 0, 0), base, lw, O);
     if (!faint) {
-      add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g });
-      add(box(0.0, PAR + 0.085, -T, 0.22, PAR + 0.24, 0.03), brick, 0.6, O);
-      add(box(5.78, PAR + 0.085, -T, 6.0, PAR + 0.24, 0.03), brick, 0.6, O);
-      add(box(-0.01, PAR + 0.24, -T - 0.02, 0.23, PAR + 0.28, 0.045), st, 0.6, O);
-      add(box(5.77, PAR + 0.24, -T - 0.02, 6.01, PAR + 0.28, 0.045), st, 0.6, O);
+      add(bx(EX[0], 0.125, 0.3, EX[1], 0.152, 0.622), base, 0, { parent: g });
+      add(bx(EX[0], 0.275, 0.0, EX[1], 0.302, 0.322), base, 0, { parent: g });
+      // the house number on the cheek, a line of light in the soffit (real mode only)
+      const px = X(EX[1]) + (doorL ? -0.013 : 0);
+      add(box(px, 1.58, -0.36, px + 0.013, 1.74, -0.18), st, 0.5, { parent: g });
+      add(bx((EX[0] + EX[1]) / 2 - 0.7, 2.985, -0.74, (EX[0] + EX[1]) / 2 + 0.7, 3.0, -0.66), mat('interior', { realOnly: true }), 0, { parent: g, cast: false });
     }
 
-    // recessed entrance porch (pz = -1.0)
-    const pz = -1.0;
-    add(box(dx0 - 0.2, 0.45, pz, dx0, 3.1, -T), brick, lw, O);
-    add(box(dx1, 0.45, pz, dx1 + 0.2, 3.1, -T), brick, lw, O);
-    add(box(dx0 - 0.2, 3.1, pz, dx1 + 0.2, 3.35, -T), st, lw, O);
-    add(box(dx0, 0.3, pz, dx1, 0.45, 0), st, lw, O);
+    // the door: a black steel portal, and in it two leaves of glass in red frames, 2.0 m by 2.55 m together
+    const show = !faint && v.interior !== false;
+    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), stm, lw, O);
+    const hA = Math.min(X(DX[0]), X(DX[1])) + 0.012, hB = Math.max(X(DX[0]), X(DX[1])) - 0.012, wL = (hB - hA) / 2 - 0.004;
+    const red = mat('lacquer', { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
+    const leaves = [1, -1].map((s) => {
+      const piv = new THREE.Group(); piv.position.set(s > 0 ? hA : hB, 0, pz - 0.035); g.add(piv);
+      const q = (a, b) => (s > 0 ? [a, b] : [-b, -a]);       // along the leaf, from the hinge
+      const f = 0.06, y0 = G0 + 0.012, y1 = 2.85, bars = [];
+      const B = (a, b, c, d, z0 = -0.05, z1 = 0) => { const [p0, p1] = q(a, b); return box(p0, c, z0, p1, d, z1); };
+      bars.push(B(0, wL, y0, y0 + 0.11), B(0, wL, y1 - f, y1), B(0, f, y0, y1), B(wL - f, wL, y0, y1));
+      add(mergeGeometries(bars), red, lw, { parent: piv, lineColor: lc, realLines: rl });
+      add(B(f, wL - f, y0 + 0.11, y1 - f, -0.031, -0.019), doorGlass, 0, { parent: piv, cast: false });
+      if (!faint) {
+        add(B(wL - 0.16, wL - 0.125, 1.0, 1.9, 0.03, 0.06), stm, 0.6, { parent: piv });       // pulls, outside and in
+        add(B(wL - 0.155, wL - 0.13, 1.1, 1.13, 0, 0.035), stm, 0, { parent: piv }); add(B(wL - 0.155, wL - 0.13, 1.77, 1.8, 0, 0.035), stm, 0, { parent: piv });
+        add(B(wL - 0.16, wL - 0.125, 1.0, 1.9, -0.11, -0.08), stm, 0.6, { parent: piv });
+        add(B(wL - 0.155, wL - 0.13, 1.1, 1.13, -0.085, -0.05), stm, 0, { parent: piv }); add(B(wL - 0.155, wL - 0.13, 1.77, 1.8, -0.085, -0.05), stm, 0, { parent: piv });
+        const segs = []; const [a, b] = q(0.2, 0.62); segs.push(a, 2.1, 0.012, b, 2.52, 0.012, a + 0.1, 2.08, 0.012, b + 0.08, 2.48, 0.012);
+        lines(segs, 0.6, { parent: piv });
+      }
+      return { piv, s };
+    });
 
-    // front door: stationary outer steel jamb + pivoting fluted oak door leaf inside doorPivot
-    const wd = mat('wood', { faint, color: v.door_color });
-    const doorPivot = new THREE.Group();
-    const hingeX = doorL ? dx0 + 0.055 : dx1 - 0.055;
-    doorPivot.position.set(hingeX, 0, pz);
-    g.add(doorPivot);
-
-    const leafX0 = (dx0 + 0.055) - hingeX;
-    const leafX1 = (dx1 - 0.055) - hingeX;
-    add(box(leafX0, 0.45, -0.075, leafX1, 2.56, 0), wd, lw, { parent: doorPivot, lineColor: lc, realLines: rl });
-    windowIn(g, dx0, 2.62, dx1, 3.1, -pz - 0.02, { faint, lc, rl, panes: 1 });
-    if (!faint) {
-      // Stationary dark steel outer door frame & threshold weather bar on g
-      add(panel([dx0, 0.45, dx1, 2.62], [[dx0 + 0.055, 0.45, dx1 - 0.055, 2.56]], pz - 0.08, pz + 0.024), stm, 0, { parent: g });
-      // Kickplate & vertical pull hardware on both sides of doorPivot so it pivots open cleanly
-      add(box(leafX0 + 0.01, 0.45, -0.082, leafX1 - 0.01, 0.56, 0.012), stm, 0, { parent: doorPivot });
-      const hx = (doorL ? dx1 - 0.22 : dx0 + 0.22) - hingeX;
-      // Front pull bar
-      add(box(hx - 0.018, 1.08, 0.045, hx + 0.018, 1.92, 0.075), stm, 0.6, { parent: doorPivot });
-      add(box(hx - 0.014, 1.18, 0, hx + 0.014, 1.21, 0.05), stm, 0, { parent: doorPivot });
-      add(box(hx - 0.014, 1.80, 0, hx + 0.014, 1.83, 0.05), stm, 0, { parent: doorPivot });
-      // Interior pull bar
-      add(box(hx - 0.018, 1.08, -0.145, hx + 0.018, 1.92, -0.115), stm, 0.6, { parent: doorPivot });
-      add(box(hx - 0.014, 1.18, -0.12, hx + 0.014, 1.21, -0.075), stm, 0, { parent: doorPivot });
-      add(box(hx - 0.014, 1.80, -0.12, hx + 0.014, 1.83, -0.075), stm, 0, { parent: doorPivot });
-      // House number plaque on the porch reveal wall
-      const px = doorL ? dx1 - 0.015 : dx0 + 0.002;
-      add(box(px, 1.62, -0.32, px + 0.013, 1.76, -0.16), st, 0.5, { parent: g });
-      // Warm recessed porch soffit downlight glow (real mode only)
-      add(box((dx0 + dx1) / 2 - 0.14, 3.08, -0.68, (dx0 + dx1) / 2 + 0.14, 3.10, -0.48), mat('interior', { realOnly: true }), 0, { parent: g, cast: false });
-    }
-
-    // three stone entrance steps + bullnose tread nosings
-    const sp = new THREE.Shape([[0, 0], [0.9, 0], [0.9, 0.15], [0.6, 0.15], [0.6, 0.3], [0.3, 0.3], [0.3, 0.45], [0, 0.45]].map((p) => new THREE.Vector2(p[0], p[1])));
-    add(new THREE.ExtrudeGeometry(sp, { depth: dx1 - dx0, bevelEnabled: false }).rotateY(-Math.PI / 2).translate(dx1, 0, 0), st, lw, O);
-    if (!faint) {
-      add(box(dx0, 0.125, 0.6, dx1, 0.152, 0.922), st, 0, { parent: g });
-      add(box(dx0, 0.275, 0.3, dx1, 0.302, 0.622), st, 0, { parent: g });
-      add(box(dx0, 0.425, 0.0, dx1, 0.452, 0.322), st, 0, { parent: g });
-    }
-
-    windowIn(g, wx0, 0.95, wx1, 3.05, 0.22, { faint, lc, rl, sill: true, panes: 3 });
+    // ground floor: the street window
+    windowIn(g, ...R4(3.55, 1.0, 5.5, 3.0), 0.22, { faint, lc, rl, sill: true, panes: 2 });
+    // upstairs
     if (first === 'frame') {
-      add(panel([0.72, 3.67, 5.28, 6.38], [[0.9, 3.85, 5.1, 6.2]], 0, 0.38), mat('stone', { faint, color: 0xcfc6b4 }), LW, O);
-      if (!faint) {
-        add(panel([0.85, 3.80, 5.15, 6.25], [[0.9, 3.85, 5.1, 6.2]], 0, 0.22), mat('stone', { faint, color: 0xc5bca9 }), 0, { parent: g });
-      }
-      windowIn(g, 0.9, 3.85, 5.1, 6.2, 0.16, { faint, lc, rl, panes: 3, transom: 5.5 });
+      add(panel([0.72, 3.77, 5.28, 6.18], [[0.9, 3.95, 5.1, 6.0]], 0, 0.38), mat('stone', { faint, color: 0xc9c9c7 }), LW, O);
+      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xbdbdbb }), 0, { parent: g });
+      windowIn(g, 0.9, 3.95, 5.1, 6.0, 0.16, { faint, lc, rl, panes: 3, transom: 5.4 });
     } else {
-      ff.forEach((w) => windowIn(g, ...w, 0.2, { faint, lc, rl, panes: 2, transom: 5.6 }));
-      add(box(0.5, 3.44, 0, 5.5, 3.6, 0.9), st, LW, O);
-      if (!faint) {
-        add(box(0.54, 3.41, 0.0, 5.46, 3.44, 0.84), st, 0, { parent: g });
-      }
+      // a bay of zinc, 800 mm out over the porch, glazed across its front
+      add(bx(0.6, 3.72, 0, 3.4, 3.9, 0.8), zm, LW, O);
+      add(bx(0.6, 5.9, 0, 3.4, 6.08, 0.8), zm, LW, O);
+      add(bx(0.6, 3.9, 0, 0.75, 5.9, 0.8), zm, lw, O);
+      add(bx(3.25, 3.9, 0, 3.4, 5.9, 0.8), zm, lw, O);
+      windowIn(g, ...R4(0.75, 3.9, 3.25, 5.9), -0.74, { faint, lc, rl, panes: 3 });
+      // beside it a tall window with a guard of steel bars
+      windowIn(g, ...R4(4.05, 3.9, 5.35, 6.0), 0.2, { faint, lc, rl, sill: true, panes: 1, transom: 5.35 });
       const bars = [];
-      for (let x = 0.53; x < 5.48; x += 0.12) bars.push(box(x, 3.6, 0.85, x + 0.022, 4.62, 0.872));
-      for (let z = 0.05; z < 0.84; z += 0.12) { bars.push(box(0.5, 3.6, z, 0.522, 4.62, z + 0.022)); bars.push(box(5.478, 3.6, z, 5.5, 4.62, z + 0.022)); }
-      if (!faint) {
-        bars.push(box(0.5, 3.66, 0.845, 5.5, 3.688, 0.878));
-      }
+      for (let x = 4.07; x < 5.34; x += 0.115) bars.push(bx(x, 3.92, 0.03, x + 0.02, 4.86, 0.05));
+      bars.push(bx(4.03, 4.86, 0.02, 5.37, 4.9, 0.062));
+      if (!faint) bars.push(bx(4.03, 3.94, 0.026, 5.37, 3.965, 0.054));
       add(mergeGeometries(bars), stm, faint ? 0 : 0.55, O);
-      add(box(0.5, 4.62, 0.84, 5.5, 4.66, 0.9), stm, faint ? 0 : 0.8, O);
-      add(box(0.5, 4.62, 0.0, 0.522, 4.66, 0.84), stm, 0, { parent: g });
-      add(box(5.478, 4.62, 0.0, 5.5, 4.66, 0.84), stm, 0, { parent: g });
     }
-    sf.forEach((w) => windowIn(g, ...w, 0.2, { faint, lc, rl, sill: true, panes: 1 }));
+
     if (v.roof !== 'none') {
-      const rz0 = -9, rz1 = -2.2;
-      const zm = mat('zinc', { faint });
-      add(box(0.5, ROOF, rz0, 5.5, ROOF + 2.9, rz1), zm, LW, O);
-      if (!faint) {
-        add(box(0.46, ROOF + 2.86, rz0 - 0.04, 5.54, ROOF + 2.94, rz1 + 0.045), zm, 0.6, O);
-        const ribs = [];
-        for (let rx = 0.86; rx < 5.4; rx += 0.43) {
-          if (rx > 1.15 && rx < 4.85) {
-            ribs.push(box(rx - 0.012, ROOF + 2.45, rz1, rx + 0.012, ROOF + 2.86, rz1 + 0.024));
-          } else {
-            ribs.push(box(rx - 0.012, ROOF, rz1, rx + 0.012, ROOF + 2.86, rz1 + 0.024));
-          }
-        }
-        if (ribs.length) add(mergeGeometries(ribs), zm, 0, { parent: g });
-      }
-      windowIn(g, 1.2, ROOF + 0.15, 4.8, ROOF + 2.45, -rz1 - 0.05, { faint, lc, rl, panes: 3 });
+      // eaves, then a roof of standing-seam zinc that falls to the street, and a chimney on the ridge
+      add(box(0, PAR - 0.03, -T, 6, PAR + 0.1, 0.36), zm, LW, O);
+      const prof = new THREE.Shape([[0.36, PAR + 0.1], [-4.6, PAR + RH], [-9.56, PAR + 0.1]].map((p) => new THREE.Vector2(p[0], p[1])));
+      add(new THREE.ExtrudeGeometry(prof, { depth: 6, bevelEnabled: false }).rotateY(-Math.PI / 2).translate(6, 0, 0), zm, LW, O);
+      add(bx(4.5, PAR + RH - 0.9, -5.0, 5.3, PAR + RH + 0.85, -4.2), brick, lw, O);
+      add(bx(4.46, PAR + RH + 0.85, -5.04, 5.34, PAR + RH + 0.93, -4.16), st, lw, O);
+    } else {
+      // a parapet with a stone coping
+      add(box(0, PAR, -T - 0.04, 6, PAR + 0.085, 0.055), st, LW, O);
+      if (!faint) add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g });
     }
 
     let gardenDoors = null;
-    if (!faint && v.interior !== false) {
-      gardenDoors = buildInterior(g, ox, v, doorL, PAR, O);
-    } else {
-      add(box(0, 0, -12, 6, PAR - 0.9, -1.12), mat('plain', { faint }), 0, { parent: g });
-    }
+    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, O);
+    else add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
 
     if (v.relief) {
       const bricks = [];
-      const inHole = (x, y) => holes.some(([a, b, c, d]) => x > a - 0.12 && x < c + 0.12 && y > b - 0.12 && y < d + 0.1) || y < 0.5 || y > PAR - 0.1;
+      const bay = doorL ? [0.45, 3.55] : [2.45, 5.55]; // no headers behind the bay
+      const inHole = (x, y) => holes.some(([a, b, c, d]) => x > a - 0.12 && x < c + 0.12 && y > b - 0.12 && y < d + 0.1) || y < G0 + 0.05 || y > PAR - 0.1 || (first !== 'frame' && y > 3.6 && y < 6.2 && x > bay[0] && x < bay[1]);
       for (let c = 0; c * 0.075 < PAR; c++) {
         const off = (c % 2) * 0.5;
         for (let i = -1; i < 28; i++) {
@@ -1080,22 +921,25 @@ export function createStage(cfg = {}) {
           bricks.push(box(x, y, 0, x + 0.215, y + 0.065, v.relief));
         }
       }
-      add(mergeGeometries(bricks), mat('brick', { faint, color: v.header || 0x8a6a55 }), faint ? 0 : 0.55, O);
+      add(mergeGeometries(bricks), mat('brick', { faint, color: v.header || 0x2b2b2f }), faint ? 0 : 0.55, O);
     }
 
+    const zs = v.setback || 0;
     return {
-      g, PAR, ROOF, ox,
-      door: [ox + (dx0 + dx1) / 2, 1.8, (v.setback || 0) - 1.0],
-      doorX: [ox + dx0, ox + dx1],
+      g, PAR, ox, doorL,
+      door: [ox + X((DX[0] + DX[1]) / 2), 1.7, zs + pz],
+      doorX: [ox + Math.min(X(DX[0]), X(DX[1])), ox + Math.max(X(DX[0]), X(DX[1]))],
+      // a camera key from where the lens stands, written for a house with its door on the left
+      // (see viewKey): the house mirrors it if its door is on the right
+      key(p, cam, yaw, pitch, fov, fh, extra) { return viewKey(p, [ox + X(cam[0]), cam[1], zs + cam[2]], doorL ? yaw : -yaw, pitch, fov, fh, extra); },
       setDoor(open01) {
         const a = clamp01(open01) * (82 * Math.PI / 180);
-        doorPivot.rotation.y = (doorL ? 1 : -1) * a;
+        leaves.forEach(({ piv, s }) => { piv.rotation.y = s * a; });
       },
       setGardenDoor(open01) {
         if (!gardenDoors) return;
-        const a = clamp01(open01) * (76 * Math.PI / 180);
-        gardenDoors.gDoorL.rotation.y = a;
-        gardenDoors.gDoorR.rotation.y = -a;
+        const d = clamp01(open01) * 1.3;
+        gardenDoors.gDoorL.position.x = -d; gardenDoors.gDoorR.position.x = d;
       },
     };
   }
@@ -1103,7 +947,7 @@ export function createStage(cfg = {}) {
   function street(x0, x1, sky = true) {
     add(box(x0, -0.15, 0, x1, 0, 3.2), mat('paving'), 0, { cast: false });
     add(box(x0, -0.15, 3.2, x1, 0.01, 3.38), mat('stone'), 0, { cast: false });
-    add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('plain', { color: 0x484643 }), 0, { cast: false });
+    add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('plain', { color: 0x1c1c1f }), 0, { cast: false });
     if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false });
     lines([x0, 0, 3.4, x1, 0, 3.4], 2.6, { first: true });
   }
@@ -1112,19 +956,19 @@ export function createStage(cfg = {}) {
     const P = [[0, 1.75], [0.07, 1.73], [0.1, 1.66], [0.09, 1.58], [0.06, 1.53], [0.2, 1.47], [0.24, 1.36], [0.26, 1.06], [0.24, 0.84], [0.2, 0.86], [0.2, 1.2], [0.18, 1.0], [0.17, 0.84], [0.14, 0.45], [0.13, 0.06], [0.17, 0.0], [0.03, 0.0], [0.02, 0.8]];
     const pts = [...P, ...P.slice(1, -1).reverse().map(([a, b]) => [-a, b])].map(([a, b]) => [x + (flip ? -a : a) * s, b * s]);
     const shape = new THREE.Shape(pts.map((p) => new THREE.Vector2(p[0], p[1])));
-    add(new THREE.ShapeGeometry(shape).translate(0, 0, z), mat('plain', { drawOnly: true, color: 0xf2efe7 }), 0, { cast: false });
+    add(new THREE.ShapeGeometry(shape).translate(0, 0, z), mat('plain', { drawOnly: true, color: 0x0c0c0e }), 0, { cast: false });
     lines(loop(pts, z + 0.01), 0.9);
   }
 
-  function tree(x, z, h = 7.5, r = 2.3) {
+  function tree(x, z, h = 7.5, r = 2.3, leaf) {
     const R = mulberry(Math.round(x * 100) + 7);
-    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x5d4b3c }), 0);
+    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x2a2a2d }), 0);
     const blobs = [];
     for (let i = 0; i < 70; i++) {
       const a = R() * Math.PI * 2, e = (R() - 0.5) * 2.4, rr = r * (0.25 + 0.65 * Math.sqrt(R()));
       blobs.push(new THREE.IcosahedronGeometry(0.32 + R() * 0.4, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
     }
-    add(mergeGeometries(blobs), mat('foliage', { realOnly: true }), 0);
+    add(mergeGeometries(blobs), mat('foliage', { realOnly: true, color: leaf }), 0);
     const zz = z + 0.3, segs = [];
     segs.push(x - 0.11, 0, zz, x - 0.06, h - r * 1.1, zz, x + 0.13, 0, zz, x + 0.07, h - r * 1.1, zz);
     segs.push(x - 0.05, h - r * 1.2, zz, x - r * 0.45, h - r * 0.55, zz, x + 0.05, h - r * 1.05, zz, x + r * 0.5, h - r * 0.35, zz, x, h - r * 0.9, zz, x - r * 0.05, h - r * 0.1, zz);
@@ -1157,6 +1001,12 @@ export function createStage(cfg = {}) {
       t: [L(a.t[0], b.t[0]), L(a.t[1], b.t[1]), L(a.t[2], b.t[2])],
       fh: LL(fitFh(a), fitFh(b)), fov: LL(a.fov, b.fov), yaw: L(a.yaw || 0, b.yaw || 0), pitch: L(a.pitch || 0, b.pitch || 0),
     };
+  }
+  // a key written from where the lens stands (interiors are easier to think about that way): the target follows from it
+  function viewKey(p, cam, yaw, pitch, fov, fh, extra = {}) {
+    const d = (fh / 2) / Math.tan(fov * D2R / 2);
+    const dir = [Math.sin(yaw * D2R) * Math.cos(pitch * D2R), Math.sin(pitch * D2R), Math.cos(yaw * D2R) * Math.cos(pitch * D2R)];
+    return { p, t: [cam[0] - dir[0] * d, cam[1] - dir[1] * d, cam[2] - dir[2] * d], fh, fov, yaw, pitch, ...extra };
   }
   const lastTarget = new THREE.Vector3();
   function setCam(c) {
@@ -1193,15 +1043,15 @@ export function createStage(cfg = {}) {
 
   Object.assign(S, {
     THREE, U, scene, root, renderer, camera, sun, hemi, DPR, phone, get W() { return W; }, get H() { return H; },
-    mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, camAt, setCam, pin, placePins,
+    mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, camAt, setCam, viewKey, pin, placePins,
     render() { placePins(); renderer.render(scene, camera); },
   });
   return S;
 }
 
 /* =========================================================================== */
-// The page: a tall track for native scroll (Lenis on top), the loader, the drafting intro,
-// then frame(p) every frame with p in vh scrolled.
+// The page: a tall track for native scroll (eased here, a short lag behind the page), the loader,
+// the drafting intro, then frame(p) every frame with p in vh scrolled.
 export function run(S, o) {
   const $ = (s) => document.querySelector(s);
   const html = document.documentElement;
@@ -1228,27 +1078,27 @@ export function run(S, o) {
     hudOptic = sf.querySelector('#hudOptic');
   }
 
-  let lenis = null;
-  if (!Q.has('nolenis')) {
-    lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 });
+  // p follows the page's own scroll position with a short lag
+  const noSmooth = Q.has('nosmooth');
+  let pEase = (scrollY / innerHeight) * 100, pT = performance.now();
+  function scrollP(now) {
+    const target = (scrollY / innerHeight) * 100, dt = Math.min(0.25, Math.max(0, (now - pT) / 1000)); pT = now;
+    pEase = noSmooth ? target : pEase + (target - pEase) * (1 - Math.exp(-7.5 * dt));
+    if (Math.abs(target - pEase) < 0.01) pEase = target;
+    return pEase;
   }
-  const scrollP = () => ((lenis ? lenis.animatedScroll : scrollY) / innerHeight) * 100;
-  function jumpToP(targetP) {
-    const y = (targetP / 100) * innerHeight;
-    if (lenis) lenis.scrollTo(y);
-    else window.scrollTo({ top: y, behavior: 'smooth' });
-  }
+  function jumpToP(targetP) { window.scrollTo({ top: (targetP / 100) * innerHeight, behavior: 'smooth' }); }
   window.__jumpToP = jumpToP;
 
-  // Inject bottom-right Live CAD Townhouse Plan/Section Mini-Radar (#cad-map)
+  // the little plan in the corner that shows where the lens is (#cad-map)
   const radarCfg = o.radar || {
     ox: 0,
     zones: [
       { id: 'street', label: 'STRASSE', tag: 'ANSICHT ±0.00M', at: 95, u0: -4.0, u1: 0.0 },
-      { id: 'porch', label: 'VERANDA', tag: 'VERANDA +0.45M', at: 385, u0: 0.0, u1: 2.0 },
-      { id: 'parlour', label: 'SALON', tag: 'SALON +0.45M', at: 530, u0: 2.0, u1: 6.4 },
-      { id: 'atrium', label: 'ATRIUM', tag: 'ATRIUM +0.45M', at: 635, u0: 6.4, u1: 12.0 },
-      { id: 'garden', label: 'GARTEN', tag: 'HOF +0.30M', at: 730, u0: 12.0, u1: 17.8 },
+      { id: 'entry', label: 'EINGANG', tag: 'EINGANG +0.30M', at: 385, u0: 0.0, u1: 1.3 },
+      { id: 'hall', label: 'HALLE', tag: 'HALLE +0.30M', at: 500, u0: 1.3, u1: 6.0 },
+      { id: 'kitchen', label: 'KÜCHE', tag: 'KÜCHE +0.30M', at: 635, u0: 6.0, u1: 12.0 },
+      { id: 'garden', label: 'GARTEN', tag: 'GARTEN +0.28M', at: 730, u0: 12.0, u1: 17.8 },
     ],
   };
   let cmLbl = null, cmDot = null, cmCone = null, cmScan = null, cmZones = [], cmBtns = [], hoverTag = '';
@@ -1266,14 +1116,15 @@ export function run(S, o) {
       <div id="cm-lbl"><span>CAD-GRUNDRISS // 1:100</span><b id="cm-pos">STRASSE ±0.00M</b></div>
       <svg viewBox="-4.2 -0.6 22.4 7.2">
         ${zoneRects}
-        <!-- Townhouse architectural floor plan walls & furniture -->
-        <path d="M-4.0 0 H17.6 M-4.0 6.0 H17.6 M0 0 V0.6 M0 2.0 V6.0 M1.0 0.6 V2.0 M12.0 0 V2.15 M12.0 3.85 V6.0 M17.6 0 V6.0" fill="none" stroke="#f2efe7" stroke-width="0.28" opacity="0.82" pointer-events="none"/>
-        <!-- Entrance steps, door swing arc, hall partition, staircase, bookcase, sofa, island, dining table, courtyard tree -->
-        <path d="M-0.9 0.6 H0 M-0.6 0.6 V2.0 M-0.3 0.6 V2.0 M1.0 0.6 L2.0 1.4 M1.65 2.1 H5.15 M3.55 0.3 H6.75 V1.2 H3.55 Z M0.65 5.35 H3.95 V5.75 H0.65 Z M1.55 3.45 H3.95 V4.32 H1.55 Z M7.6 1.35 H10.8 V2.25 H7.6 Z M7.85 3.85 H10.65 V4.95 H7.85 Z M14.2 0 V6.0" fill="none" stroke="#f2efe7" stroke-width="0.16" opacity="0.48" pointer-events="none"/>
-        <circle cx="15.6" cy="4.6" r="1.05" fill="none" stroke="#f2efe7" stroke-width="0.16" stroke-dasharray="0.4 0.3" opacity="0.55" pointer-events="none"/>
-        <line id="cm-scan" x1="0" y1="-0.5" x2="0" y2="6.5" stroke="#e85d04" stroke-width="0.28" stroke-dasharray="0.6 0.4" opacity="0" pointer-events="none"/>
-        <polygon id="cm-cone" points="-2.5,3.0 0.5,1.8 0.5,4.2" fill="rgba(232,93,4,0.28)" stroke="#e85d04" stroke-width="0.18" pointer-events="none"/>
-        <circle id="cm-dot" cx="-2.5" cy="3.0" r="0.52" fill="#e85d04" stroke="#f2efe7" stroke-width="0.14" pointer-events="none"/>
+        <!-- the plan: plot walls, the facade with its porch, the glass wall to the garden -->
+        <path d="M-4.0 0 H17.6 M-4.0 6.0 H17.6 M0 0 V0.5 M0 2.9 V6.0 M0 0.5 H1.2 M0 2.9 H1.2 M1.2 0.5 V0.7 M1.2 2.7 V2.9 M12.0 0 V1.64 M12.0 4.36 V6.0 M17.6 0 V6.0" fill="none" stroke="#f1eeea" stroke-width="0.28" opacity="0.82" pointer-events="none"/>
+        <!-- steps, the two door leaves, the stair, the edge of the gallery, sofa, low table, island, dining table, the garden step -->
+        <path d="M-0.6 0.5 V2.9 M-0.3 0.5 V2.9 M1.2 0.7 L2.15 0.84 M1.2 2.7 L2.15 2.56 M1.9 0.24 H5.9 V1.14 H1.9 Z M1.7 4.86 H4.1 V5.72 H1.7 Z M2.3 3.95 H3.5 V4.45 H2.3 Z M6.95 1.4 H9.25 V2.2 H6.95 Z M9.3 3.95 H11.5 V4.95 H9.3 Z M14.4 0 V6.0" fill="none" stroke="#f1eeea" stroke-width="0.16" opacity="0.48" pointer-events="none"/>
+        <path d="M1.3 3.1 H6.0 V1.2" fill="none" stroke="#f1eeea" stroke-width="0.14" stroke-dasharray="0.35 0.25" opacity="0.5" pointer-events="none"/>
+        <circle cx="16.15" cy="4.68" r="1.0" fill="none" stroke="#e5202e" stroke-width="0.18" stroke-dasharray="0.4 0.3" opacity="0.8" pointer-events="none"/>
+        <line id="cm-scan" x1="0" y1="-0.5" x2="0" y2="6.5" stroke="#e5202e" stroke-width="0.28" stroke-dasharray="0.6 0.4" opacity="0" pointer-events="none"/>
+        <polygon id="cm-cone" points="-2.5,3.0 0.5,1.8 0.5,4.2" fill="rgba(229,32,46,0.3)" stroke="#e5202e" stroke-width="0.18" pointer-events="none"/>
+        <circle id="cm-dot" cx="-2.5" cy="3.0" r="0.52" fill="#e5202e" stroke="#f1eeea" stroke-width="0.14" pointer-events="none"/>
       </svg>
       <div class="cm-pills">${zoneBtns}</div>`;
     document.body.appendChild(cm);
@@ -1310,8 +1161,7 @@ export function run(S, o) {
 
   let p = 0, t0 = performance.now(), introT = -1;
   function tick(now) {
-    if (lenis) lenis.raf(now);
-    p = scrollP();
+    p = scrollP(now);
     // intro clock
     if (introT >= 0 && !skip) {
       const t = (now - introT) / 1000;
@@ -1410,14 +1260,40 @@ export function run(S, o) {
     if (skip) {
       html.classList.remove('locked'); window.__introDone = true;
       const at = num('at', 0);
-      requestAnimationFrame(() => { const y = at / 100 * innerHeight; if (lenis) lenis.scrollTo(y, { immediate: true }); else scrollTo(0, y); });
+      requestAnimationFrame(() => { scrollTo(0, at / 100 * innerHeight); pEase = at; });
     } else {
       setTimeout(() => { introT = performance.now(); }, 250);
     }
     requestAnimationFrame(tick);
   });
-  // hold the scroll during the intro (Lenis has to stop too)
-  const guard = () => { if (html.classList.contains('locked')) { if (lenis) lenis.stop(); } else if (lenis) lenis.start(); };
-  new MutationObserver(guard).observe(html, { attributes: true, attributeFilter: ['class'] }); guard();
+  // (the scroll is held during the intro by html.locked in the stylesheet)
   window.__stage = S; window.__p = () => p;
+  // design aid: how close any surface comes to the lens along the scroll. The exact distance from the eye
+  // to every triangle of the real model, sampled every `step` vh. Returns the worst, and every sample under `warn`.
+  window.__clear = (warn = 0.4, step = 1, p0 = 300, p1 = o.length) => {
+    const tri = new THREE.Triangle(), q = new THREE.Vector3(), out = { worst: 9, at: 0, near: [] };
+    const meshes = [];
+    S.scene.traverse((m) => { if (m.isMesh && !m.isLineSegments2 && m.geometry.attributes.position && !m.material.userData?.drawOnly && !m.material.userData?.sky) meshes.push(m); });
+    for (let pp = p0; pp <= p1 + 1e-6; pp += step) {
+      o.frame(pp, S, 0); S.scene.updateMatrixWorld(true);
+      const e = S.camera.position; let best = 9, where = null;
+      for (const m of meshes) {
+        const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
+        q.copy(g.boundingSphere.center).applyMatrix4(m.matrixWorld);
+        if (q.distanceTo(e) - g.boundingSphere.radius > best) continue;
+        const P = g.attributes.position, ix = g.index, n = ix ? ix.count : P.count;
+        for (let i = 0; i < n; i += 3) {
+          tri.a.fromBufferAttribute(P, ix ? ix.getX(i) : i).applyMatrix4(m.matrixWorld);
+          tri.b.fromBufferAttribute(P, ix ? ix.getX(i + 1) : i + 1).applyMatrix4(m.matrixWorld);
+          tri.c.fromBufferAttribute(P, ix ? ix.getX(i + 2) : i + 2).applyMatrix4(m.matrixWorld);
+          const d = tri.closestPointToPoint(e, q).distanceTo(e);
+          if (d < best) { best = d; where = q.toArray().map((x) => +x.toFixed(2)); }
+        }
+      }
+      if (best < out.worst) { out.worst = +best.toFixed(3); out.at = pp; }
+      if (best < warn) out.near.push({ p: pp, d: +best.toFixed(3), eye: e.toArray().map((x) => +x.toFixed(2)), where });
+    }
+    o.frame(p, S, 0);
+    return out;
+  };
 }

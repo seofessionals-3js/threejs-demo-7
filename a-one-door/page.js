@@ -1,58 +1,62 @@
-// A · One door. No. 7, a narrow brick townhouse between faint neighbours.
-// The elevation drafts itself, gains relief, takes the sun at the drawing's own angle
-// (hatching becomes shade), the sun moves on, the oak front door swings open, and the
-// lens walks through the entrance hall, reception parlour, double-height kitchen atrium,
-// and out to the walled rear courtyard garden.
+// A · One door. No. 7, a narrow house of white brick, two storeys, between faint neighbours.
+// The elevation drafts itself in white ink on black paper, gains relief, takes the sun at the drawing's
+// own angle (hatching becomes shade), the sun moves on, the two red leaves of the glass door swing open,
+// and the lens walks through the two-storey hall, past the sitting room, through kitchen and dining,
+// and out into the walled garden.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.11, hatchPhone: 0.12, drawSpan: [0, 12.2], wipe: [-11, 9], soft: 1.1 });
+const S = createStage({ hatch: 0.11, hatchPhone: 0.12, drawSpan: [0, 9.6], wipe: [-9, 8], soft: 1.1 });
 
 const h = S.house(0, {});
-S.house(-6, { faint: true, par: 9.4, roof: 'none', door: 'right', brick: 0xa9a49b });
-S.house(-12, { faint: true, par: 9.4, roof: 'none', first: 'frame', brick: 0x9c5e48 });
-S.house(6, { faint: true, par: 10.6, roof: 'none', first: 'frame', door: 'right', brick: 0x9c5e48 });
-S.house(12, { faint: true, par: 10.6, roof: 'none', brick: 0xa9a49b });
+S.house(-6, { faint: true, par: 6.3, roof: 'none', door: 'right', first: 'frame', brick: 0x8c8c90 });
+S.house(-12, { faint: true, par: 7.1, roof: 'none', brick: 0x37373b });
+S.house(6, { faint: true, par: 7.3, roof: 'none', first: 'frame', door: 'right', brick: 0x37373b });
+S.house(12, { faint: true, par: 6.5, roof: 'none', brick: 0x8c8c90 });
 S.street(-40, 40);
-S.figure(2.9, 2.2, 1, true);
-S.aimSun(2.5, 4.5, 24);
+S.figure(3.22, 2.2, 1, true);
+S.aimSun(2.5, 3.5, 24);
 
 // levels, on the sheet only
 const pins = document.getElementById('pins');
-[[0, '±0.00', 'Straße'], [0.45, '+0.45', 'Erdgeschoss'], [3.6, '+3.60', '1. Obergeschoss'], [6.6, '+6.60', '2. Obergeschoss'], [9.1, '+9.10', 'Dach'], [12.0, '+12.00', 'Dachgeschoss']]
+[[0, '±0.00', 'Straße'], [0.3, '+0.30', 'Erdgeschoss'], [3.4, '+3.40', 'Obergeschoss'], [6.7, '+6.70', 'Traufe'], [9.2, '+9.20', 'First']]
   .forEach(([y, a, b]) => {
     const el = pins.appendChild(document.createElement('div'));
     el.className = 'lv'; el.innerHTML = `<em></em><i></i><b>${a}</b><span>${b}</span>`;
     S.pin(el, [6.25, y, 0.5]);
   });
 
+// Outside, a key is a frame on the facade (target, frame height, lens). Inside, it is written from where
+// the lens stands (h.key: position, yaw, pitch, lens, frame height): 1.7 m above the floor, never closer
+// than 40 cm to anything (window.__clear() measures it).
 const KEYS = [
-  { p: 0, t: [1.2, 6.3, 0], fh: 15.4, fov: 2, phone: { t: [3, 7.0, 0], fh: 14, minW: 8.4 } },
-  { p: 18, t: [1.2, 6.3, 0], fh: 15.4, fov: 2, phone: { t: [3, 7.0, 0], fh: 14, minW: 8.4 } },
-  { p: 115, t: [3.1, 5.3, 0], fh: 13.2, fov: 16, yaw: 13, pitch: -5, phone: { t: [3.2, 5.4, 0], minW: 9.4 } },
-  { p: 228, t: [2.9, 5.0, 0], fh: 12.6, fov: 18, yaw: 9, pitch: -5, phone: { t: [3.0, 5.0, 0], minW: 9.0 } },
-  { p: 300, t: [2.5, 4.0, 0], fh: 10.2, fov: 26, yaw: 6, pitch: -6, phone: { minW: 7.4 } },
-  { p: 385, t: [1.35, 1.78, -1.15], fh: 2.65, fov: 54, yaw: 4, pitch: -1 },
-  { p: 455, t: [2.30, 1.66, -3.45], fh: 2.20, fov: 56, yaw: -20, pitch: -1 },
-  { p: 540, t: [3.85, 1.62, -4.55], fh: 2.35, fov: 58, yaw: -24, pitch: -2 },
-  { p: 640, t: [3.15, 1.78, -9.80], fh: 2.55, fov: 58, yaw: -4, pitch: 1 },
-  { p: 740, t: [3.05, 1.74, -14.60], fh: 2.45, fov: 56, yaw: -5, pitch: 2 },
+  { p: 0, t: [1.4, 4.75, 0], fh: 11.4, fov: 2, phone: { t: [3, 5.3, 0], fh: 10.6, minW: 8.4 } },
+  { p: 18, t: [1.4, 4.75, 0], fh: 11.4, fov: 2, phone: { t: [3, 5.3, 0], fh: 10.6, minW: 8.4 } },
+  { p: 115, t: [3.1, 4.0, 0], fh: 9.8, fov: 16, yaw: 13, pitch: -5, phone: { t: [3.2, 4.1, 0], minW: 9.4 } },
+  { p: 228, t: [2.9, 3.8, 0], fh: 9.4, fov: 18, yaw: 9, pitch: -5, phone: { t: [3.0, 3.8, 0], minW: 9.0 } },
+  { p: 300, t: [2.3, 3.0, 0], fh: 7.6, fov: 26, yaw: 6, pitch: -6, phone: { minW: 7.4 } },
+  h.key(385, [1.78, 1.72, 1.55], 2, -1, 54, 2.65),      // on the pavement, in front of the two steps
+  h.key(455, [1.72, 1.96, -2.35], -8, -9, 56, 2.2),     // through the door, looking up into the hall
+  h.key(540, [2.0, 1.94, -3.1], -46, -1, 58, 2.35),     // turned to the sitting room under the gallery
+  h.key(640, [2.75, 2.0, -6.5], -3, 0, 58, 2.5),        // in the kitchen, the table and the garden ahead
+  h.key(700, [3.02, 2.0, -10.4], -4, 0, 57, 2.5),       // at the glass wall as it slides open
+  h.key(760, [2.6, 2.0, -13.2], -24, -5, 56, 2.45),     // in the garden, turned to the maple
 ];
 
 const LATE = new THREE.Vector3(-1.45, 0.62, 0.78).normalize(); // 16:40, the sun lower and more from the side
 const sunDir = new THREE.Vector3();
-const warm = new THREE.Color(0xffd6a0), white = new THREE.Color(0xfff1dc);
+const late = new THREE.Color(0xfff0e4), white = new THREE.Color(0xfff6ee);
 
 run(S, {
-  length: 760,
+  length: 780,
   heroOut: [14, 70],
   radar: {
     ox: 0,
     zones: [
       { id: 'street', label: 'STRASSE', tag: 'ANSICHT ±0.00M', at: 95, u0: -4.0, u1: 0.0 },
-      { id: 'porch', label: 'VERANDA', tag: 'SCHWELLE +0.45M', at: 385, u0: 0.0, u1: 2.0 },
-      { id: 'parlour', label: 'SALON', tag: 'SALON +0.45M', at: 525, u0: 2.0, u1: 6.4 },
-      { id: 'atrium', label: 'ATRIUM', tag: 'ATRIUM +0.45M', at: 635, u0: 6.4, u1: 12.0 },
-      { id: 'garden', label: 'GARTEN', tag: 'HOF +0.30M', at: 735, u0: 12.0, u1: 17.8 },
+      { id: 'entry', label: 'EINGANG', tag: 'SCHWELLE +0.30M', at: 385, u0: 0.0, u1: 1.3 },
+      { id: 'hall', label: 'HALLE', tag: 'HALLE +0.30M', at: 500, u0: 1.3, u1: 6.0 },
+      { id: 'kitchen', label: 'KÜCHE', tag: 'KÜCHE +0.30M', at: 650, u0: 6.0, u1: 12.0 },
+      { id: 'garden', label: 'GARTEN', tag: 'GARTEN +0.28M', at: 755, u0: 12.0, u1: 17.8 },
     ],
   },
   frame(p) {
@@ -60,25 +64,26 @@ run(S, {
     S.U.uDepthCue.value = span(p, 22, 90) * (1 - span(p, 150, 205));
     // the sun arrives at the drawing's angle: hatching becomes shade
     const u = span(p, 118, 212);
-    S.U.uSweep.value.z = u <= 0 ? -60 : u >= 1 ? 60 : lerp(-14, 10, smooth(u));
+    S.U.uSweep.value.z = u <= 0 ? -60 : u >= 1 ? 60 : lerp(-12, 10, smooth(u));
     // then it moves on, and the shadows slide
     const m = ease(span(p, 226, 300));
     sunDir.copy(CONVENTION).lerp(LATE, m).normalize();
     S.setSun(sunDir);
-    S.sun.color.copy(white).lerp(warm, m);
+    S.sun.color.copy(white).lerp(late, m);
     S.sun.intensity = lerp(3.4, 3.2, m);
     S.hemi.intensity = lerp(0.52, 0.48, m);
-    // swing the fluted oak front door and rear Crittall garden doors open as the camera walks through
+    // the two red leaves swing in, and at the back the glass wall slides open as the lens walks through
     h.setDoor(smooth(span(p, 345, 420)));
-    h.setGardenDoor(smooth(span(p, 575, 665)));
+    h.setGardenDoor(smooth(span(p, 600, 680)));
   },
   beats: [
-    { from: 72, to: 128, html: '<span class="n">01 &nbsp;·&nbsp; Relief</span><p>Die Veranda liegt einen Meter zurück. Der Balkon kragt 900 mm aus. Die Zeichnung hat es schon gesagt.</p>' },
+    { from: 72, to: 128, html: '<span class="n">01 &nbsp;·&nbsp; Relief</span><p>Der Eingang liegt 1,20 m zurück. Der Erker kragt 800 mm aus. Die Zeichnung hat es schon gesagt.</p>' },
     { from: 140, to: 222, html: '<span class="n">02 &nbsp;·&nbsp; Die Sonne</span><p>Jeder Schatten auf dem Blatt fällt unter 45 Grad. So auch bei <em>dieser</em> Sonne.</p>' },
     { from: 236, to: 304, html: '<span class="n">03 &nbsp;·&nbsp; 16:40, Ende Oktober</span><p>Dann wandert sie, und die Schatten wandern mit.</p>' },
-    { from: 332, to: 438, html: '<span class="n">04 &nbsp;·&nbsp; Die Schwelle</span><p>Drei Steinstufen hinauf. Die kannelierte Eichentür schwingt nach innen in die <em>Eingangshalle.</em></p>' },
-    { from: 462, to: 568, html: '<span class="n">05 &nbsp;·&nbsp; Empfangssalon</span><p>Nachmittagssonne fällt durch das dreiteilige Straßenfenster auf breite Eichendielen und raumhohe <em>Bücherregale.</em></p><div class="row"><div><span>Ebene</span>+0.45 m</div><div><span>Decke</span>3.00 m Eiche</div><div><span>Einbauten</span>Europäische Eiche</div></div>' },
-    { from: 584, to: 672, html: '<span class="n">06 &nbsp;·&nbsp; Küche &amp; Ess-Atrium</span><p>Die Decke öffnet sich auf 6,4 Meter unter einer verglasten Dachlaterne über der <em>Travertin-Insel.</em></p><div class="row"><div><span>Atrium</span>6.40 m hoch</div><div><span>Insel</span>Geschliffener Stein</div><div><span>Verglasung</span>Crittall-Stahl</div></div>' },
-    { from: 686, to: 790, html: '<span class="n">07 &nbsp;·&nbsp; No. 7 Albion Row</span><p>Stahltüren falten sich auf, hinaus in einen ummauerten Hof aus Yorkstone mit einem mehrstämmigen Baum <em>hinten.</em></p><div class="row"><div><span>Grundstück</span>6.0 × 17.8 m</div><div><span>Wohnfläche</span>186 m²</div><div><span>Status</span>Zu verkaufen</div></div><a class="pill solid" href="#">Besichtigung buchen</a>' },
+    { from: 332, to: 438, html: '<span class="n">04 &nbsp;·&nbsp; Die Schwelle</span><p>Zwei Steinstufen hinauf. Zwei Glasflügel in rotem Stahl schwingen nach innen in die <em>Halle.</em></p>' },
+    { from: 452, to: 516, html: '<span class="n">05 &nbsp;·&nbsp; Die Halle</span><p>5,95 Meter bis zur Decke. Eine Treppe aus gefaltetem Stahl führt hinauf zur <em>Galerie.</em></p><div class="row"><div><span>Ebene</span>+0.30 m</div><div><span>Höhe</span>5.95 m</div><div><span>Treppe</span>17 Steigungen</div></div>' },
+    { from: 528, to: 594, html: '<span class="n">06 &nbsp;·&nbsp; Wohnraum</span><p>Unter der Galerie: ein rotes Sofa, ein Tisch aus Stein, das Fenster zur <em>Straße.</em></p>' },
+    { from: 608, to: 692, html: '<span class="n">07 &nbsp;·&nbsp; Küche &amp; Essen</span><p>Insel und Arbeitsplatte aus hellem Stein, dahinter der lange Tisch aus schwarzer <em>Eiche.</em></p><div class="row"><div><span>Decke</span>2.85 m</div><div><span>Insel</span>Geschliffener Stein</div><div><span>Verglasung</span>Schiebewand</div></div>' },
+    { from: 708, to: 810, html: '<span class="n">08 &nbsp;·&nbsp; No. 7 Kreidegasse</span><p>Die Glaswand fährt auf, hinaus in einen ummauerten Garten mit einem roten Ahorn <em>hinten.</em></p><div class="row"><div><span>Grundstück</span>6.0 × 17.8 m</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Zu verkaufen</div></div><a class="pill solid" href="#">Besichtigung buchen</a>' },
   ],
 });
