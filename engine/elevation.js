@@ -789,7 +789,7 @@ export function createStage(cfg = {}) {
     addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
     addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
     addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
-    tree(ox + X(4.68), (v.setback || 0) - 16.15, 3.8, 1.3, 0xb3141f);   // a Japanese maple: low and wide, so its crown shows through the glass from deep in the house
+    tree(ox + X(4.68), (v.setback || 0) - 16.15, 3.25, 1.25, 0xb3141f);   // a Japanese maple: low and wide, so its crown shows through the glass from deep in the house
     addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
     addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
     addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
@@ -886,6 +886,7 @@ export function createStage(cfg = {}) {
     } else {
       // a bay of zinc, 800 mm out over the porch, glazed across its front
       add(bx(0.6, 3.72, 0, 3.4, 3.9, 0.8), zm, LW, O);
+      if (!faint) add(bx(0.62, 3.7, 0.0, 3.38, 3.722, 0.78), mat('interior', { realOnly: true, color: 0x1e1e21 }), 0, { parent: g, cast: false }); // a matt black soffit: zinc would mirror the pavement here
       add(bx(0.6, 5.9, 0, 3.4, 6.08, 0.8), zm, LW, O);
       add(bx(0.6, 3.9, 0, 0.75, 5.9, 0.8), zm, lw, O);
       add(bx(3.25, 3.9, 0, 3.4, 5.9, 0.8), zm, lw, O);
