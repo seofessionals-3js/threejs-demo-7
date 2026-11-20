@@ -657,8 +657,9 @@ export function createStage(cfg = {}) {
         const z = -1.9 - i * go, y = G0 + i * rise;
         plate.push(bM(0.26, y, z - 0.014, 1.16, y + rise, z + 0.014));
         plate.push(bM(0.26, y + rise - 0.028, z - (i === n - 1 ? 0.1 : go), 1.16, y + rise, z));
-        if (i % 2 === 0) bars.push(bM(1.135, y + rise, z - 0.135, 1.16, y + rise + 0.95, z - 0.11));
-        if (i < n - 1) bars.push(bM(1.125, y + rise * 1.5 + 0.93, z - go - 0.02, 1.17, y + rise * 1.5 + 0.975, z + 0.02));
+        bars.push(bM(0.26, y + rise - 0.03, z - 0.02, 1.165, y + rise + 0.004, z + 0.016));                       // the nosing: a dark edge that draws each step
+        if (i % 2 === 0) bars.push(bM(1.146, y + rise, z - 0.13, 1.16, y + rise + 0.95, z - 0.116));
+        if (i < n - 1) bars.push(bM(1.136, y + rise * 1.5 + 0.935, z - go - 0.02, 1.166, y + rise * 1.5 + 0.965, z + 0.02));
       }
       many(plate, mat('steel', { color: 0x8a8c91 }), 0.5, O);
       many(bars, steel, 0.35, O);
@@ -706,7 +707,7 @@ export function createStage(cfg = {}) {
     {
       const slats = [];
       for (let x = 3.56; x <= 5.62; x += 0.2) slats.push(bM(x, L1 - 0.305, -5.9, x + 0.06, L1 - 0.25, -0.6), bM(x, L1 - 0.305, -11.8, x + 0.06, L1 - 0.25, -6.5));
-      many(slats, black, 0, { cast: false });
+      many(slats, mat('plain', { color: 0x18181b }), 0, { cast: false });
     }
 
     // 4. Kitchen and dining, under the upper rooms
@@ -735,8 +736,8 @@ export function createStage(cfg = {}) {
     // a sideboard on the east wall, and on it the one red vessel
     addM(5.3, G0, -8.7, 5.76, 1.05, -6.5, black, 0.6, O);
     addM(5.28, 1.05, -8.72, 5.76, 1.09, -6.48, slab, 0.5, O);
-    add(new THREE.LatheGeometry([[0, 0], [0.07, 0], [0.125, 0.1], [0.115, 0.24], [0.05, 0.34], [0.06, 0.4]].map((q) => new THREE.Vector2(q[0], q[1])), 28).translate(X(5.52), 1.09, -7.1), red, 0, { parent: g });
-    add(new THREE.CylinderGeometry(0.07, 0.09, 0.2, 12).translate(X(5.52), 1.19, -7.9), mat('stone'), 0.4, O);
+    add(new THREE.LatheGeometry([[0, 0], [0.07, 0], [0.125, 0.1], [0.115, 0.24], [0.05, 0.34], [0.06, 0.4]].map((q) => new THREE.Vector2(q[0], q[1])), 28).translate(X(5.52), 1.09, -8.3), red, 0, { parent: g });
+    add(new THREE.CylinderGeometry(0.07, 0.09, 0.2, 12).translate(X(5.52), 1.19, -7.0), mat('stone'), 0.4, O);
     // the table by the garden glass, six chairs, three lamps over it
     addM(3.95, 1.02, -11.5, 4.95, 1.08, -9.3, black, 0.7, O);
     addM(4.07, G0, -11.2, 4.83, 1.02, -11.1, black, 0.5, O);
@@ -763,7 +764,7 @@ export function createStage(cfg = {}) {
     // 5. The back of the house: brick upstairs, and below it a wall of glass, four panels, the middle two sliding
     addM(0.0, L1 - 0.25, -12.3, 6.0, PAR - 0.3, -12.0, brick, 0.6, O);
     addM(-0.02, PAR - 0.3, -12.34, 6.02, PAR - 0.22, -11.98, mat('stone'), 0.5, O);
-    addM(0.24, 2.9, -12.08, 5.76, L1 - 0.25, -11.9, steel, 0.5, O);                        // the track and its beam
+    addM(0.24, 2.9, -12.08, 5.76, L1 - 0.25, -11.9, mat('plain', { color: 0x161619 }), 0.5, O);   // the track and its beam
     addM(0.24, G0 - 0.01, -12.08, 5.76, G0 + 0.02, -11.9, steel, 0);
     const pane = (parent, x0, x1, z) => {
       const f = 0.045, bars = [box(x0, G0 + 0.02, z - 0.025, x1, G0 + 0.02 + f, z + 0.025), box(x0, 2.9 - f, z - 0.025, x1, 2.9, z + 0.025), box(x0, G0 + 0.02, z - 0.025, x0 + f, 2.9, z + 0.025), box(x1 - f, G0 + 0.02, z - 0.025, x1, 2.9, z + 0.025)];
@@ -788,8 +789,8 @@ export function createStage(cfg = {}) {
     addM(-0.02, 2.5, -17.82, 6.02, 2.58, -17.5, mat('stone'), 0.5, O);
     addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
     addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
-    addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
-    tree(ox + X(4.68), (v.setback || 0) - 16.15, 3.25, 1.25, 0xb3141f);   // a Japanese maple: low and wide, so its crown shows through the glass from deep in the house
+    addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('stone', { color: 0x9c9c9f }), 0);
+    maple(ox + X(4.42), (v.setback || 0) - 16.2, 3.45, 1.32, 0xb3141f);   // a Japanese maple: low and wide, so its crown shows through the glass from deep in the house
     addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
     addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
     addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
@@ -959,7 +960,7 @@ export function createStage(cfg = {}) {
     add(box(x0, -0.15, 0, x1, 0, 3.2), mat('paving'), 0, { cast: false });
     add(box(x0, -0.15, 3.2, x1, 0.01, 3.38), mat('stone'), 0, { cast: false });
     add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('plain', { color: 0x1c1c1f }), 0, { cast: false });
-    if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false });
+    if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false, receive: false });
     lines([x0, 0, 3.4, x1, 0, 3.4], 2.6, { first: true });
   }
 
@@ -971,6 +972,38 @@ export function createStage(cfg = {}) {
     lines(loop(pts, z + 0.01), 0.9);
   }
 
+  // a Japanese maple: a stem that forks low, limbs that carry a wide crown of small leaf pads with air between them
+  function maple(x, z, h = 3.4, r = 1.3, leaf) {
+    const R = mulberry(Math.round(x * 100) + 11);
+    const up = new THREE.Vector3(0, 1, 0), P = (a, b, c) => new THREE.Vector3(a, b, c);
+    const limb = (a, b, r0, r1) => {
+      const d = b.clone().sub(a), L = d.length();
+      return new THREE.CylinderGeometry(r1, r0, L, 6).translate(0, L / 2, 0).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(up, d.normalize())).translate(a.x, a.y, a.z);
+    };
+    const fork = P(x, h * 0.4, z), yc = h - r * 0.56, ry = r * 0.52;
+    const limbs = [limb(P(x, 0, z), fork, 0.1, 0.07)], tips = [];
+    for (let i = 0; i < 6; i++) {
+      const a = i * 1.047 + 0.35, tip = P(x + Math.cos(a) * r * 0.66, yc - ry * 0.3 + (i % 2) * 0.24, z + Math.sin(a) * r * 0.52);
+      const mid = fork.clone().lerp(tip, 0.5); mid.y += 0.14;
+      limbs.push(limb(fork, mid, 0.055, 0.036), limb(mid, tip, 0.036, 0.016)); tips.push(tip);
+    }
+    add(mergeGeometries(limbs), mat('wood', { realOnly: true, color: 0x1c1c1f }), 0);
+    const pads = [];
+    for (let i = 0; i < 130; i++) {
+      const a = R() * Math.PI * 2, v = (R() - 0.5) * 2, rr = r * Math.sqrt(1 - v * v * 0.7) * (0.5 + 0.5 * Math.sqrt(R())), s = 0.12 + R() * 0.13;
+      pads.push(new THREE.IcosahedronGeometry(s, 1).scale(1.55, 0.6, 1.3).rotateY(R() * 3).translate(x + Math.cos(a) * rr, yc + v * ry, z + Math.sin(a) * rr * 0.8));
+    }
+    add(mergeGeometries(pads), mat('foliage', { realOnly: true, color: leaf }), 0);
+    const zz = z + 0.3, segs = [x - 0.1, 0, zz, x - 0.06, fork.y, zz, x + 0.1, 0, zz, x + 0.06, fork.y, zz];
+    for (const t of tips) segs.push(x, fork.y, zz, t.x, t.y, zz);
+    const pts = [];
+    for (let i = 0; i < 120; i++) {
+      const a = i / 120 * Math.PI * 2, bump = Math.pow(Math.abs(Math.sin(a * 6.5 + 0.4)), 0.6);
+      pts.push([x + Math.cos(a) * r * (0.92 + 0.08 * bump), yc + Math.sin(a) * (ry + 0.2) * (0.9 + 0.1 * bump)]);
+    }
+    segs.push(...loop(pts, zz));
+    lines(segs, 0.75);
+  }
   function tree(x, z, h = 7.5, r = 2.3, leaf) {
     const R = mulberry(Math.round(x * 100) + 7);
     add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x2a2a2d }), 0);

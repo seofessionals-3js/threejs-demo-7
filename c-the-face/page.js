@@ -21,12 +21,12 @@ const KEYS = [
   { p: 205, t: [2.8, 2.4, 0], fh: 5.0, fov: 12, yaw: 20, pitch: -3, phone: { t: [3.0, 2.4, 0], minW: 3.5 } },
   { p: 292, t: [3.2, 2.5, 0], fh: 4.4, fov: 14, yaw: 24, pitch: -4, phone: { minW: 3.0 } },
   { p: 375, t: [6.0, 2.05, 0], fh: 1.05, fov: 28, yaw: 26, pitch: -8, phone: { fh: 1.2, minW: 0.75 } },
-  h0.key(455, [2.25, 1.7, 2.9], 6, -1, 52, 2.6),   // far enough back that the headers either side of the portal are in the frame
-  h0.key(525, [1.72, 1.96, -2.3], -10, -7, 56, 2.25),
+  h0.key(455, [2.95, 1.65, 1.7], 20, -1, 52, 2.6), // close to the wall beside the portal: its headers large in front, the door beyond
+  h0.key(525, [2.1, 1.96, -2.3], 0, -8, 56, 2.25),
 ];
 
 // low, nearly along the wall from the left: each header throws a long streak to the right
-const RAKE = new THREE.Vector3(-2.0, 0.62, 0.42).normalize();
+const RAKE = new THREE.Vector3(-2.0, 0.62, 0.6).normalize();
 const sunDir = new THREE.Vector3();
 const late = new THREE.Color(0xfff0e4), white = new THREE.Color(0xfff6ee);
 
@@ -52,7 +52,7 @@ run(S, {
     sunDir.copy(CONVENTION).lerp(RAKE, m).normalize();
     S.setSun(sunDir);
     S.sun.color.copy(white).lerp(late, m);
-    S.sun.intensity = lerp(4.0, 4.4, m);
+    S.sun.intensity = lerp(4.0, 5.2, m);
     h0.setDoor(smooth(span(p, 395, 465)));
   },
   beats: [

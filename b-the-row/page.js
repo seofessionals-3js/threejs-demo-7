@@ -32,19 +32,19 @@ STATUS.forEach((s, i) => {
 // Plot 04 has its door on the right, so plot4.key() mirrors the walk that a-one-door takes.
 const ph = ({ t, fh, fov, yaw, pitch }) => ({ t, fh, fov, yaw, pitch });
 const KEYS = [
-  { p: 0, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [18, 2, 0], minW: 37 } },
-  { p: 18, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [18, 2, 0], minW: 37 } },
+  { p: 0, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [21, 2.6, 0], minW: 25 } },
+  { p: 18, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [21, 2.6, 0], minW: 25 } },
   { p: 110, t: [17, 4.2, 0], fh: 12.6, fov: 14, yaw: 22, pitch: -4, phone: { t: [22, 4.2, 0], minW: 14, yaw: 28 } },
   { p: 252, t: [16.5, 4.0, 0], fh: 12.0, fov: 16, yaw: 16, pitch: -4, phone: { t: [17, 4, 0], minW: 13 } },
   { p: 330, t: [21, 4.5, -0.3], fh: 11.4, fov: 28, yaw: 0, pitch: -4, phone: { minW: 7.6 } },
   plot4.key(405, [1.78, 1.72, 1.55], 2, -1, 54, 2.65),
-  plot4.key(480, [1.72, 1.96, -2.35], -8, -9, 56, 2.2),
-  plot4.key(520, [1.9, 1.95, -2.95], -40, -2, 58, 2.3),
+  plot4.key(480, [2.1, 1.96, -2.35], 0, -9, 56, 2.2),
+  plot4.key(520, [2.15, 1.95, -2.95], -40, -2, 58, 2.3),
   { ...plot4.key(560, [1.7, 1.94, -3.6], -76, 4, 60, 2.4), phone: ph(plot4.key(560, [1.7, 1.94, -4.2], -86, 2, 74, 2.4)) },
   plot4.key(645, [2.75, 2.0, -6.4], -3, 3, 58, 2.5),
 ];
 
-const LATE = new THREE.Vector3(-0.9, 0.62, 1.2).normalize();
+const LATE = new THREE.Vector3(0.9, 0.62, 1.2).normalize(); // from the east: house 04 is the mirrored plan, and this sun reaches its sitting room
 const sunDir = new THREE.Vector3();
 const late = new THREE.Color(0xfff0e4), white = new THREE.Color(0xfff6ee);
 
@@ -64,7 +64,7 @@ run(S, {
   },
   frame(p) {
     S.setCam(S.camAt(p, KEYS));
-    pins.style.opacity = (1 - span(p, 96, 136)).toFixed(3);
+    pins.style.opacity = (1 - span(p, 40, 64)).toFixed(3); // the plot marks are gone before the first card comes in
     S.U.uDepthCue.value = span(p, 22, 95) * (1 - span(p, 160, 230));
     // one sun crossing six facades, at the drawing's angle
     const u = span(p, 118, 255);
