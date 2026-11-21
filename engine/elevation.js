@@ -222,7 +222,7 @@ export function createStage(cfg = {}) {
     sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14, lacquer: 15,
   };
   const BASE = {
-    // late October on the Kreidegasse: white brick, pale stone, zinc, oak, oxide-red steel, plaster, lawn and one russet maple
+    // late October on the Kreidegasse: white brick, pale stone, zinc, oak, black steel (oxide red only on the front door), plaster, lawn and one russet maple
     brick: { color: 0xefebe2, roughness: 0.88 },
     stone: { color: 0xcdc5b5, roughness: 0.76 },
     glass: { color: 0xffffff, roughness: 0.06, metalness: 0.05 },
@@ -231,7 +231,7 @@ export function createStage(cfg = {}) {
     paving: { color: 0xcdc5b5, roughness: 0.86 },
     sky: { color: 0xdfe6ea, roughness: 1 },
     foliage: { color: 0x86995f, roughness: 0.88, flatShading: true },
-    steel: { color: 0x9a3f2a, roughness: 0.4, metalness: 0.45 },
+    steel: { color: 0x2f2c2a, roughness: 0.4, metalness: 0.45 },
     plain: { color: 0xefebe2, roughness: 0.84 },
     interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x6a5f50, emissiveIntensity: 0.7 },
     oakFloor: { color: 0xb88b55, roughness: 0.46 },
@@ -516,11 +516,11 @@ export function createStage(cfg = {}) {
                 shade = 0.0; lit = 0.0;
               #endif
               // sunlit faces are heightened in white chalk, so the light reads lighter than the paper
-              col = mix(col, uChalk, lit * hw * (FAINT == 1 ? 0.18 : 0.62) * tooth);
+              col = mix(col, uChalk, lit * hw * (FAINT == 1 ? 0.22 : 0.92) * tooth);
               // depth cue: what sits back gets a little darker, so the relief reads before the lens moves
               col -= uDepthCue * 0.05 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
-              float hatchK = FAINT == 1 ? 0.16 : 0.74;
-              float hl = lineAt(q.x + q.y, uHatch, uLinePx * 0.95);
+              float hatchK = FAINT == 1 ? 0.2 : 0.96;
+              float hl = lineAt(q.x + q.y, uHatch, uLinePx * 1.5);
               float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
               hl = mix(hl, 0.32, dense);
               hl *= 0.62 + 0.38 * tooth;
@@ -564,9 +564,9 @@ export function createStage(cfg = {}) {
   function lineMat(px, o = {}) {
     const key = px + JSON.stringify(o);
     if (lineCache[key]) return lineCache[key];
-    const m = new LineMaterial({ color: o.color || 0x2a2522, linewidth: px * DPR, transparent: true, toneMapped: false });
+    const m = new LineMaterial({ color: o.color || 0x2a2522, linewidth: px * 1.5 * DPR, transparent: true, toneMapped: false });
     m.resolution.set(W * DPR, H * DPR);
-    m.userData.px = px;
+    m.userData.px = px * 1.5;   // chalk is a heavier stroke than a pen
     m.userData.drawOnly = !!o.drawOnly || !(o.realLines > 0);   // nothing of this pen is left once the whole picture is real
     const drawOnly = o.drawOnly ? 1 : 0, first = o.first ? 1 : 0;
     m.onBeforeCompile = (sh) => {
@@ -741,8 +741,8 @@ export function createStage(cfg = {}) {
     const basalt = mat('stone', { color: 0x2f2c2a });
     const brick = mat('brick', { color: v.brick });
     const steel = mat('steel');
-    const red = mat('lacquer');
-    const redCloth = mat('linen', { color: 0x9a3f2a });
+    const red = mat('plain', { color: 0x7a858d });          // art panel, vessel: zinc grey, the red belongs to the front door alone
+    const redCloth = mat('linen', { color: 0xcdc5b5 });
     const linen = mat('linen');
     const coal = mat('linen', { color: 0x2f2c2a });
     const rug = mat('linen', { color: 0x7a858d });
@@ -942,7 +942,7 @@ export function createStage(cfg = {}) {
     addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
     addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
     addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
-    tree(ox + X(4.68), (v.setback || 0) - 16.15, 6.3, 1.5);
+    tree(ox + X(5.0), (v.setback || 0) - 17.1, 4.0, 0.62);
     addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
     addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
     addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
@@ -1006,7 +1006,7 @@ export function createStage(cfg = {}) {
 
     // the door: a steel portal, and in it two leaves of glass in oxide-red frames, 2.0 m by 2.55 m together
     const show = !faint && v.interior !== false;
-    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), stm, lw, O);
+    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), mat('steel', { faint, color: 0x9a3f2a }), lw, O);   // the door frame: the one oxide red
     const hA = Math.min(X(DX[0]), X(DX[1])) + 0.012, hB = Math.max(X(DX[0]), X(DX[1])) - 0.012, wL = (hB - hA) / 2 - 0.004;
     const red = mat('lacquer', { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
     const leaves = [1, -1].map((s) => {
@@ -1129,13 +1129,13 @@ export function createStage(cfg = {}) {
   }
 
   function tree(x, z, h = 7.5, r = 2.3, leaf) {
-    const LEAVES = [0xc9622a, 0xd98b2f, 0xa8452f];   // late October: russet, orange, brick
+    const grey = new THREE.Color(0x8a7a66), LEAVES = [0xa8452f, 0xc9622a, 0xd98b2f].map((c) => new THREE.Color(c).lerp(grey, 0.42).getHex());   // late October: mostly russet, some orange, a few ochre
     const R = mulberry(Math.round(x * 100) + 7);
-    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x2f2c2a }), 0);
+    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x4a3524 }), 0);
     const blobs = [[], [], []];
     for (let i = 0; i < 70; i++) {
       const a = R() * Math.PI * 2, e = (R() - 0.5) * 2.4, rr = r * (0.25 + 0.65 * Math.sqrt(R()));
-      blobs[i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0].push(new THREE.IcosahedronGeometry(0.32 + R() * 0.4, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
+      blobs[i % 3 === 0 ? 1 : i % 11 === 0 ? 2 : 0].push(new THREE.IcosahedronGeometry(0.22 + R() * 0.28, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
     }
     blobs.forEach((bl, i) => add(mergeGeometries(bl), mat('foliage', { realOnly: true, color: LEAVES[i] }), 0));
     const zz = z + 0.3, segs = [];

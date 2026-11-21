@@ -5,7 +5,7 @@
 // wall until the pattern stands out, the lens inspects the proud headers, and steps through the open glass door.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.045, hatchPhone: 0.05, drawSpan: [0, 6.2], wipe: [-5, 7], soft: 0.7, envScale: 0.55 });
+const S = createStage({ hatch: 0.055, hatchPhone: 0.065, drawSpan: [0, 6.2], wipe: [-5, 7], soft: 0.7, envScale: 0.55 });
 
 const h0 = S.house(0, { relief: 0.06, header: 0x2f2c2a, first: 'frame', roof: 'none', par: 7.0 });
 S.house(6, { relief: 0.06, header: 0x2f2c2a, door: 'right', interior: false, roof: 'none', par: 7.0 });

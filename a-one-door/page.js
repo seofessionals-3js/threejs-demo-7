@@ -5,7 +5,7 @@
 // and out into the walled garden.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.11, hatchPhone: 0.12, drawSpan: [0, 9.6], wipe: [-9, 8], soft: 1.1 });
+const S = createStage({ hatch: 0.13, hatchPhone: 0.17, drawSpan: [0, 9.6], wipe: [-9, 8], soft: 1.1 });
 
 const h = S.house(0, {});
 S.house(-6, { faint: true, par: 6.3, roof: 'none', door: 'right', first: 'frame', brick: 0xe0dbcf });
@@ -82,7 +82,7 @@ run(S, {
     { from: 236, to: 304, html: '<span class="n">03 &nbsp;·&nbsp; 16:40, Ende Oktober</span><p>Dann wandert sie, und die Schatten wandern mit.</p>' },
     { from: 332, to: 438, html: '<span class="n">04 &nbsp;·&nbsp; Die Schwelle</span><p>Zwei Steinstufen hinauf. Zwei Glasflügel in oxidrotem Stahl schwingen nach innen in die <em>Halle.</em></p>' },
     { from: 452, to: 516, html: '<span class="n">05 &nbsp;·&nbsp; Die Halle</span><p>5,95 Meter bis zur Decke. Eine Treppe aus gefaltetem Stahl führt hinauf zur <em>Galerie.</em></p><div class="row"><div><span>Ebene</span>+0.30 m</div><div><span>Höhe</span>5.95 m</div><div><span>Treppe</span>17 Steigungen</div></div>' },
-    { from: 528, to: 594, html: '<span class="n">06 &nbsp;·&nbsp; Wohnraum</span><p>Unter der Galerie: ein rostrotes Sofa, ein Tisch aus Stein, das Fenster zur <em>Straße.</em></p>' },
+    { from: 528, to: 594, html: '<span class="n">06 &nbsp;·&nbsp; Wohnraum</span><p>Unter der Galerie: ein Sofa aus Leinen, ein Tisch aus Stein, das Fenster zur <em>Straße.</em></p>' },
     { from: 608, to: 692, html: '<span class="n">07 &nbsp;·&nbsp; Küche &amp; Essen</span><p>Insel und Arbeitsplatte aus hellem Stein, dahinter der lange Tisch aus <em>Eiche.</em></p><div class="row"><div><span>Decke</span>2.85 m</div><div><span>Insel</span>Geschliffener Stein</div><div><span>Verglasung</span>Schiebewand</div></div>' },
     { from: 708, to: 810, html: '<span class="n">08 &nbsp;·&nbsp; No. 7 Kreidegasse</span><p>Die Glaswand fährt auf, hinaus in einen ummauerten Garten mit einem Ahorn in Oktoberlaub <em>hinten.</em></p><div class="row"><div><span>Grundstück</span>6.0 × 17.8 m</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Zu verkaufen</div></div><a class="pill solid" href="#">Besichtigung buchen</a>' },
   ],

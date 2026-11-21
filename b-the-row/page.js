@@ -5,7 +5,7 @@
 // past the sitting room, and on to the kitchen.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.16, hatchPhone: 0.2, drawSpan: [-2, 45], drawDir: [1, 0.9], wipe: [-10, 26], soft: 1.6 });
+const S = createStage({ hatch: 0.18, hatchPhone: 0.24, drawSpan: [-2, 45], drawDir: [1, 0.9], wipe: [-10, 26], soft: 1.6 });
 
 // white brick with a bay, grey brick with a stone frame, turn and turn about. Every door is red.
 const houses = [0, 1, 2, 3, 4, 5].map((i) => S.house(i * 6, {

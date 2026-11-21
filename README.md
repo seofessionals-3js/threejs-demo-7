@@ -23,7 +23,8 @@ Das Blatt ist ein Trois Crayons: schwarze Kreide, weiße Kreide und ein einziges
 | Lichter, weiße Kreide | `#fcf9f2` |
 | Akzent Rötel (Tür, Scankante, Links) | `#a5432b`, hell `#c65e42`, Text `#8f3620` |
 | Weißer Backstein, Fuge, schwarzer Binder | `#efebe2`, `#d9d3c7`, `#2f2c2a` |
-| Zink, oxidroter Stahl, Eiche, Stein, Putz | `#7a858d`, `#9a3f2a`, `#b88b55`, `#cdc5b5`, `#f2efe8` |
+| Zink, schwarzer Stahl, Eiche, Stein, Putz | `#7a858d`, `#2f2c2a`, `#b88b55`, `#cdc5b5`, `#f2efe8` |
+| Oxidroter Stahl, nur Haustür und Rahmen | `#9a3f2a` |
 | Rasen, Ahorn im Oktober | `#86995f`, `#c9622a` `#d98b2f` `#a8452f` |
 | Himmel | `#dfe6ea` im Zenit, `#f0e2c8` am Horizont, tiefe warme Sonne |
 
