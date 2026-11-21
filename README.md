@@ -1,4 +1,7 @@
-# three.js Demo 7
+# Wohnungsfinder
+
+In der Übersicht und in der durchlaufenden Schau ist das die Nummer 1; das Repository heißt weiter `threejs-demo-7`, damit alle Adressen gültig bleiben.
+
 
 Die Vorderansicht eines Stadthauses, in Trois Crayons auf Tonpapier gezeichnet: schwarze Kreide für Umriss und 45°-Schraffur in jedem Schatten, weiße Kreide für alles, was die Sonne trifft. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan in Rötel das Papier in weißen Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Garten.
 
