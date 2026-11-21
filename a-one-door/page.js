@@ -1,17 +1,17 @@
 // A · One door. No. 7, a narrow house of white brick, two storeys, between faint neighbours.
-// The elevation drafts itself in white ink on black paper, gains relief, takes the sun at the drawing's
-// own angle (hatching becomes shade), the sun moves on, the two red leaves of the glass door swing open,
+// The elevation drafts itself in black chalk on buff paper, lights in white chalk, gains relief, takes the sun at the drawing's
+// own angle (hatching becomes shade), the sun moves on, the two oxide-red leaves of the glass door swing open,
 // and the lens walks through the two-storey hall, past the sitting room, through kitchen and dining,
 // and out into the walled garden.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.11, hatchPhone: 0.12, drawSpan: [0, 9.6], wipe: [-9, 8], soft: 1.1 });
+const S = createStage({ hatch: 0.13, hatchPhone: 0.17, drawSpan: [0, 9.6], wipe: [-9, 8], soft: 1.1 });
 
 const h = S.house(0, {});
-S.house(-6, { faint: true, par: 6.3, roof: 'none', door: 'right', first: 'frame', brick: 0x8c8c90 });
-S.house(-12, { faint: true, par: 7.1, roof: 'none', brick: 0x37373b });
-S.house(6, { faint: true, par: 7.3, roof: 'none', first: 'frame', door: 'right', brick: 0x37373b });
-S.house(12, { faint: true, par: 6.5, roof: 'none', brick: 0x8c8c90 });
+S.house(-6, { faint: true, par: 6.3, roof: 'none', door: 'right', first: 'frame', brick: 0xe0dbcf });
+S.house(-12, { faint: true, par: 7.1, roof: 'none', brick: 0xd9d3c7 });
+S.house(6, { faint: true, par: 7.3, roof: 'none', first: 'frame', door: 'right', brick: 0xd9d3c7 });
+S.house(12, { faint: true, par: 6.5, roof: 'none', brick: 0xe0dbcf });
 S.street(-40, 40);
 S.figure(3.22, 2.2, 1, true);
 S.aimSun(2.5, 3.5, 24);
@@ -44,7 +44,7 @@ const KEYS = [
 
 const LATE = new THREE.Vector3(-1.45, 0.62, 0.78).normalize(); // 16:40, the sun lower and more from the side
 const sunDir = new THREE.Vector3();
-const late = new THREE.Color(0xfff0e4), white = new THREE.Color(0xfff6ee);
+const late = new THREE.Color(0xffd9a8), white = new THREE.Color(0xfff1dc);
 
 run(S, {
   length: 780,
@@ -70,9 +70,9 @@ run(S, {
     sunDir.copy(CONVENTION).lerp(LATE, m).normalize();
     S.setSun(sunDir);
     S.sun.color.copy(white).lerp(late, m);
-    S.sun.intensity = lerp(3.4, 3.2, m);
-    S.hemi.intensity = lerp(0.52, 0.48, m);
-    // the two red leaves swing in, and at the back the glass wall slides open as the lens walks through
+    S.sun.intensity = lerp(3.2, 3.0, m);
+    S.hemi.intensity = lerp(0.9, 0.8, m);
+    // the two oxide-red leaves swing in, and at the back the glass wall slides open as the lens walks through
     h.setDoor(smooth(span(p, 345, 420)));
     h.setGardenDoor(smooth(span(p, 600, 680)));
   },
@@ -80,10 +80,10 @@ run(S, {
     { from: 72, to: 128, html: '<span class="n">01 &nbsp;·&nbsp; Relief</span><p>Der Eingang liegt 1,20 m zurück. Der Erker kragt 800 mm aus. Die Zeichnung hat es schon gesagt.</p>' },
     { from: 140, to: 222, html: '<span class="n">02 &nbsp;·&nbsp; Die Sonne</span><p>Jeder Schatten auf dem Blatt fällt unter 45 Grad. So auch bei <em>dieser</em> Sonne.</p>' },
     { from: 236, to: 304, html: '<span class="n">03 &nbsp;·&nbsp; 16:40, Ende Oktober</span><p>Dann wandert sie, und die Schatten wandern mit.</p>' },
-    { from: 332, to: 438, html: '<span class="n">04 &nbsp;·&nbsp; Die Schwelle</span><p>Zwei Steinstufen hinauf. Zwei Glasflügel in rotem Stahl schwingen nach innen in die <em>Halle.</em></p>' },
+    { from: 332, to: 438, html: '<span class="n">04 &nbsp;·&nbsp; Die Schwelle</span><p>Zwei Steinstufen hinauf. Zwei Glasflügel in oxidrotem Stahl schwingen nach innen in die <em>Halle.</em></p>' },
     { from: 452, to: 516, html: '<span class="n">05 &nbsp;·&nbsp; Die Halle</span><p>5,95 Meter bis zur Decke. Eine Treppe aus gefaltetem Stahl führt hinauf zur <em>Galerie.</em></p><div class="row"><div><span>Ebene</span>+0.30 m</div><div><span>Höhe</span>5.95 m</div><div><span>Treppe</span>17 Steigungen</div></div>' },
-    { from: 528, to: 594, html: '<span class="n">06 &nbsp;·&nbsp; Wohnraum</span><p>Unter der Galerie: ein rotes Sofa, ein Tisch aus Stein, das Fenster zur <em>Straße.</em></p>' },
-    { from: 608, to: 692, html: '<span class="n">07 &nbsp;·&nbsp; Küche &amp; Essen</span><p>Insel und Arbeitsplatte aus hellem Stein, dahinter der lange Tisch aus schwarzer <em>Eiche.</em></p><div class="row"><div><span>Decke</span>2.85 m</div><div><span>Insel</span>Geschliffener Stein</div><div><span>Verglasung</span>Schiebewand</div></div>' },
-    { from: 708, to: 810, html: '<span class="n">08 &nbsp;·&nbsp; No. 7 Kreidegasse</span><p>Die Glaswand fährt auf, hinaus in einen ummauerten Garten mit einem roten Ahorn <em>hinten.</em></p><div class="row"><div><span>Grundstück</span>6.0 × 17.8 m</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Zu verkaufen</div></div><a class="pill solid" href="#">Besichtigung buchen</a>' },
+    { from: 528, to: 594, html: '<span class="n">06 &nbsp;·&nbsp; Wohnraum</span><p>Unter der Galerie: ein Sofa aus Leinen, ein Tisch aus Stein, das Fenster zur <em>Straße.</em></p>' },
+    { from: 608, to: 692, html: '<span class="n">07 &nbsp;·&nbsp; Küche &amp; Essen</span><p>Insel und Arbeitsplatte aus hellem Stein, dahinter der lange Tisch aus <em>Eiche.</em></p><div class="row"><div><span>Decke</span>2.85 m</div><div><span>Insel</span>Geschliffener Stein</div><div><span>Verglasung</span>Schiebewand</div></div>' },
+    { from: 708, to: 810, html: '<span class="n">08 &nbsp;·&nbsp; No. 7 Kreidegasse</span><p>Die Glaswand fährt auf, hinaus in einen ummauerten Garten mit einem Ahorn in Oktoberlaub <em>hinten.</em></p><div class="row"><div><span>Grundstück</span>6.0 × 17.8 m</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Zu verkaufen</div></div><a class="pill solid" href="#">Besichtigung buchen</a>' },
   ],
 });

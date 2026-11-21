@@ -1,7 +1,7 @@
 // The Elevation engine, shared by the three pages (a-one-door, b-the-row, c-the-face).
 //
-// One model, drawn two ways. Every surface is black paper with 45 degree hatching in white ink
-// wherever the sun does not reach, or its real lit material. A diagonal sweep decides which, pixel
+// One model, drawn two ways. Every surface is buff toned paper (trois crayons) with 45 degree hatching in black
+// chalk wherever the sun does not reach, heightened in white chalk where it does, or its real lit material. A diagonal sweep decides which, pixel
 // by pixel. The sun starts at the drawing convention (45 degrees in plan and elevation,
 // 35.26 degrees high), so the hatched areas and the real shadows are the same areas.
 //
@@ -10,12 +10,18 @@
 //
 // Only three.js: the scroll is the page's own, eased in run().
 // URL: ?at=VH jumps to a scroll position (vh) and skips the intro, ?skip skips the intro,
-//      ?nosmooth follows the scroll without easing (recordings), ?debug shows p in the corner.
+//      ?nosmooth follows the scroll without easing (recordings), ?debug shows p in the corner,
+//      ?q=low|mid|high forces the device tier, ?dpr=1.5 pins the render resolution (see quality.js).
+//
+// Built to run on a phone: everything that does not move is merged into one mesh per material and one
+// line object per pen (flush()), the shadow map is only drawn again when the sun or a door has moved,
+// a frame is only rendered when something changed, and the lit model is only shaded once the sun has arrived.
 import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { tier, low, high, startDpr, pinnedDpr, governor, visible } from './quality.js';
 
 export { THREE, mergeGeometries };
 export const Q = new URLSearchParams(location.search);
@@ -32,8 +38,9 @@ export const CONVENTION = new THREE.Vector3(-1, 1, 1).normalize(); // towards th
 
 const GLSL_COMMON = /* glsl */`
   uniform vec3 uSun; uniform vec4 uSweep; uniform float uReal;
-  uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uAccent; uniform float uHatch; uniform float uLinePx;
+  uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uChalk; uniform vec3 uAccent; uniform vec3 uAccentHi; uniform float uHatch; uniform float uLinePx;
   uniform float uDraw; uniform vec2 uDrawSpan; uniform vec2 uDrawDir; uniform float uHatchIn; uniform vec2 uWipe; uniform float uDetailIn; uniform float uDepthCue;
+  uniform float uLive;
   float sweepS(vec3 p) { return dot(p.xy, uSweep.xy); }
   float revealAt(vec3 p) {
     float s = sweepS(p);
@@ -82,19 +89,34 @@ const GLSL_COMMON = /* glsl */`
   }
 `;
 
+// three's own light loop, with the sun's shadow taken from elevShadow instead of being sampled a second time
+const LIGHTS_BEGIN = THREE.ShaderChunk.lights_fragment_begin.replace(
+  /directLight\.color \*= \( directLight\.visible && receiveShadow \) \? getShadow\( directionalShadowMap\[ i \][^;]*;/,
+  'directLight.color *= elevShadow;');
+if (LIGHTS_BEGIN === THREE.ShaderChunk.lights_fragment_begin) console.warn('elevation: the light loop of this three.js has changed, the shadow is sampled twice');
+
 /* =========================================================================== */
 export function createStage(cfg = {}) {
   const S = {};
-  const DPR = Math.min(2, Math.max(1, devicePixelRatio || 1));
-  let W = innerWidth, H = innerHeight;
+  // The picture is as wide as the window and as high as the LARGE viewport: on a phone the URL bar slides in and
+  // out while you scroll, and neither the canvas nor the camera should notice (no reallocation, no stretching).
+  const probe = document.documentElement.appendChild(document.createElement('div'));
+  probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none';
+  const measure = () => [Math.max(1, innerWidth), Math.max(1, innerHeight, probe.offsetHeight || 0)];
+  let [W, H] = measure();
+  let DPR = startDpr();
+  const DPR0 = DPR;
+  document.documentElement.classList.add('q-' + tier);     // the stylesheet drops what a phone cannot afford
   const phone = () => W / H < 0.8;
   const canvas = document.getElementById('gl');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
   renderer.setPixelRatio(DPR);
-  renderer.setSize(W, H, false);
-  renderer.setClearColor(0x0c0c0e, 1);
+  renderer.setSize(W, H, true);
+  renderer.setClearColor(0xdfd2ba, 1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;       // drawn again only when the sun or a caster has moved (shadowDirty)
+  let shadowDirty = true, dirty = true;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.04;
   const scene = new THREE.Scene();
@@ -105,10 +127,12 @@ export function createStage(cfg = {}) {
     uSun: { value: CONVENTION.clone() },
     uSweep: { value: new THREE.Vector4(Math.SQRT1_2, -Math.SQRT1_2, -999, cfg.soft || 0.8) },
     uReal: { value: num('real', 0) },
-    uPaper: { value: raw(0x0c0c0e) },
-    uInk: { value: raw(0xf1eeea) },
-    uAccent: { value: raw(0xe5202e) },
-    uHatch: { value: hatch0 * (DPR < 1.5 ? 1.3 : 1) },
+    uPaper: { value: raw(0xdfd2ba) },
+    uInk: { value: raw(0x2a2522) },
+    uChalk: { value: raw(0xfcf9f2) },
+    uAccent: { value: raw(0xa5432b) },
+    uAccentHi: { value: raw(0xc65e42) },
+    uHatch: { value: hatch0 * (DPR0 < 1.5 ? 1.3 : 1) },
     uLinePx: { value: 1.05 * DPR },
     uDraw: { value: 1 },
     uDrawSpan: { value: new THREE.Vector2(...(cfg.drawSpan || [0, 12])) },
@@ -118,6 +142,9 @@ export function createStage(cfg = {}) {
     uDetailIn: { value: 1 },
     uDepthCue: { value: 0 },
     uBump: { value: 1.25 },
+    uLive: { value: 1 },                       // 0 while the whole picture is still drawing: the lit model is not shaded at all
+    uShTexel: { value: 0.012 },                // one texel of the shadow map, in metres
+    uShRange: { value: 200 },                  // depth of the shadow camera, in metres
   };
 
   /* ---------- environment and light ---------- */
@@ -129,37 +156,65 @@ export function createStage(cfg = {}) {
       fragmentShader: `varying vec3 vP; void main() {
         vec3 d = normalize(vP);
         float h = d.y;
-        vec3 horizon = vec3(0.60, 0.60, 0.62);
-        vec3 zenith = vec3(0.13, 0.135, 0.15);
-        vec3 ground = mix(vec3(0.16, 0.16, 0.17), vec3(0.30, 0.30, 0.31), smoothstep(-0.8, 0.0, h));
+        vec3 horizon = vec3(0.87, 0.76, 0.58);
+        vec3 zenith = vec3(0.74, 0.79, 0.82);
+        vec3 ground = mix(vec3(0.38, 0.35, 0.30), vec3(0.60, 0.55, 0.46), smoothstep(-0.8, 0.0, h));
         vec3 sky = mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), 0.65));
         float sunGlow = pow(max(0.0, dot(d, normalize(vec3(-0.7, 0.55, 0.7)))), 12.0);
-        sky += vec3(0.30, 0.29, 0.28) * sunGlow;
+        sky += vec3(0.34, 0.26, 0.14) * sunGlow;
         gl_FragColor = vec4(h > 0.0 ? sky : ground, 1.0);
       }`,
     })));
-    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(envScene, 0.015).texture;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(envScene, 0.015).texture;
+    pmrem.dispose();
+    envScene.children[0].geometry.dispose(); envScene.children[0].material.dispose();
   }
-  const sun = new THREE.DirectionalLight(0xfff6ee, 3.5);
+  const sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
   scene.add(sun, sun.target);
-  const hemi = new THREE.HemisphereLight(0xd4d7dc, 0x8c8c90, 0.52); scene.add(hemi);
-  const sunAim = { t: new THREE.Vector3(), ext: 24 };
-  function aimSun(cx, cy, ext, map = 4096) {
+  const hemi = new THREE.HemisphereLight(0xdfe6ea, 0xb8a98c, 0.9); scene.add(hemi);
+  // The shadow map: 2048 on a phone, 4096 on a desktop. Its camera is fitted to the box of everything that casts
+  // (sunAim.box, measured in flush()): in light space a caster and its shadow share x and y, so nothing else
+  // needs to be inside, and a small map still gives the hatching a sharp edge.
+  const sunAim = { t: new THREE.Vector3(), ext: 24, box: null };
+  const SHADOW_MAP = low ? 2048 : high ? 4096 : 3072;
+  const _lm = new THREE.Matrix4(), _lv = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+  function aimSun(cx, cy, ext, map = SHADOW_MAP) {
     sunAim.t.set(cx, cy, -3.5); sunAim.ext = ext;
     sun.castShadow = true;
     sun.shadow.mapSize.set(map, map);
-    sun.shadow.bias = -0.00035; sun.shadow.normalBias = 0.014;
-    const c = sun.shadow.camera;
-    c.left = -ext; c.right = ext; c.top = ext; c.bottom = -ext; c.near = 6; c.far = 210;
-    c.updateProjectionMatrix();
+    sun.shadow.bias = 0; sun.shadow.normalBias = 0.012;     // the depth bias is slope scaled, in elevShadowAt()
     placeSun();
+  }
+  function fitShadow() {
+    const c = sun.shadow.camera, b = sunAim.box, e = sunAim.ext;
+    if (!b) { c.left = -e; c.right = e; c.top = e; c.bottom = -e; c.near = 6; c.far = 210; }
+    else {
+      _lm.lookAt(sun.position, sun.target.position, _up).setPosition(sun.position).invert();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let i = 0; i < 8; i++) {
+        _lv.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(_lm);
+        x0 = Math.min(x0, _lv.x); x1 = Math.max(x1, _lv.x); y0 = Math.min(y0, _lv.y); y1 = Math.max(y1, _lv.y); z0 = Math.min(z0, _lv.z); z1 = Math.max(z1, _lv.z);
+      }
+      c.left = x0 - 0.3; c.right = x1 + 0.3; c.bottom = y0 - 0.3; c.top = y1 + 0.3;
+      c.near = Math.max(0.5, -z1 - 2); c.far = -z0 + 2;
+    }
+    c.updateProjectionMatrix();
+    U.uShTexel.value = Math.max(c.right - c.left, c.top - c.bottom) / sun.shadow.mapSize.x;
+    U.uShRange.value = c.far - c.near;
   }
   function placeSun() {
     sun.target.position.copy(sunAim.t);
     sun.position.copy(U.uSun.value).multiplyScalar(90).add(sunAim.t);
     sun.target.updateMatrixWorld();
+    fitShadow();
+    shadowDirty = true; dirty = true;
   }
-  function setSun(dir) { U.uSun.value.copy(dir).normalize(); placeSun(); }
+  function setSun(dir) {
+    _lv.copy(dir).normalize();
+    if (_lv.distanceToSquared(U.uSun.value) < 1e-10) return;   // the pages call this every frame: only a sun that moved costs a shadow pass
+    U.uSun.value.copy(_lv); placeSun();
+  }
 
   /* ---------- materials ---------- */
   const KIND = {
@@ -167,33 +222,34 @@ export function createStage(cfg = {}) {
     sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14, lacquer: 15,
   };
   const BASE = {
-    // black, white, and one red: white brick, pale stone, anthracite zinc, black oak, a red lacquer
-    brick: { color: 0xe6e4e0, roughness: 0.88 },
-    stone: { color: 0xd2d1ce, roughness: 0.76 },
+    // late October on the Kreidegasse: white brick, pale stone, zinc, oak, black steel (oxide red only on the front door), plaster, lawn and one russet maple
+    brick: { color: 0xefebe2, roughness: 0.88 },
+    stone: { color: 0xcdc5b5, roughness: 0.76 },
     glass: { color: 0xffffff, roughness: 0.06, metalness: 0.05 },
-    zinc: { color: 0x3a3b3f, roughness: 0.48, metalness: 0.45 },
-    wood: { color: 0x29292d, roughness: 0.44 },
-    paving: { color: 0x8a8a8d, roughness: 0.86 },
-    sky: { color: 0x0c0c0e, roughness: 1 },
-    foliage: { color: 0x56585b, roughness: 0.88, flatShading: true },
-    steel: { color: 0x161618, roughness: 0.38, metalness: 0.68 },
-    plain: { color: 0xdedcd8, roughness: 0.84 },
-    interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x5c5650, emissiveIntensity: 0.7 },
-    oakFloor: { color: 0x77777c, roughness: 0.46 },
-    plaster: { color: 0xf1f0ed, roughness: 0.86 },
-    travertine: { color: 0xdad9d6, roughness: 0.5 },
-    linen: { color: 0xe6e4e0, roughness: 0.92 },
-    lacquer: { color: 0xc8121f, roughness: 0.36, metalness: 0.12 },
+    zinc: { color: 0x7a858d, roughness: 0.48, metalness: 0.45 },
+    wood: { color: 0xa67b49, roughness: 0.44 },
+    paving: { color: 0xcdc5b5, roughness: 0.86 },
+    sky: { color: 0xdfe6ea, roughness: 1 },
+    foliage: { color: 0x86995f, roughness: 0.88, flatShading: true },
+    steel: { color: 0x2f2c2a, roughness: 0.4, metalness: 0.45 },
+    plain: { color: 0xefebe2, roughness: 0.84 },
+    interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x6a5f50, emissiveIntensity: 0.7 },
+    oakFloor: { color: 0xb88b55, roughness: 0.46 },
+    plaster: { color: 0xf2efe8, roughness: 0.86 },
+    travertine: { color: 0xefebe2, roughness: 0.5 },
+    linen: { color: 0xf2efe8, roughness: 0.92 },
+    lacquer: { color: 0x9a3f2a, roughness: 0.36, metalness: 0.12 },
   };
   const MATS = {};
   function mat(kind, o = {}) {
     const key = kind + JSON.stringify(o);
     if (MATS[key]) return MATS[key];
     const m = new THREE.MeshStandardMaterial({ ...BASE[kind], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    m.envMapIntensity = ({ glass: 1.55, steel: 1.25, zinc: 0.95, wood: 1.0, oakFloor: 0.65, travertine: 0.55, lacquer: 0.8 }[kind] || 0.45) * (cfg.envScale || 1);
+    m.envMapIntensity = ({ glass: 1.55, steel: 0.8, zinc: 0.8, wood: 0.8, oakFloor: 0.6, travertine: 0.5, lacquer: 0.7 }[kind] || 0.45) * (cfg.envScale || 1);
     if (o.color) m.color.setHex(o.color);
     // clear glass: a sheet you can see through once the scan has made it real. On the drawing it is paper like everything else
     const clear = o.clear ? 1 : 0;
+    if (kind === 'sky') m.toneMapped = false;
     if (clear) { m.transparent = true; m.opacity = 0.17; m.depthWrite = !!o.door; }
     m.userData.drawOnly = !!o.drawOnly; m.userData.sky = kind === 'sky';
     const K = KIND[kind];
@@ -207,7 +263,7 @@ export function createStage(cfg = {}) {
         #endif
         vWP = (modelMatrix * wpp).xyz;
         vWN = normalize(mat3(modelMatrix) * objectNormal);`);
-      sh.fragmentShader = `#define KIND ${K}\n#define FAINT ${faint}\n#define REAL_ONLY ${realOnly}\n#define DRAW_ONLY ${drawOnly}\n#define CLEAR ${clear}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump;\n${GLSL_COMMON}
+      sh.fragmentShader = `#define KIND ${K}\n#define FAINT ${faint}\n#define REAL_ONLY ${realOnly}\n#define DRAW_ONLY ${drawOnly}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${low ? 4 : 16}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump; uniform float uShTexel; uniform float uShRange;\n${GLSL_COMMON}
         // brick: running bond 215 x 65, 10 mm joints. x: along the course, y: up
         vec4 brickAt(vec2 q) {
           float course = floor(q.y / 0.075);
@@ -261,7 +317,32 @@ export function createStage(cfg = {}) {
           #endif
         }
       ` + sh.fragmentShader
-          .replace('#include <shadowmap_pars_fragment>', '#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>')
+          // the sun's shadow, read once per pixel and used twice: by the light of the real model and by the hatching.
+          // The depth bias follows the slope of the surface to the sun, so a brick 60 mm proud keeps its small shadow.
+          .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>
+            float elevShadowAt() {
+              #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+                if ( ! receiveShadow ) return 1.0;
+                float ndl = clamp(dot(normalize(vWN), uSun), 0.08, 1.0);
+                float bias = - uShTexel * (0.6 + 1.3 * min(sqrt(1.0 - ndl * ndl) / ndl, 6.0)) / uShRange;
+                #if ELEV_TAPS == 4
+                  vec4 sc = vDirectionalShadowCoord[ 0 ];
+                  sc.xyz /= sc.w; sc.z += bias;
+                  if (sc.x < 0.0 || sc.x > 1.0 || sc.y < 0.0 || sc.y > 1.0 || sc.z > 1.0) return 1.0;
+                  vec2 size = directionalLightShadows[ 0 ].shadowMapSize, tx = 1.0 / size;
+                  vec2 st = sc.xy * size - 0.5, f = fract(st), b = (floor(st) + 0.5) * tx;
+                  float s00 = texture2DCompare(directionalShadowMap[ 0 ], b, sc.z);
+                  float s10 = texture2DCompare(directionalShadowMap[ 0 ], b + vec2(tx.x, 0.0), sc.z);
+                  float s01 = texture2DCompare(directionalShadowMap[ 0 ], b + vec2(0.0, tx.y), sc.z);
+                  float s11 = texture2DCompare(directionalShadowMap[ 0 ], b + tx, sc.z);
+                  return mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
+                #else
+                  return getShadow( directionalShadowMap[ 0 ], directionalLightShadows[ 0 ].shadowMapSize, bias, directionalLightShadows[ 0 ].shadowRadius, vDirectionalShadowCoord[ 0 ] );
+                #endif
+              #else
+                return 1.0;
+              #endif
+            }`)
           .replace('void main() {', `void main() {
             float rv = revealAt(vWP);
             #if REAL_ONLY
@@ -269,7 +350,20 @@ export function createStage(cfg = {}) {
             #endif
             #if DRAW_ONLY
               if (rv > 0.5 || uHatchIn < 0.02) discard;
-            #endif`)
+            #endif
+            float elevShadow = elevShadowAt();`)
+          // while the whole sheet is still a drawing (uLive = 0) the lit model is skipped: textures, lights, reflections
+          .replace('vec3 totalEmissiveRadiance = emissive;', `vec3 totalEmissiveRadiance = emissive;
+            vec3 elevOut = vec3(0.0);
+            if (uLive > 0.5) {`)
+          .replace('#include <lights_fragment_begin>', LIGHTS_BEGIN)
+          .replace('#include <opaque_fragment>', `elevOut = outgoingLight;
+              #if KIND == 7
+                elevOut = diffuseColor.rgb;
+              #endif
+            }
+            vec3 outgoingLight = elevOut;
+            #include <opaque_fragment>`)
           .replace('#include <color_fragment>', `#include <color_fragment>
             {
               vec2 q = planeUV(vWP, vWN);
@@ -288,7 +382,7 @@ export function createStage(cfg = {}) {
                 bc *= 0.92 + 0.16 * vnoise(vec2(q.x * 55.0, q.y * 140.0) + b.xy * 3.1) * jointVis;
                 float bedShade = (1.0 - smoothstep(0.009, 0.015, b.w)) * step(0.009, b.w) * 0.14 * jointVis;
                 bc *= 1.0 - bedShade;
-                vec3 mortar = mix(vec3(0.60, 0.60, 0.61), diffuseColor.rgb * 1.5 + 0.12, step(dot(diffuseColor.rgb, vec3(0.333)), 0.3)) * (0.94 + 0.12 * vnoise(q * 180.0));
+                vec3 mortar = vec3(0.693, 0.651, 0.571) * (0.94 + 0.12 * vnoise(q * 180.0));   // #d9d3c7
                 vec3 far = mix(base, mortar, 0.13);
                 vec3 mid = mix(bc, mortar, 0.13);
                 vec3 nearC = mix(bc, mortar * 0.92, joint);
@@ -329,10 +423,11 @@ export function createStage(cfg = {}) {
                 float sh = hash12(cell);
                 vec3 flagCol = diffuseColor.rgb * (0.88 + 0.18 * sh);
                 flagCol *= 0.95 + 0.09 * vnoise(q * 22.0);
-                diffuseColor.rgb = mix(flagCol, vec3(0.24, 0.24, 0.25), j * 0.65);
+                diffuseColor.rgb = mix(flagCol, vec3(0.45, 0.42, 0.37), j * 0.55);
               #elif KIND == 7
+                // late October: pale zenith #dfe6ea over a warm haze #f0e2c8 at the horizon (linear values, the sky is unlit)
                 float k = clamp((vWP.y + 4.0) / 40.0, 0.0, 1.0);
-                diffuseColor.rgb = mix(vec3(0.075, 0.075, 0.085), vec3(0.008, 0.008, 0.012), pow(k, 0.7));
+                diffuseColor.rgb = mix(vec3(0.871, 0.760, 0.578), vec3(0.738, 0.791, 0.823), pow(k, 0.55));
               #elif KIND == 2
                 float blockJ = 1.0 - smoothstep(0.0, max(fwidth(q.x) * 1.3, 0.003), abs(fract(q.x / 0.9 + 0.5) - 0.5) * 0.9);
                 float bed = vnoise(vec2(q.x * 4.0, q.y * 26.0));
@@ -350,12 +445,12 @@ export function createStage(cfg = {}) {
                 diffuseColor.rgb *= 0.98 + weave;
               #elif KIND == 3
                 float k = fract((vWP.y - 0.45) / 3.0);
-                vec3 skyRefl = mix(vec3(0.02, 0.02, 0.025), vec3(0.13, 0.135, 0.15), smoothstep(0.22, 0.92, k));
+                vec3 skyRefl = mix(vec3(0.20, 0.22, 0.23), vec3(0.50, 0.56, 0.60), smoothstep(0.22, 0.92, k));
                 float warmZone = smoothstep(0.05, 0.45, k) * (1.0 - smoothstep(0.55, 0.92, k));
                 float roomVar = 0.6 + 0.4 * sin(vWP.x * 1.7 + floor((vWP.y - 0.45) / 3.0) * 2.3);
-                vec3 warmRoom = vec3(0.27, 0.265, 0.25) * warmZone * roomVar * (FAINT == 1 ? 0.25 : 0.75);
+                vec3 warmRoom = vec3(0.30, 0.25, 0.17) * warmZone * roomVar * (FAINT == 1 ? 0.25 : 0.75);
                 diffuseColor.rgb = skyRefl + warmRoom;
-                diffuseColor.rgb += 0.065 * smoothstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
+                diffuseColor.rgb += 0.05 * smoothstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
               #elif KIND == 9
                 diffuseColor.rgb *= 0.94 + 0.10 * vnoise(q * 45.0);
               #endif
@@ -407,24 +502,28 @@ export function createStage(cfg = {}) {
             {
               vec3 N = normalize(vWN);
               float ndl = dot(N, uSun);
-              float lit = getShadowMask() * smoothstep(-0.02, 0.06, ndl);
+              float lit = elevShadow * smoothstep(-0.02, 0.06, ndl);
               float shade = 1.0 - lit;
               vec2 q = planeUV(vWP, N);
               vec3 col = uPaper;
               float hw = hatchWipe(vWP) * step(0.001, uHatchIn);
+              // paper tooth: chalk catches the grain of the sheet, so every mark is a little soft and broken
+              float tooth = 0.55 + 0.45 * vnoise(gl_FragCoord.xy * 0.85) * (0.6 + 0.4 * vnoise(gl_FragCoord.xy * 0.23));
               #if KIND == 3
-                col += 0.032 * hw;
+                col = mix(col, uChalk, 0.10 * hw);
               #endif
               #if KIND == 7
-                shade = 0.0;
+                shade = 0.0; lit = 0.0;
               #endif
-              // depth cue: what sits back gets a little grey, so the relief reads before the lens moves
-              col += uDepthCue * 0.055 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
-              float hatchK = FAINT == 1 ? 0.10 : 0.6;
-              float hl = lineAt(q.x + q.y, uHatch, uLinePx * 0.95);
+              // sunlit faces are heightened in white chalk, so the light reads lighter than the paper
+              col = mix(col, uChalk, lit * hw * (FAINT == 1 ? 0.22 : 0.92) * tooth);
+              // depth cue: what sits back gets a little darker, so the relief reads before the lens moves
+              col -= uDepthCue * 0.05 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
+              float hatchK = FAINT == 1 ? 0.2 : 0.96;
+              float hl = lineAt(q.x + q.y, uHatch, uLinePx * 1.5);
               float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
               hl = mix(hl, 0.32, dense);
-              col += 0.03 * shade * hw * (FAINT == 1 ? 0.3 : 1.0);
+              hl *= 0.62 + 0.38 * tooth;
               col = mix(col, uInk, hl * shade * hatchK * hw);
               float det = detailWipe(vWP) * (FAINT == 1 ? 0.3 : 1.0);
               #if KIND == 1
@@ -446,7 +545,7 @@ export function createStage(cfg = {}) {
               gl_FragColor.rgb = mix(col, gl_FragColor.rgb, rv);
               #if KIND != 7
                 float fb = frontBand(vWP);
-                vec3 scanCol = mix(uAccent, vec3(1.0, 0.34, 0.38), smoothstep(0.42, 0.92, fb));
+                vec3 scanCol = mix(uAccent, uAccentHi, smoothstep(0.42, 0.92, fb));
                 gl_FragColor.rgb = mix(gl_FragColor.rgb, scanCol, clamp(fb * 0.85, 0.0, 0.94));
               #endif
               #if CLEAR == 1
@@ -454,7 +553,7 @@ export function createStage(cfg = {}) {
               #endif
             }`);
     };
-    m.customProgramCacheKey = () => `elev-${K}-${faint}-${realOnly}-${drawOnly}-${clear}`;
+    m.customProgramCacheKey = () => `elev-${tier}-${K}-${faint}-${realOnly}-${drawOnly}-${clear}`;
     return (MATS[key] = m);
   }
 
@@ -465,8 +564,10 @@ export function createStage(cfg = {}) {
   function lineMat(px, o = {}) {
     const key = px + JSON.stringify(o);
     if (lineCache[key]) return lineCache[key];
-    const m = new LineMaterial({ color: o.color || 0xf1eeea, linewidth: px * DPR, transparent: true, toneMapped: false });
+    const m = new LineMaterial({ color: o.color || 0x2a2522, linewidth: px * 1.5 * DPR, transparent: true, toneMapped: false });
     m.resolution.set(W * DPR, H * DPR);
+    m.userData.px = px * 1.5;   // chalk is a heavier stroke than a pen
+    m.userData.drawOnly = !!o.drawOnly || !(o.realLines > 0);   // nothing of this pen is left once the whole picture is real
     const drawOnly = o.drawOnly ? 1 : 0, first = o.first ? 1 : 0;
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
@@ -485,7 +586,8 @@ export function createStage(cfg = {}) {
         float grow = (uDraw - vT0) / (FIRST == 1 ? 0.16 : 0.12);
         if (vT > grow) discard;
         if (vis < 0.01) discard;
-        gl_FragColor.a *= vis;`);
+        // black chalk: the stroke breaks up a little on the grain of the paper
+        gl_FragColor.a *= vis * (0.74 + 0.26 * vnoise(gl_FragCoord.xy * 0.8));`);
     };
     m.customProgramCacheKey = () => `eline-${drawOnly}-${first}`;
     LMATS.push(m);
@@ -500,25 +602,83 @@ export function createStage(cfg = {}) {
     const s = rect(...outer); holes.forEach((h) => s.holes.push(hole(...h)));
     return new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }).translate(0, 0, z0);
   }
+  // Nothing is put into the scene one box at a time. add() and lines() only collect: flush() then merges everything
+  // that shares a material (or a pen) into one mesh (one line object), with the offset of its house baked in.
+  // Only what moves keeps a node of its own: mark the group with userData.moving (door leaves, sliding panes).
+  // zone 1 is the inside of a show house and its garden: hidden until the sun arrives (nothing of it is on the drawing).
+  const MB = new Map(), LB = new Map();
+  const rootIn = new THREE.Group(); rootIn.visible = false; root.add(rootIn);
+  const interiorNodes = [rootIn], drawOnlyNodes = [];
+  let ZONE = 0, pending = false;
+  const hostOf = (parent, zone) => { for (let q = parent; q && q !== root; q = q.parent) if (q.userData.moving) return q; return zone ? rootIn : root; };
   function add(geo, m, lw = 1, o = {}) {
-    const mesh = new THREE.Mesh(geo, m);
-    mesh.castShadow = o.cast !== false; mesh.receiveShadow = o.receive !== false;
-    (o.parent || root).add(mesh);
+    const parent = o.parent || root, zone = o.zone ?? ZONE, host = hostOf(parent, zone);
+    const cast = o.cast !== false, receive = o.receive !== false, order = o.order || 0;
+    const key = `${host.id}|${m.id}|${cast ? 1 : 0}${receive ? 1 : 0}|${order}`;
+    let b = MB.get(key); if (!b) MB.set(key, b = { host, m, cast, receive, order, items: [] });
+    b.items.push({ geo, parent });
     if (lw > 0) {
       const eg = new THREE.EdgesGeometry(geo, o.angle || 25);
-      const lg = new LineSegmentsGeometry().fromEdgesGeometry(eg);
-      const l = new LineSegments2(lg, lineMat(lw, { color: o.lineColor, drawOnly: o.drawOnlyLines, realLines: o.realLines }));
-      l.renderOrder = 2;
-      (o.parent || root).add(l);
+      pushLines(eg.attributes.position.array, lineMat(lw, { color: o.lineColor, drawOnly: o.drawOnlyLines, realLines: o.realLines }), parent, host, 2);
+      eg.dispose();
     }
-    return mesh;
+    pending = true;
+  }
+  function pushLines(arr, lm, parent, host, order) {
+    const key = `${host.id}|${lm.id}|${order}`;
+    let b = LB.get(key); if (!b) LB.set(key, b = { host, lm, order, items: [] });
+    b.items.push({ arr, parent });
+    pending = true;
   }
   function lines(segs, lw, o = {}) {
-    const lg = new LineSegmentsGeometry(); lg.setPositions(segs);
-    const l = new LineSegments2(lg, lineMat(lw, { drawOnly: o.drawOnly !== false, color: o.color, first: o.first, realLines: o.realLines }));
-    l.renderOrder = 3;
-    (o.parent || root).add(l);
-    return l;
+    const parent = o.parent || root;
+    pushLines(segs, lineMat(lw, { drawOnly: o.drawOnly !== false, color: o.color, first: o.first, realLines: o.realLines }), parent, hostOf(parent, o.zone ?? ZONE), 3);
+  }
+  const _rel = new THREE.Matrix4(), _inv = new THREE.Matrix4(), _p = new THREE.Vector3(), _bb = new THREE.Box3();
+  const relTo = (parent, host) => { _inv.copy(host.matrixWorld).invert(); return _rel.multiplyMatrices(_inv, parent.matrixWorld); };
+  const isIdentity = (m) => m.elements.every((v, i) => Math.abs(v - (i % 5 === 0 ? 1 : 0)) < 1e-9);
+  function flush() {
+    if (!pending) return;
+    pending = false;
+    scene.updateMatrixWorld(true);
+    const castBox = sunAim.box || new THREE.Box3();
+    MB.forEach((b) => {
+      const geos = b.items.map(({ geo, parent }) => {
+        // position and normal are all the shaders read. Everything gets an index, so boxes and extrusions merge.
+        Object.keys(geo.attributes).forEach((k) => { if (k !== 'position' && k !== 'normal') geo.deleteAttribute(k); });
+        if (!geo.index) { const n = geo.attributes.position.count, ix = new Uint32Array(n); for (let i = 0; i < n; i++) ix[i] = i; geo.setIndex(new THREE.BufferAttribute(ix, 1)); }
+        const rel = relTo(parent, b.host);
+        if (!isIdentity(rel)) geo.applyMatrix4(rel);
+        return geo;
+      });
+      const merged = geos.length > 1 ? mergeGeometries(geos, false) : geos[0];
+      if (geos.length > 1) geos.forEach((g) => g.dispose());
+      const mesh = new THREE.Mesh(merged, b.m);
+      mesh.castShadow = b.cast; mesh.receiveShadow = b.receive; mesh.renderOrder = b.order;
+      b.host.add(mesh);
+      if (b.m.userData.drawOnly) drawOnlyNodes.push(mesh);
+      if (b.cast) { merged.computeBoundingBox(); castBox.union(_bb.copy(merged.boundingBox).applyMatrix4(b.host.matrixWorld)); }
+    });
+    MB.clear();
+    LB.forEach((b) => {
+      let n = 0; b.items.forEach((it) => { n += it.arr.length; });
+      const pos = new Float32Array(n); let k = 0;
+      b.items.forEach(({ arr, parent }) => {
+        const rel = relTo(parent, b.host), id = isIdentity(rel);
+        for (let i = 0; i < arr.length; i += 3) {
+          if (id) { pos[k++] = arr[i]; pos[k++] = arr[i + 1]; pos[k++] = arr[i + 2]; }
+          else { _p.set(arr[i], arr[i + 1], arr[i + 2]).applyMatrix4(rel); pos[k++] = _p.x; pos[k++] = _p.y; pos[k++] = _p.z; }
+        }
+      });
+      const l = new LineSegments2(new LineSegmentsGeometry().setPositions(pos), b.lm);
+      l.renderOrder = b.order;
+      b.host.add(l);
+      if (b.lm.userData.drawOnly) drawOnlyNodes.push(l);
+    });
+    LB.clear();
+    if (!castBox.isEmpty()) { sunAim.box = castBox; fitShadow(); }
+    drawOnlyNodes.forEach((n) => { n.visible = !allReal; });
+    shadowDirty = true; dirty = true;
   }
   const loop = (pts, z) => { const s = []; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s.push(a[0], a[1], z, b[0], b[1], z); } return s; };
 
@@ -576,16 +736,16 @@ export function createStage(cfg = {}) {
     const floor = mat('oakFloor');
     const black = mat('wood');                              // black-stained oak joinery
     const plaster = mat('plaster');
-    const ceil = mat('plaster', { color: 0xf6f5f2 });
+    const ceil = mat('plaster');
     const slab = mat('travertine');                          // pale honed stone: worktops, table tops
-    const basalt = mat('stone', { color: 0x38383c });
+    const basalt = mat('stone', { color: 0x2f2c2a });
     const brick = mat('brick', { color: v.brick });
     const steel = mat('steel');
-    const red = mat('lacquer');
-    const redCloth = mat('linen', { color: 0xb9141f });
+    const red = mat('plain', { color: 0x7a858d });          // art panel, vessel: zinc grey, the red belongs to the front door alone
+    const redCloth = mat('linen', { color: 0xcdc5b5 });
     const linen = mat('linen');
-    const coal = mat('linen', { color: 0x2b2b2f });
-    const rug = mat('linen', { color: 0x77777b });
+    const coal = mat('linen', { color: 0x2f2c2a });
+    const rug = mat('linen', { color: 0x7a858d });
     const glow = mat('interior', { realOnly: true });
     const paving = mat('paving');
     const clear = mat('glass', { clear: true });
@@ -657,7 +817,7 @@ export function createStage(cfg = {}) {
         if (i % 2 === 0) bars.push(bM(1.135, y + rise, z - 0.135, 1.16, y + rise + 0.95, z - 0.11));
         if (i < n - 1) bars.push(bM(1.125, y + rise * 1.5 + 0.93, z - go - 0.02, 1.17, y + rise * 1.5 + 0.975, z + 0.02));
       }
-      many(plate, mat('steel', { color: 0x2c2c31 }), 0.5, O);
+      many(plate, mat('steel', { color: 0x2f2c2a }), 0.5, O);
       many(bars, steel, 0.35, O);
     }
     // a large framed drawing over the stair, a cluster of three lamps hanging in the height of the hall
@@ -665,12 +825,12 @@ export function createStage(cfg = {}) {
     addM(0.3, 3.81, -4.64, 0.313, 5.39, -2.36, ceil, 0);
     addM(0.313, 4.15, -4.2, 0.322, 5.05, -3.3, red, 0);
     addM(0.313, 4.02, -3.18, 0.322, 5.18, -3.1, steel, 0);
-    [[-2.9, 3.35, 1.75], [-3.6, 4.1, 2.15], [-4.25, 3.0, 1.9]].forEach(([pz, py, px]) => {
+    [[-2.9, 4.5, 1.75], [-3.6, 5.0, 2.15], [-4.25, 4.2, 1.9]].forEach(([pz, py, px]) => {
       addM(px - 0.006, py, pz - 0.006, px + 0.006, CEIL, pz + 0.006, steel, 0);
-      add(new THREE.SphereGeometry(0.15, 16, 12).translate(X(px), py, pz), glow, 0, { parent: g, cast: false });
+      add(new THREE.SphereGeometry(0.12, 16, 12).translate(X(px), py, pz), glow, 0, { parent: g, cast: false });
     });
 
-    // 3. The sitting room, under the gallery: a red sofa on the east wall, a low stone table, a chair by the window
+    // 3. The sitting room, under the gallery: a rust-red sofa on the east wall, a low stone table, a chair by the window
     const SZ = -1.55; // how far back the group sits
     addM(3.35, G0, -5.3 + SZ + 0.9, 5.6, G0 + 0.018, -1.5 + SZ, rug, 0.4, O);
     addM(4.86, G0 + 0.02, -4.1 + SZ, 5.72, G0 + 0.14, -1.7 + SZ, black, 0.5, O);
@@ -723,7 +883,7 @@ export function createStage(cfg = {}) {
     addM(1.78, 2.3, -9.0, 1.84, 2.36, -7.2, steel, 0.5, O);
     addM(1.79, 2.275, -8.9, 1.83, 2.3, -7.3, glow, 0, { cast: false });
     addM(1.8, 2.36, -8.12, 1.82, L1 - 0.25, -8.08, steel, 0);
-    // a sideboard on the east wall, and on it the one red vessel
+    // a sideboard on the east wall, and on it a vessel
     addM(5.3, G0, -8.7, 5.76, 1.05, -6.5, black, 0.6, O);
     addM(5.28, 1.05, -8.72, 5.76, 1.09, -6.48, slab, 0.5, O);
     add(new THREE.LatheGeometry([[0, 0], [0.07, 0], [0.125, 0.1], [0.115, 0.24], [0.05, 0.34], [0.06, 0.4]].map((q) => new THREE.Vector2(q[0], q[1])), 28).translate(X(5.52), 1.09, -7.1), red, 0, { parent: g });
@@ -763,13 +923,15 @@ export function createStage(cfg = {}) {
     };
     pane(g, 0.24, 1.64, -12.03); pane(g, 4.36, 5.76, -12.03);
     const gDoorL = new THREE.Group(), gDoorR = new THREE.Group();
+    gDoorL.userData.moving = gDoorR.userData.moving = true;
+    gDoorL.visible = gDoorR.visible = false; interiorNodes.push(gDoorL, gDoorR);
     g.add(gDoorL, gDoorR);
     pane(gDoorL, 1.62, 3.0, -11.96); pane(gDoorR, 3.0, 4.38, -11.96);
     add(box(2.9, 1.1, -11.93, 2.93, 1.5, -11.9), steel, 0, { parent: gDoorL }); add(box(3.07, 1.1, -11.93, 3.1, 1.5, -11.9), steel, 0, { parent: gDoorR });
 
-    // 6. The garden: a terrace, one step down to gravel, white brick walls, and a red maple in a raised bed
+    // 6. The garden: a terrace, one step down to gravel, white brick walls, and a russet maple in a raised bed
     addM(0.0, 0.0, -14.4, 6.0, G0 - 0.02, -12.08, paving, 0.5, O);
-    addM(0.0, 0.0, -17.8, 6.0, 0.14, -14.4, paving, 0.5, O);
+    addM(0.0, 0.0, -17.8, 6.0, 0.14, -14.4, mat('plain', { color: 0x86995f }), 0.5, O);                     // the lawn
     addM(0.22, 0.14, -14.46, 5.78, G0 - 0.015, -14.34, basalt, 0.5, O);
     addM(0.0, 0.14, -17.8, 0.24, 2.5, -12.3, brick, 0.6, O);
     addM(-0.02, 2.5, -17.82, 0.26, 2.58, -12.3, mat('stone'), 0.5, O);
@@ -780,7 +942,7 @@ export function createStage(cfg = {}) {
     addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
     addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
     addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
-    tree(ox + X(4.68), (v.setback || 0) - 16.15, 6.3, 1.5, 0xb3141f);
+    tree(ox + X(5.0), (v.setback || 0) - 17.1, 4.0, 0.62);
     addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
     addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
     addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
@@ -798,7 +960,7 @@ export function createStage(cfg = {}) {
 
   function house(ox, v = {}) {
     const g = new THREE.Group(); g.position.set(ox, 0, v.setback || 0); root.add(g);
-    const faint = !!v.faint, lc = faint ? 0x4a4a50 : v.accent ? 0xe5202e : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
+    const faint = !!v.faint, lc = faint ? 0x8a7d69 : v.accent ? 0xa5432b : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
     const rl = v.accent ? 0.75 : undefined;
     const PAR = v.par || 6.7;
     const doorL = v.door !== 'right';
@@ -814,7 +976,7 @@ export function createStage(cfg = {}) {
     const O = { parent: g, lineColor: lc, realLines: rl };
     add(panel([0, 0, 6, PAR], holes, -T, 0), brick, LW, O);
     const st = mat('stone', { faint });
-    const base = mat('stone', { faint, color: 0x38383c });
+    const base = mat('stone', { faint, color: 0x2f2c2a });
     const stm = mat('steel', { faint });
     const zm = mat('zinc', { faint });
 
@@ -842,18 +1004,19 @@ export function createStage(cfg = {}) {
       add(bx((EX[0] + EX[1]) / 2 - 0.7, 2.985, -0.74, (EX[0] + EX[1]) / 2 + 0.7, 3.0, -0.66), mat('interior', { realOnly: true }), 0, { parent: g, cast: false });
     }
 
-    // the door: a black steel portal, and in it two leaves of glass in red frames, 2.0 m by 2.55 m together
+    // the door: a steel portal, and in it two leaves of glass in oxide-red frames, 2.0 m by 2.55 m together
     const show = !faint && v.interior !== false;
-    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), stm, lw, O);
+    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), mat('steel', { faint, color: 0x9a3f2a }), lw, O);   // the door frame: the one oxide red
     const hA = Math.min(X(DX[0]), X(DX[1])) + 0.012, hB = Math.max(X(DX[0]), X(DX[1])) - 0.012, wL = (hB - hA) / 2 - 0.004;
     const red = mat('lacquer', { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
     const leaves = [1, -1].map((s) => {
       const piv = new THREE.Group(); piv.position.set(s > 0 ? hA : hB, 0, pz - 0.035); g.add(piv);
+      piv.userData.moving = show;                            // only the leaves of a show house swing: the others are merged into the row
       const q = (a, b) => (s > 0 ? [a, b] : [-b, -a]);       // along the leaf, from the hinge
       const f = 0.06, y0 = G0 + 0.012, y1 = 2.85, bars = [];
       const B = (a, b, c, d, z0 = -0.05, z1 = 0) => { const [p0, p1] = q(a, b); return box(p0, c, z0, p1, d, z1); };
       bars.push(B(0, wL, y0, y0 + 0.11), B(0, wL, y1 - f, y1), B(0, f, y0, y1), B(wL - f, wL, y0, y1));
-      add(mergeGeometries(bars), red, lw, { parent: piv, lineColor: lc, realLines: rl });
+      add(mergeGeometries(bars), red, faint ? lw : 1.1, { parent: piv, lineColor: lc || (faint ? undefined : 0xa5432b), realLines: rl });   // the door is drawn in Rötel
       add(B(f, wL - f, y0 + 0.11, y1 - f, -0.031, -0.019), doorGlass, 0, { parent: piv, cast: false });
       if (!faint) {
         add(B(wL - 0.16, wL - 0.125, 1.0, 1.9, 0.03, 0.06), stm, 0.6, { parent: piv });       // pulls, outside and in
@@ -870,8 +1033,8 @@ export function createStage(cfg = {}) {
     windowIn(g, ...R4(3.55, 1.0, 5.5, 3.0), 0.22, { faint, lc, rl, sill: true, panes: 2 });
     // upstairs
     if (first === 'frame') {
-      add(panel([0.72, 3.77, 5.28, 6.18], [[0.9, 3.95, 5.1, 6.0]], 0, 0.38), mat('stone', { faint, color: 0xc9c9c7 }), LW, O);
-      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xbdbdbb }), 0, { parent: g });
+      add(panel([0.72, 3.77, 5.28, 6.18], [[0.9, 3.95, 5.1, 6.0]], 0, 0.38), mat('stone', { faint, color: 0xd6cfc0 }), LW, O);
+      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xc2baa9 }), 0, { parent: g });
       windowIn(g, 0.9, 3.95, 5.1, 6.0, 0.16, { faint, lc, rl, panes: 3, transom: 5.4 });
     } else {
       // a bay of zinc, 800 mm out over the porch, glazed across its front
@@ -902,8 +1065,8 @@ export function createStage(cfg = {}) {
       if (!faint) add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g });
     }
 
-    let gardenDoors = null;
-    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, O);
+    let gardenDoors = null, doorA = 0, gardenD = 0;
+    if (show) { ZONE = 1; gardenDoors = buildInterior(g, ox, v, doorL, PAR, O); ZONE = 0; }
     else add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
 
     if (v.relief) {
@@ -921,7 +1084,7 @@ export function createStage(cfg = {}) {
           bricks.push(box(x, y, 0, x + 0.215, y + 0.065, v.relief));
         }
       }
-      add(mergeGeometries(bricks), mat('brick', { faint, color: v.header || 0x2b2b2f }), faint ? 0 : 0.55, O);
+      add(mergeGeometries(bricks), mat('brick', { faint, color: v.header || 0x2f2c2a }), faint ? 0 : 0.55, O);
     }
 
     const zs = v.setback || 0;
@@ -934,12 +1097,17 @@ export function createStage(cfg = {}) {
       key(p, cam, yaw, pitch, fov, fh, extra) { return viewKey(p, [ox + X(cam[0]), cam[1], zs + cam[2]], doorL ? yaw : -yaw, pitch, fov, fh, extra); },
       setDoor(open01) {
         const a = clamp01(open01) * (82 * Math.PI / 180);
+        if (!show || a === doorA) return;
+        doorA = a;
         leaves.forEach(({ piv, s }) => { piv.rotation.y = s * a; });
+        shadowDirty = true;
       },
       setGardenDoor(open01) {
-        if (!gardenDoors) return;
         const d = clamp01(open01) * 1.3;
+        if (!gardenDoors || d === gardenD) return;
+        gardenD = d;
         gardenDoors.gDoorL.position.x = -d; gardenDoors.gDoorR.position.x = d;
+        shadowDirty = true;
       },
     };
   }
@@ -947,8 +1115,8 @@ export function createStage(cfg = {}) {
   function street(x0, x1, sky = true) {
     add(box(x0, -0.15, 0, x1, 0, 3.2), mat('paving'), 0, { cast: false });
     add(box(x0, -0.15, 3.2, x1, 0.01, 3.38), mat('stone'), 0, { cast: false });
-    add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('plain', { color: 0x1c1c1f }), 0, { cast: false });
-    if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false });
+    add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('paving'), 0, { cast: false });
+    if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false, order: 1 });   // drawn last of the solids: it only costs the pixels that stay sky
     lines([x0, 0, 3.4, x1, 0, 3.4], 2.6, { first: true });
   }
 
@@ -956,19 +1124,20 @@ export function createStage(cfg = {}) {
     const P = [[0, 1.75], [0.07, 1.73], [0.1, 1.66], [0.09, 1.58], [0.06, 1.53], [0.2, 1.47], [0.24, 1.36], [0.26, 1.06], [0.24, 0.84], [0.2, 0.86], [0.2, 1.2], [0.18, 1.0], [0.17, 0.84], [0.14, 0.45], [0.13, 0.06], [0.17, 0.0], [0.03, 0.0], [0.02, 0.8]];
     const pts = [...P, ...P.slice(1, -1).reverse().map(([a, b]) => [-a, b])].map(([a, b]) => [x + (flip ? -a : a) * s, b * s]);
     const shape = new THREE.Shape(pts.map((p) => new THREE.Vector2(p[0], p[1])));
-    add(new THREE.ShapeGeometry(shape).translate(0, 0, z), mat('plain', { drawOnly: true, color: 0x0c0c0e }), 0, { cast: false });
+    add(new THREE.ShapeGeometry(shape).translate(0, 0, z), mat('plain', { drawOnly: true, color: 0xdfd2ba }), 0, { cast: false });
     lines(loop(pts, z + 0.01), 0.9);
   }
 
   function tree(x, z, h = 7.5, r = 2.3, leaf) {
+    const grey = new THREE.Color(0x8a7a66), LEAVES = [0xa8452f, 0xc9622a, 0xd98b2f].map((c) => new THREE.Color(c).lerp(grey, 0.42).getHex());   // late October: mostly russet, some orange, a few ochre
     const R = mulberry(Math.round(x * 100) + 7);
-    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x2a2a2d }), 0);
-    const blobs = [];
+    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x4a3524 }), 0);
+    const blobs = [[], [], []];
     for (let i = 0; i < 70; i++) {
       const a = R() * Math.PI * 2, e = (R() - 0.5) * 2.4, rr = r * (0.25 + 0.65 * Math.sqrt(R()));
-      blobs.push(new THREE.IcosahedronGeometry(0.32 + R() * 0.4, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
+      blobs[i % 3 === 0 ? 1 : i % 11 === 0 ? 2 : 0].push(new THREE.IcosahedronGeometry(0.22 + R() * 0.28, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
     }
-    add(mergeGeometries(blobs), mat('foliage', { realOnly: true, color: leaf }), 0);
+    blobs.forEach((bl, i) => add(mergeGeometries(bl), mat('foliage', { realOnly: true, color: LEAVES[i] }), 0));
     const zz = z + 0.3, segs = [];
     segs.push(x - 0.11, 0, zz, x - 0.06, h - r * 1.1, zz, x + 0.13, 0, zz, x + 0.07, h - r * 1.1, zz);
     segs.push(x - 0.05, h - r * 1.2, zz, x - r * 0.45, h - r * 0.55, zz, x + 0.05, h - r * 1.05, zz, x + r * 0.5, h - r * 0.35, zz, x, h - r * 0.9, zz, x - r * 0.05, h - r * 0.1, zz);
@@ -1015,7 +1184,9 @@ export function createStage(cfg = {}) {
     lastTarget.set(...c.t);
     const dir = new THREE.Vector3(Math.sin(c.yaw * D2R) * Math.cos(c.pitch * D2R), Math.sin(c.pitch * D2R), Math.cos(c.yaw * D2R) * Math.cos(c.pitch * D2R));
     camera.position.copy(lastTarget).addScaledVector(dir, d);
-    camera.near = Math.max(0.05, d - 80, d * 0.03); camera.far = d + 260;
+    // the lens never comes closer than 40 cm to anything (window.__clear), so the near plane can stand at 20 cm:
+    // four times the depth precision indoors
+    camera.near = Math.max(0.2, d - 80, d * 0.03); camera.far = d + 260;
     camera.lookAt(lastTarget); camera.updateProjectionMatrix();
     S.camDist = d;
     S.camTarget = lastTarget;
@@ -1029,23 +1200,74 @@ export function createStage(cfg = {}) {
     pins.forEach((q) => {
       v3.copy(q.p).project(camera);
       const x = (v3.x + 1) / 2 * W, y = (1 - v3.y) / 2 * H;
-      q.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) ${q.tf || ''}`;
-      q.el.style.visibility = v3.z > 1 ? 'hidden' : '';
+      const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) ${q.tf || ''}`, vis = v3.z > 1 ? 'hidden' : '';
+      if (tf !== q.tfNow) { q.tfNow = tf; q.el.style.transform = tf; }
+      if (vis !== q.visNow) { q.visNow = vis; q.el.style.visibility = vis; }
     });
   }
 
-  function resize() {
-    W = innerWidth; H = innerHeight;
-    renderer.setSize(W, H, false);
-    LMATS.forEach((m) => m.resolution.set(W * DPR, H * DPR));
+  /* ---------- size, resolution, what is drawn ---------- */
+  // A pen thinner than one pixel of the buffer flickers: it is drawn one pixel wide and lighter instead.
+  function applySize() {
+    renderer.setPixelRatio(DPR); renderer.setSize(W, H, true);
+    LMATS.forEach((m) => {
+      const w = m.userData.px * DPR;
+      m.resolution.set(W * DPR, H * DPR); m.linewidth = Math.max(1, w); m.opacity = Math.min(1, w);
+    });
+    U.uLinePx.value = 1.05 * DPR;
+    dirty = true;
   }
-  addEventListener('resize', resize);
+  const gov = governor({ apply: (d) => { DPR = d; applySize(); } });
+  function resize() {
+    const [w, h] = measure();
+    if (w === W && h === H) return;                // the URL bar of a phone sliding away is not a resize
+    W = w; H = h;
+    gov.hold(800);
+    if (pinnedDpr == null) gov.refit(); else applySize();
+  }
+  addEventListener('resize', resize, { passive: true });
 
-  Object.assign(S, {
-    THREE, U, scene, root, renderer, camera, sun, hemi, DPR, phone, get W() { return W; }, get H() { return H; },
+  // live: some pixel may already show the real house. allReal: no pixel is a drawing any more.
+  let live = null, allReal = false;
+  function phase() {
+    const sw = U.uSweep.value.z, real = U.uReal.value;
+    const lv = real > 0.001 || sw > -59, ar = real >= 0.999 || sw >= 59;
+    if (lv !== live) {
+      live = lv; U.uLive.value = lv ? 1 : 0;
+      interiorNodes.forEach((n) => { n.visible = lv; });   // the rooms are behind paper until then
+      shadowDirty = true;
+    }
+    if (ar !== allReal) { allReal = ar; drawOnlyNodes.forEach((n) => { n.visible = !ar; }); }
+  }
+  function render() {
+    flush(); phase();
+    placePins();
+    if (shadowDirty) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
+    renderer.render(scene, camera);
+    dirty = false;
+  }
+  // before the first frame: everything visible once, so every buffer is on the GPU and every shader is built
+  // while the loader still covers the sheet
+  async function warm() {
+    flush();
+    const vis = [...interiorNodes, ...drawOnlyNodes].map((n) => [n, n.visible]);
+    vis.forEach(([n]) => { n.visible = true; });
+    U.uLive.value = 1;
+    try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); } catch (e) { renderer.compile(scene, camera); }
+    renderer.shadowMap.needsUpdate = true;
+    renderer.render(scene, camera);
+    vis.forEach(([n, v]) => { n.visible = v; });
+    live = null; shadowDirty = true; dirty = true;
+  }
+
+  // (defineProperties, not Object.assign: the getters have to stay getters)
+  Object.defineProperties(S, Object.getOwnPropertyDescriptors({
+    THREE, U, scene, root, renderer, camera, sun, hemi, phone, tier, gov,
+    get DPR() { return DPR; }, get W() { return W; }, get H() { return H; },
+    get dirty() { return dirty || shadowDirty || pending; }, touch() { dirty = true; },
     mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, camAt, setCam, viewKey, pin, placePins,
-    render() { placePins(); renderer.render(scene, camera); },
-  });
+    flush, warm, render,
+  }));
   return S;
 }
 
@@ -1078,17 +1300,25 @@ export function run(S, o) {
     hudOptic = sf.querySelector('#hudOptic');
   }
 
-  // p follows the page's own scroll position with a short lag
+  // p follows the page's own scroll position with a short lag. One vh is measured on the track itself (the large
+  // viewport), not from innerHeight: on a phone innerHeight changes when the URL bar slides, and p must not jump with it.
   const noSmooth = Q.has('nosmooth');
-  let pEase = (scrollY / innerHeight) * 100, pT = performance.now();
+  let vhPx = innerHeight / 100;
+  const measureVh = () => { vhPx = (track.offsetHeight / (o.length + 100)) || innerHeight / 100; };
+  measureVh(); addEventListener('resize', measureVh, { passive: true });
+  let pEase = scrollY / vhPx, pT = performance.now();
   function scrollP(now) {
-    const target = (scrollY / innerHeight) * 100, dt = Math.min(0.25, Math.max(0, (now - pT) / 1000)); pT = now;
+    const target = scrollY / vhPx, dt = Math.min(0.25, Math.max(0, (now - pT) / 1000)); pT = now;
     pEase = noSmooth ? target : pEase + (target - pEase) * (1 - Math.exp(-7.5 * dt));
     if (Math.abs(target - pEase) < 0.01) pEase = target;
     return pEase;
   }
-  function jumpToP(targetP) { window.scrollTo({ top: (targetP / 100) * innerHeight, behavior: 'smooth' }); }
+  function jumpToP(targetP) { window.scrollTo({ top: targetP * vhPx, behavior: 'smooth' }); }
   window.__jumpToP = jumpToP;
+  // the page only writes to the DOM when a value has changed
+  const setText = (el, t) => { if (el.__t !== t) { el.__t = t; el.textContent = t; } };
+  const setAttr = (el, k, v) => { const c = el.__a || (el.__a = {}); if (c[k] !== v) { c[k] = v; el.setAttribute(k, v); } };
+  const setStyle = (el, k, v) => { const c = el.__s || (el.__s = {}); if (c[k] !== v) { c[k] = v; el.style[k] = v; } };
 
   // the little plan in the corner that shows where the lens is (#cad-map)
   const radarCfg = o.radar || {
@@ -1117,14 +1347,14 @@ export function run(S, o) {
       <svg viewBox="-4.2 -0.6 22.4 7.2">
         ${zoneRects}
         <!-- the plan: plot walls, the facade with its porch, the glass wall to the garden -->
-        <path d="M-4.0 0 H17.6 M-4.0 6.0 H17.6 M0 0 V0.5 M0 2.9 V6.0 M0 0.5 H1.2 M0 2.9 H1.2 M1.2 0.5 V0.7 M1.2 2.7 V2.9 M12.0 0 V1.64 M12.0 4.36 V6.0 M17.6 0 V6.0" fill="none" stroke="#f1eeea" stroke-width="0.28" opacity="0.82" pointer-events="none"/>
+        <path d="M-4.0 0 H17.6 M-4.0 6.0 H17.6 M0 0 V0.5 M0 2.9 V6.0 M0 0.5 H1.2 M0 2.9 H1.2 M1.2 0.5 V0.7 M1.2 2.7 V2.9 M12.0 0 V1.64 M12.0 4.36 V6.0 M17.6 0 V6.0" fill="none" stroke="#2a2522" stroke-width="0.28" opacity="0.82" pointer-events="none"/>
         <!-- steps, the two door leaves, the stair, the edge of the gallery, sofa, low table, island, dining table, the garden step -->
-        <path d="M-0.6 0.5 V2.9 M-0.3 0.5 V2.9 M1.2 0.7 L2.15 0.84 M1.2 2.7 L2.15 2.56 M1.9 0.24 H5.9 V1.14 H1.9 Z M1.7 4.86 H4.1 V5.72 H1.7 Z M2.3 3.95 H3.5 V4.45 H2.3 Z M6.95 1.4 H9.25 V2.2 H6.95 Z M9.3 3.95 H11.5 V4.95 H9.3 Z M14.4 0 V6.0" fill="none" stroke="#f1eeea" stroke-width="0.16" opacity="0.48" pointer-events="none"/>
-        <path d="M1.3 3.1 H6.0 V1.2" fill="none" stroke="#f1eeea" stroke-width="0.14" stroke-dasharray="0.35 0.25" opacity="0.5" pointer-events="none"/>
-        <circle cx="16.15" cy="4.68" r="1.0" fill="none" stroke="#e5202e" stroke-width="0.18" stroke-dasharray="0.4 0.3" opacity="0.8" pointer-events="none"/>
-        <line id="cm-scan" x1="0" y1="-0.5" x2="0" y2="6.5" stroke="#e5202e" stroke-width="0.28" stroke-dasharray="0.6 0.4" opacity="0" pointer-events="none"/>
-        <polygon id="cm-cone" points="-2.5,3.0 0.5,1.8 0.5,4.2" fill="rgba(229,32,46,0.3)" stroke="#e5202e" stroke-width="0.18" pointer-events="none"/>
-        <circle id="cm-dot" cx="-2.5" cy="3.0" r="0.52" fill="#e5202e" stroke="#f1eeea" stroke-width="0.14" pointer-events="none"/>
+        <path d="M-0.6 0.5 V2.9 M-0.3 0.5 V2.9 M1.2 0.7 L2.15 0.84 M1.2 2.7 L2.15 2.56 M1.9 0.24 H5.9 V1.14 H1.9 Z M1.7 4.86 H4.1 V5.72 H1.7 Z M2.3 3.95 H3.5 V4.45 H2.3 Z M6.95 1.4 H9.25 V2.2 H6.95 Z M9.3 3.95 H11.5 V4.95 H9.3 Z M14.4 0 V6.0" fill="none" stroke="#2a2522" stroke-width="0.16" opacity="0.48" pointer-events="none"/>
+        <path d="M1.3 3.1 H6.0 V1.2" fill="none" stroke="#2a2522" stroke-width="0.14" stroke-dasharray="0.35 0.25" opacity="0.5" pointer-events="none"/>
+        <circle cx="16.15" cy="4.68" r="1.0" fill="none" stroke="#a5432b" stroke-width="0.18" stroke-dasharray="0.4 0.3" opacity="0.8" pointer-events="none"/>
+        <line id="cm-scan" x1="0" y1="-0.5" x2="0" y2="6.5" stroke="#a5432b" stroke-width="0.28" stroke-dasharray="0.6 0.4" opacity="0" pointer-events="none"/>
+        <polygon id="cm-cone" points="-2.5,3.0 0.5,1.8 0.5,4.2" fill="rgba(165,67,43,0.3)" stroke="#a5432b" stroke-width="0.18" pointer-events="none"/>
+        <circle id="cm-dot" cx="-2.5" cy="3.0" r="0.52" fill="#a5432b" stroke="#2a2522" stroke-width="0.14" pointer-events="none"/>
       </svg>
       <div class="cm-pills">${zoneBtns}</div>`;
     document.body.appendChild(cm);
@@ -1135,8 +1365,8 @@ export function run(S, o) {
     cmZones = [...cm.querySelectorAll('.cm-zone')];
     cmBtns = [...cm.querySelectorAll('.cm-btn')];
     [...cmZones, ...cmBtns].forEach((el) => {
-      el.addEventListener('mouseenter', () => { hoverTag = el.dataset.tag || ''; });
-      el.addEventListener('mouseleave', () => { hoverTag = ''; });
+      el.addEventListener('mouseenter', () => { hoverTag = el.dataset.tag || ''; S.touch(); });
+      el.addEventListener('mouseleave', () => { hoverTag = ''; S.touch(); });
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         jumpToP(parseFloat(el.dataset.at || '0'));
@@ -1159,18 +1389,28 @@ export function run(S, o) {
   html.classList.add('locked');
   if (skip) { html.classList.add('in', 'done'); $('#loader')?.classList.add('gone'); }
 
-  let p = 0, t0 = performance.now(), introT = -1;
+  let p = 0, t0 = performance.now(), introT = -1, pLast = NaN, heroLast = '', activeId = '', idle = 0;
+  const zoneAt = (u) => { for (const z of radarCfg.zones) if (u >= z.u0 && u <= z.u1) return z; return radarCfg.zones[0]; };
+  // Render on demand: a frame is only worked out and drawn when the scroll has moved, the intro is running or the
+  // stage asks for it (resize, resolution, shadow). A page at rest costs nothing, a hidden page not even this check.
   function tick(now) {
+    requestAnimationFrame(tick);
+    if (!visible()) { S.gov.frame(now, false); return; }
     p = scrollP(now);
+    const intro = introT >= 0 && !skip && !html.classList.contains('done');
+    const active = intro || p !== pLast || S.dirty;
+    S.gov.frame(now, active);
+    if (!active) return;
+    pLast = p;
     // intro clock
-    if (introT >= 0 && !skip) {
+    if (intro) {
       const t = (now - introT) / 1000;
       S.U.uDraw.value = Math.min(1.2, ease(span(t, 0, 3.3)) * 1.2);
       S.U.uHatchIn.value = ease(span(t, 2.4, 3.8));
       S.U.uDetailIn.value = ease(span(t, 2.6, 3.8));
       if (t > 0.35) $('#loader')?.classList.add('gone');
       if (t > 1.9) html.classList.add('in');
-      if (t > 3.9 && !html.classList.contains('done')) {
+      if (t > 3.9) {
         html.classList.add('done'); html.classList.remove('locked');
         window.__introDone = true;
       }
@@ -1180,9 +1420,9 @@ export function run(S, o) {
       const sd = S.U.uSun.value;
       const alt = (Math.asin(Math.max(-1, Math.min(1, sd.y))) * 180 / Math.PI).toFixed(1);
       const az = (((Math.atan2(-sd.x, sd.z) * 180 / Math.PI) + 90 + 360) % 360).toFixed(0);
-      hudSun.textContent = `ALT ${alt}° · AZ ${az}°`;
+      setText(hudSun, `ALT ${alt}° · AZ ${az}°`);
       const fov = S.camera.fov;
-      hudOptic.textContent = `${fov.toFixed(1)}° ${fov < 4 ? 'ORTHO' : fov < 22 ? 'RELIEF' : 'PERSP'}`;
+      setText(hudOptic, `${fov.toFixed(1)}° ${fov < 4 ? 'ORTHO' : fov < 22 ? 'RELIEF' : 'PERSP'}`);
     }
     if (cmDot && cmCone && cmLbl) {
       // Map camera position to plan radar coordinates: u = depth into plot (-z), v = x inside house
@@ -1191,8 +1431,8 @@ export function run(S, o) {
       const u = Math.max(-3.6, Math.min(17.0, -camPos.z));
       const rawV = camPos.x - (radarCfg.ox || 0);
       const v = Math.max(0.4, Math.min(5.6, radarCfg.mirrorX ? 6 - rawV : rawV));
-      cmDot.setAttribute('cx', u.toFixed(2));
-      cmDot.setAttribute('cy', v.toFixed(2));
+      setAttr(cmDot, 'cx', u.toFixed(2));
+      setAttr(cmDot, 'cy', v.toFixed(2));
 
       const du = (-camTgt.z) - (-camPos.z);
       const dv = (radarCfg.mirrorX ? -1 : 1) * (camTgt.x - camPos.x);
@@ -1200,49 +1440,53 @@ export function run(S, o) {
       const r = 2.8, sp = 0.42;
       const u1 = u + Math.cos(ang - sp) * r, v1 = v + Math.sin(ang - sp) * r;
       const u2 = u + Math.cos(ang + sp) * r, v2 = v + Math.sin(ang + sp) * r;
-      cmCone.setAttribute('points', `${u.toFixed(2)},${v.toFixed(2)} ${u1.toFixed(2)},${v1.toFixed(2)} ${u2.toFixed(2)},${v2.toFixed(2)}`);
+      setAttr(cmCone, 'points', `${u.toFixed(2)},${v.toFixed(2)} ${u1.toFixed(2)},${v1.toFixed(2)} ${u2.toFixed(2)},${v2.toFixed(2)}`);
 
       // Active zone highlight
-      let activeZone = radarCfg.zones[0];
-      for (const z of radarCfg.zones) {
-        if (u >= z.u0 && u <= z.u1) { activeZone = z; break; }
-      }
+      let activeZone = zoneAt(u);
       if (p > 340 && u < 0.2) activeZone = radarCfg.zones[1] || activeZone;
-      cmZones.forEach((el) => el.classList.toggle('active', el.dataset.id === activeZone.id));
-      cmBtns.forEach((el) => el.classList.toggle('active', el.dataset.id === activeZone.id));
+      if (activeZone.id !== activeId) {
+        activeId = activeZone.id;
+        cmZones.forEach((el) => el.classList.toggle('active', el.dataset.id === activeId));
+        cmBtns.forEach((el) => el.classList.toggle('active', el.dataset.id === activeId));
+      }
 
       const swZ = S.U.uSweep.value.z;
       if (hoverTag) {
-        cmLbl.textContent = `SPRUNG // ${hoverTag}`;
+        setText(cmLbl, `SPRUNG // ${hoverTag}`);
       } else if (swZ > -30 && swZ < 30) {
-        cmLbl.textContent = `SCAN // S:${swZ.toFixed(1)}M`;
+        setText(cmLbl, `SCAN // S:${swZ.toFixed(1)}M`);
       } else if (S.camera.fov < 22) {
-        cmLbl.textContent = `${activeZone.label} · ${S.camera.fov.toFixed(0)}° OBJEKTIV`;
+        setText(cmLbl, `${activeZone.label} · ${S.camera.fov.toFixed(0)}° OBJEKTIV`);
       } else {
-        cmLbl.textContent = `${activeZone.label} · Z:${(-camPos.z >= 0 ? '+' : '')}${(-camPos.z).toFixed(1)}M`;
+        setText(cmLbl, `${activeZone.label} · Z:${(-camPos.z >= 0 ? '+' : '')}${(-camPos.z).toFixed(1)}M`);
       }
 
       // Sweep scan line indicator
       if (swZ > -30 && swZ < 30) {
         const su = lerp(-3.5, 16.5, clamp01((swZ + 14) / 28));
-        cmScan.setAttribute('x1', su.toFixed(2));
-        cmScan.setAttribute('x2', su.toFixed(2));
-        cmScan.setAttribute('opacity', '0.9');
+        setAttr(cmScan, 'x1', su.toFixed(2));
+        setAttr(cmScan, 'x2', su.toFixed(2));
+        setAttr(cmScan, 'opacity', '0.9');
       } else {
-        cmScan.setAttribute('opacity', '0');
+        setAttr(cmScan, 'opacity', '0');
       }
     }
     beats.forEach((b) => {
       const f = b.fade || 14;
       const v = Math.min(span(p, b.from - f, b.from), 1 - span(p, b.to - f, b.to));
-      b.el.style.opacity = v.toFixed(3);
-      b.el.style.transform = `translate3d(0, ${((1 - v) * 14).toFixed(1)}px, 0)`;
-      b.el.style.visibility = v <= 0.001 ? 'hidden' : 'visible';
+      const on = v > 0.001;
+      if (on || b.on !== false) {
+        setStyle(b.el, 'opacity', v.toFixed(3));
+        setStyle(b.el, 'transform', `translate3d(0, ${((1 - v) * 14).toFixed(1)}px, 0)`);
+        setStyle(b.el, 'visibility', on ? 'visible' : 'hidden');
+        b.on = on;
+      }
     });
-    html.style.setProperty('--hero-out', span(p, o.heroOut?.[0] ?? 12, o.heroOut?.[1] ?? 60).toFixed(3));
-    if (debug) debug.textContent = `p ${p.toFixed(1)} vh`;
+    const hero = span(p, o.heroOut?.[0] ?? 12, o.heroOut?.[1] ?? 60).toFixed(3);
+    if (hero !== heroLast) { heroLast = hero; html.style.setProperty('--hero-out', hero); }
+    if (debug) setText(debug, `p ${p.toFixed(1)} vh · ${S.tier} · dpr ${S.DPR.toFixed(2)}`);
     S.render();
-    requestAnimationFrame(tick);
   }
 
   // loader: a percent above the ground line. Fonts, a first frame, every shader built.
@@ -1250,17 +1494,20 @@ export function run(S, o) {
   const minT = 1100;
   const fonts = Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]);
   o.frame(0, S, 0);
-  S.renderer.compile(S.scene, S.camera);
   let shown = 0;
   const count = setInterval(() => { shown = Math.min(99, shown + 3 + Math.random() * 7); if (fill) fill.textContent = `${Math.floor(shown)}%`; }, 70);
-  fonts.then(() => new Promise((r) => setTimeout(r, Math.max(0, minT - (performance.now() - t0))))).then(() => {
+  // shaders are built off the main thread where the browser can (compileAsync), so the counter keeps running
+  Promise.all([fonts, S.warm()]).then(() => new Promise((r) => setTimeout(r, Math.max(0, minT - (performance.now() - t0))))).then(() => {
     clearInterval(count); if (fill) fill.textContent = '100%';
+    measureVh();
+    o.frame(0, S, 0);
     S.render();
+    S.gov.hold(1500);
     window.__ready = true;
     if (skip) {
       html.classList.remove('locked'); window.__introDone = true;
       const at = num('at', 0);
-      requestAnimationFrame(() => { scrollTo(0, at / 100 * innerHeight); pEase = at; });
+      requestAnimationFrame(() => { scrollTo(0, at * vhPx); pEase = at; });
     } else {
       setTimeout(() => { introT = performance.now(); }, 250);
     }
@@ -1293,7 +1540,7 @@ export function run(S, o) {
       if (best < out.worst) { out.worst = +best.toFixed(3); out.at = pp; }
       if (best < warn) out.near.push({ p: pp, d: +best.toFixed(3), eye: e.toArray().map((x) => +x.toFixed(2)), where });
     }
-    o.frame(p, S, 0);
+    o.frame(p, S, 0); S.touch();
     return out;
   };
 }

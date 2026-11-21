@@ -8,15 +8,15 @@ Ersetzen Sie die Teile in `[eckigen Klammern]` durch Ihr eigenes Thema.
 Ich möchte eine scrollgesteuerte Landingpage bauen für [ein Stadthaus, das verkauft wird, Ihr
 Thema].
 
-Die Idee: Die Seite öffnet mit einer Vorderansicht, das Gebäude frontal gezeichnet. Weiße Tusche
-auf schwarzem Papier, Höhenkoten, ein Schriftfeld, eine Person als Maßstab und eine
+Die Idee: Die Seite öffnet mit einer Vorderansicht, das Gebäude frontal gezeichnet. Schwarze Kreide, weiße Kreide
+und Rötel auf getöntem Papier (Trois Crayons), Höhenkoten, ein Schriftfeld, eine Person als Maßstab und eine
 45-Grad-Schraffur in jedem Schatten. Nach dem Loader zeichnet sich die Zeichnung vom Boden
 aufwärts selbst, dann strömt die Schraffur entlang des Lichts herein.
 
 Der Scrollablauf, der Reihe nach:
 1. Relief. Das Objektiv öffnet sich etwas und die Kamera dreht sich, sodass der Eingang
    zurückweicht und der Erker nach vorn kommt.
-2. Die Sonne. Eine dünne rote Linie fährt unter 45 Grad über die Fassade und verwandelt
+2. Die Sonne. Eine dünne Rötel-Linie fährt unter 45 Grad über die Fassade und verwandelt
    Papier in weißen Backstein, Stein, Zink und Glas. Kein einziger Schatten bewegt sich.
 3. Dann wandert die Sonne zum [späten Nachmittag], und die Schatten gleiten über den Backstein.
 4. Die Kamera steigt die Stufen hinauf, die zwei Flügel der großen Glastür schwingen auf, und
@@ -33,9 +33,10 @@ Worauf es mir ankommt:
   in den Schatten legt, wird schraffiert, sodass gezeichnete und echte Schatten dieselben
   Formen haben.
 - Ein Material pro Fläche, Papier oder echt, pro Pixel vom Scan gewählt.
-- Der Look: ein CAD-Blatt in Schwarz, Weiß und einem Rot. Papier #0c0c0e, Tusche #f1eeea, ein
-  roter Akzent #e5202e. Auch das echte Haus bleibt in dieser Palette: weißer Backstein,
-  anthrazitfarbenes Zink, schwarze Eiche, rot sind nur die Tür, ein Sofa und ein Ahorn.
+- Der Look: ein Trois Crayons auf Tonpapier. Papier #dfd2ba, schwarze Kreide #2a2522 für Umriss
+  und Schraffur, weiße Kreide #fcf9f2 für die besonnten Flächen, ein einziger Akzent in Rötel
+  #a5432b (Tür, Scankante, Links). Danach das gebaute Haus im späten Oktoberlicht: weißer
+  Backstein, Zink, Eiche, oxidroter Stahl, Rasen und ein Ahorn in Rost und Orange.
   Chakra Petch für Überschriften, IBM Plex Mono für Beschriftungen, ein Blattrahmen mit
   Eckmarken, eine Live-Anzeige von Sonne und Objektiv und ein kleiner Grundriss, der zeigt,
   wo die Kamera ist.

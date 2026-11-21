@@ -5,16 +5,16 @@
 // past the sitting room, and on to the kitchen.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.16, hatchPhone: 0.2, drawSpan: [-2, 45], drawDir: [1, 0.9], wipe: [-10, 26], soft: 1.6 });
+const S = createStage({ hatch: 0.18, hatchPhone: 0.24, drawSpan: [-2, 45], drawDir: [1, 0.9], wipe: [-10, 26], soft: 1.6 });
 
 // white brick with a bay, grey brick with a stone frame, turn and turn about. Every door is red.
 const houses = [0, 1, 2, 3, 4, 5].map((i) => S.house(i * 6, {
-  ...(i % 2 ? { par: 6.7, door: 'right' } : { par: 7.0, first: 'frame', brick: 0x8c8c90 }),
+  ...(i % 2 ? { par: 6.7, door: 'right' } : { par: 7.0, first: 'frame', brick: 0xe0dbcf }),
   setback: i % 2 ? -0.3 : 0, accent: i === 3, interior: i === 3,
 }));
 const plot4 = houses[3];
-S.house(-6, { faint: true, par: 7.6, roof: 'none', first: 'frame', brick: 0x37373b });
-S.house(36, { faint: true, par: 7.6, roof: 'none', brick: 0x37373b });
+S.house(-6, { faint: true, par: 7.6, roof: 'none', first: 'frame', brick: 0xd9d3c7 });
+S.house(36, { faint: true, par: 7.6, roof: 'none', brick: 0xd9d3c7 });
 S.street(-60, 80);
 S.figure(8.2, 2.0, 1, false); S.figure(25.6, 2.3, 1, true); S.figure(26.1, 2.1, 0.94, true);
 S.tree(32.6, 2.6, 6.6, 1.9);
@@ -44,7 +44,7 @@ const KEYS = [
 
 const LATE = new THREE.Vector3(-1.45, 0.62, 0.78).normalize();
 const sunDir = new THREE.Vector3();
-const late = new THREE.Color(0xfff0e4), white = new THREE.Color(0xfff6ee);
+const late = new THREE.Color(0xffd9a8), white = new THREE.Color(0xfff1dc);
 
 run(S, {
   length: 660,
@@ -71,14 +71,14 @@ run(S, {
     sunDir.copy(CONVENTION).lerp(LATE, m).normalize();
     S.setSun(sunDir);
     S.sun.color.copy(white).lerp(late, m);
-    S.sun.intensity = lerp(3.4, 3.2, m);
+    S.sun.intensity = lerp(3.2, 3.0, m);
     plot4.setDoor(smooth(span(p, 365, 435)));
     plot4.setGardenDoor(smooth(span(p, 565, 640)));
   },
   beats: [
     { from: 62, to: 122, html: '<span class="n">01 &nbsp;·&nbsp; Kreidegasse</span><p>Sechs Häuser aus Ziegel, zwei Geschosse, jedes unter einem Dach aus Zink. Gezeichnet im Maßstab 1:100.</p>' },
     { from: 128, to: 252, html: '<span class="n">02 &nbsp;·&nbsp; Eine Sonne</span><p>Die Schatten der Zeichnung fallen unter 45 Grad. Die Sonne kommt im selben Winkel, <em>Haus für Haus.</em></p>' },
-    { from: 268, to: 350, html: '<span class="n">03 &nbsp;·&nbsp; Haus 04</span><p>Drei Schlafzimmer und ein Garten nach Süden. In <em>Rot</em> umrissen.</p><div class="row"><div><span>Schlafzimmer</span>3</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Frei</div></div>' },
+    { from: 268, to: 350, html: '<span class="n">03 &nbsp;·&nbsp; Haus 04</span><p>Drei Schlafzimmer und ein Garten nach Süden. In <em>Rötel</em> umrissen.</p><div class="row"><div><span>Schlafzimmer</span>3</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Frei</div></div>' },
     { from: 368, to: 465, html: '<span class="n">04 &nbsp;·&nbsp; Offene Tür</span><p>Haus 04 ist das Musterhaus. Zwei Steinstufen hinauf und durch die <em>Glastür.</em></p>' },
     { from: 482, to: 575, html: '<span class="n">05 &nbsp;·&nbsp; In Haus 04</span><p>Eine Halle über zwei Geschosse, eine Treppe aus gefaltetem Stahl, unter der Galerie der <em>Wohnraum.</em></p>' },
     { from: 588, to: 690, html: '<span class="n">06 &nbsp;·&nbsp; Küche zum Südgarten</span><p>Küche mit Essplatz. Die Glaswand öffnet sie über die ganze Breite zum ummauerten Garten.</p><div class="row"><div><span>Haus</span>04 von 06</div><div><span>Garten</span>Südlage</div><div><span>Status</span>Frei</div></div><a class="pill solid" href="#">Haus 04 reservieren</a>' },

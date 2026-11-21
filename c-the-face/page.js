@@ -5,14 +5,14 @@
 // wall until the pattern stands out, the lens inspects the proud headers, and steps through the open glass door.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
-const S = createStage({ hatch: 0.045, hatchPhone: 0.05, drawSpan: [0, 6.2], wipe: [-5, 7], soft: 0.7, envScale: 0.55 });
+const S = createStage({ hatch: 0.055, hatchPhone: 0.065, drawSpan: [0, 6.2], wipe: [-5, 7], soft: 0.7, envScale: 0.55 });
 
-const h0 = S.house(0, { relief: 0.06, header: 0x2b2b2f, first: 'frame', roof: 'none', par: 7.0 });
-S.house(6, { relief: 0.06, header: 0x2b2b2f, door: 'right', interior: false, roof: 'none', par: 7.0 });
+const h0 = S.house(0, { relief: 0.06, header: 0x2f2c2a, first: 'frame', roof: 'none', par: 7.0 });
+S.house(6, { relief: 0.06, header: 0x2f2c2a, door: 'right', interior: false, roof: 'none', par: 7.0 });
 S.street(0, 30, false);
 S.figure(3.22, 1.6, 1, true);
 S.aimSun(3.5, 2.5, 14);
-S.hemi.intensity = 0.28; S.sun.intensity = 4.0;
+S.hemi.intensity = 0.7; S.sun.intensity = 3.4;
 
 const KEYS = [
   { p: 0, t: [2.3, 2.55, 0], fh: 5.9, fov: 2, phone: { t: [2.7, 2.9, 0], fh: 5.9, minW: 3.7 } },
@@ -28,7 +28,7 @@ const KEYS = [
 // low, nearly along the wall from the left: each header throws a long streak to the right
 const RAKE = new THREE.Vector3(-2.0, 0.62, 0.42).normalize();
 const sunDir = new THREE.Vector3();
-const late = new THREE.Color(0xfff0e4), white = new THREE.Color(0xfff6ee);
+const late = new THREE.Color(0xffd9a8), white = new THREE.Color(0xfff1dc);
 
 run(S, {
   length: 540,
@@ -52,7 +52,7 @@ run(S, {
     sunDir.copy(CONVENTION).lerp(RAKE, m).normalize();
     S.setSun(sunDir);
     S.sun.color.copy(white).lerp(late, m);
-    S.sun.intensity = lerp(4.0, 4.4, m);
+    S.sun.intensity = lerp(3.4, 3.8, m);
     h0.setDoor(smooth(span(p, 395, 465)));
   },
   beats: [
