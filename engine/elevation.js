@@ -1,7 +1,7 @@
 // The Elevation engine, shared by the three pages (a-one-door, b-the-row, c-the-face).
 //
-// One model, drawn two ways. Every surface is black paper with 45 degree hatching in white ink
-// wherever the sun does not reach, or its real lit material. A diagonal sweep decides which, pixel
+// One model, drawn two ways. Every surface is buff toned paper (trois crayons) with 45 degree hatching in black
+// chalk wherever the sun does not reach, heightened in white chalk where it does, or its real lit material. A diagonal sweep decides which, pixel
 // by pixel. The sun starts at the drawing convention (45 degrees in plan and elevation,
 // 35.26 degrees high), so the hatched areas and the real shadows are the same areas.
 //
@@ -38,7 +38,7 @@ export const CONVENTION = new THREE.Vector3(-1, 1, 1).normalize(); // towards th
 
 const GLSL_COMMON = /* glsl */`
   uniform vec3 uSun; uniform vec4 uSweep; uniform float uReal;
-  uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uAccent; uniform float uHatch; uniform float uLinePx;
+  uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uChalk; uniform vec3 uAccent; uniform vec3 uAccentHi; uniform float uHatch; uniform float uLinePx;
   uniform float uDraw; uniform vec2 uDrawSpan; uniform vec2 uDrawDir; uniform float uHatchIn; uniform vec2 uWipe; uniform float uDetailIn; uniform float uDepthCue;
   uniform float uLive;
   float sweepS(vec3 p) { return dot(p.xy, uSweep.xy); }
@@ -112,7 +112,7 @@ export function createStage(cfg = {}) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
   renderer.setPixelRatio(DPR);
   renderer.setSize(W, H, true);
-  renderer.setClearColor(0x0c0c0e, 1);
+  renderer.setClearColor(0xdfd2ba, 1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;       // drawn again only when the sun or a caster has moved (shadowDirty)
@@ -127,9 +127,11 @@ export function createStage(cfg = {}) {
     uSun: { value: CONVENTION.clone() },
     uSweep: { value: new THREE.Vector4(Math.SQRT1_2, -Math.SQRT1_2, -999, cfg.soft || 0.8) },
     uReal: { value: num('real', 0) },
-    uPaper: { value: raw(0x0c0c0e) },
-    uInk: { value: raw(0xf1eeea) },
-    uAccent: { value: raw(0xe5202e) },
+    uPaper: { value: raw(0xdfd2ba) },
+    uInk: { value: raw(0x2a2522) },
+    uChalk: { value: raw(0xfcf9f2) },
+    uAccent: { value: raw(0xa5432b) },
+    uAccentHi: { value: raw(0xc65e42) },
     uHatch: { value: hatch0 * (DPR0 < 1.5 ? 1.3 : 1) },
     uLinePx: { value: 1.05 * DPR },
     uDraw: { value: 1 },
@@ -154,12 +156,12 @@ export function createStage(cfg = {}) {
       fragmentShader: `varying vec3 vP; void main() {
         vec3 d = normalize(vP);
         float h = d.y;
-        vec3 horizon = vec3(0.60, 0.60, 0.62);
-        vec3 zenith = vec3(0.13, 0.135, 0.15);
-        vec3 ground = mix(vec3(0.16, 0.16, 0.17), vec3(0.30, 0.30, 0.31), smoothstep(-0.8, 0.0, h));
+        vec3 horizon = vec3(0.87, 0.76, 0.58);
+        vec3 zenith = vec3(0.74, 0.79, 0.82);
+        vec3 ground = mix(vec3(0.38, 0.35, 0.30), vec3(0.60, 0.55, 0.46), smoothstep(-0.8, 0.0, h));
         vec3 sky = mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), 0.65));
         float sunGlow = pow(max(0.0, dot(d, normalize(vec3(-0.7, 0.55, 0.7)))), 12.0);
-        sky += vec3(0.30, 0.29, 0.28) * sunGlow;
+        sky += vec3(0.34, 0.26, 0.14) * sunGlow;
         gl_FragColor = vec4(h > 0.0 ? sky : ground, 1.0);
       }`,
     })));
@@ -168,9 +170,9 @@ export function createStage(cfg = {}) {
     pmrem.dispose();
     envScene.children[0].geometry.dispose(); envScene.children[0].material.dispose();
   }
-  const sun = new THREE.DirectionalLight(0xfff6ee, 3.5);
+  const sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
   scene.add(sun, sun.target);
-  const hemi = new THREE.HemisphereLight(0xd4d7dc, 0x8c8c90, 0.52); scene.add(hemi);
+  const hemi = new THREE.HemisphereLight(0xdfe6ea, 0xb8a98c, 0.9); scene.add(hemi);
   // The shadow map: 2048 on a phone, 4096 on a desktop. Its camera is fitted to the box of everything that casts
   // (sunAim.box, measured in flush()): in light space a caster and its shadow share x and y, so nothing else
   // needs to be inside, and a small map still gives the hatching a sharp edge.
@@ -220,33 +222,34 @@ export function createStage(cfg = {}) {
     sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14, lacquer: 15,
   };
   const BASE = {
-    // black, white, and one red: white brick, pale stone, anthracite zinc, black oak, a red lacquer
-    brick: { color: 0xe6e4e0, roughness: 0.88 },
-    stone: { color: 0xd2d1ce, roughness: 0.76 },
+    // late October on the Kreidegasse: white brick, pale stone, zinc, oak, oxide-red steel, plaster, lawn and one russet maple
+    brick: { color: 0xefebe2, roughness: 0.88 },
+    stone: { color: 0xcdc5b5, roughness: 0.76 },
     glass: { color: 0xffffff, roughness: 0.06, metalness: 0.05 },
-    zinc: { color: 0x3a3b3f, roughness: 0.48, metalness: 0.45 },
-    wood: { color: 0x29292d, roughness: 0.44 },
-    paving: { color: 0x8a8a8d, roughness: 0.86 },
-    sky: { color: 0x0c0c0e, roughness: 1 },
-    foliage: { color: 0x56585b, roughness: 0.88, flatShading: true },
-    steel: { color: 0x161618, roughness: 0.38, metalness: 0.68 },
-    plain: { color: 0xdedcd8, roughness: 0.84 },
-    interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x5c5650, emissiveIntensity: 0.7 },
-    oakFloor: { color: 0x77777c, roughness: 0.46 },
-    plaster: { color: 0xf1f0ed, roughness: 0.86 },
-    travertine: { color: 0xdad9d6, roughness: 0.5 },
-    linen: { color: 0xe6e4e0, roughness: 0.92 },
-    lacquer: { color: 0xc8121f, roughness: 0.36, metalness: 0.12 },
+    zinc: { color: 0x7a858d, roughness: 0.48, metalness: 0.45 },
+    wood: { color: 0xa67b49, roughness: 0.44 },
+    paving: { color: 0xcdc5b5, roughness: 0.86 },
+    sky: { color: 0xdfe6ea, roughness: 1 },
+    foliage: { color: 0x86995f, roughness: 0.88, flatShading: true },
+    steel: { color: 0x9a3f2a, roughness: 0.4, metalness: 0.45 },
+    plain: { color: 0xefebe2, roughness: 0.84 },
+    interior: { color: 0xfff6ee, roughness: 0.9, emissive: 0x6a5f50, emissiveIntensity: 0.7 },
+    oakFloor: { color: 0xb88b55, roughness: 0.46 },
+    plaster: { color: 0xf2efe8, roughness: 0.86 },
+    travertine: { color: 0xefebe2, roughness: 0.5 },
+    linen: { color: 0xf2efe8, roughness: 0.92 },
+    lacquer: { color: 0x9a3f2a, roughness: 0.36, metalness: 0.12 },
   };
   const MATS = {};
   function mat(kind, o = {}) {
     const key = kind + JSON.stringify(o);
     if (MATS[key]) return MATS[key];
     const m = new THREE.MeshStandardMaterial({ ...BASE[kind], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    m.envMapIntensity = ({ glass: 1.55, steel: 1.25, zinc: 0.95, wood: 1.0, oakFloor: 0.65, travertine: 0.55, lacquer: 0.8 }[kind] || 0.45) * (cfg.envScale || 1);
+    m.envMapIntensity = ({ glass: 1.55, steel: 0.8, zinc: 0.8, wood: 0.8, oakFloor: 0.6, travertine: 0.5, lacquer: 0.7 }[kind] || 0.45) * (cfg.envScale || 1);
     if (o.color) m.color.setHex(o.color);
     // clear glass: a sheet you can see through once the scan has made it real. On the drawing it is paper like everything else
     const clear = o.clear ? 1 : 0;
+    if (kind === 'sky') m.toneMapped = false;
     if (clear) { m.transparent = true; m.opacity = 0.17; m.depthWrite = !!o.door; }
     m.userData.drawOnly = !!o.drawOnly; m.userData.sky = kind === 'sky';
     const K = KIND[kind];
@@ -355,6 +358,9 @@ export function createStage(cfg = {}) {
             if (uLive > 0.5) {`)
           .replace('#include <lights_fragment_begin>', LIGHTS_BEGIN)
           .replace('#include <opaque_fragment>', `elevOut = outgoingLight;
+              #if KIND == 7
+                elevOut = diffuseColor.rgb;
+              #endif
             }
             vec3 outgoingLight = elevOut;
             #include <opaque_fragment>`)
@@ -376,7 +382,7 @@ export function createStage(cfg = {}) {
                 bc *= 0.92 + 0.16 * vnoise(vec2(q.x * 55.0, q.y * 140.0) + b.xy * 3.1) * jointVis;
                 float bedShade = (1.0 - smoothstep(0.009, 0.015, b.w)) * step(0.009, b.w) * 0.14 * jointVis;
                 bc *= 1.0 - bedShade;
-                vec3 mortar = mix(vec3(0.60, 0.60, 0.61), diffuseColor.rgb * 1.5 + 0.12, step(dot(diffuseColor.rgb, vec3(0.333)), 0.3)) * (0.94 + 0.12 * vnoise(q * 180.0));
+                vec3 mortar = vec3(0.693, 0.651, 0.571) * (0.94 + 0.12 * vnoise(q * 180.0));   // #d9d3c7
                 vec3 far = mix(base, mortar, 0.13);
                 vec3 mid = mix(bc, mortar, 0.13);
                 vec3 nearC = mix(bc, mortar * 0.92, joint);
@@ -417,10 +423,11 @@ export function createStage(cfg = {}) {
                 float sh = hash12(cell);
                 vec3 flagCol = diffuseColor.rgb * (0.88 + 0.18 * sh);
                 flagCol *= 0.95 + 0.09 * vnoise(q * 22.0);
-                diffuseColor.rgb = mix(flagCol, vec3(0.24, 0.24, 0.25), j * 0.65);
+                diffuseColor.rgb = mix(flagCol, vec3(0.45, 0.42, 0.37), j * 0.55);
               #elif KIND == 7
+                // late October: pale zenith #dfe6ea over a warm haze #f0e2c8 at the horizon (linear values, the sky is unlit)
                 float k = clamp((vWP.y + 4.0) / 40.0, 0.0, 1.0);
-                diffuseColor.rgb = mix(vec3(0.075, 0.075, 0.085), vec3(0.008, 0.008, 0.012), pow(k, 0.7));
+                diffuseColor.rgb = mix(vec3(0.871, 0.760, 0.578), vec3(0.738, 0.791, 0.823), pow(k, 0.55));
               #elif KIND == 2
                 float blockJ = 1.0 - smoothstep(0.0, max(fwidth(q.x) * 1.3, 0.003), abs(fract(q.x / 0.9 + 0.5) - 0.5) * 0.9);
                 float bed = vnoise(vec2(q.x * 4.0, q.y * 26.0));
@@ -438,12 +445,12 @@ export function createStage(cfg = {}) {
                 diffuseColor.rgb *= 0.98 + weave;
               #elif KIND == 3
                 float k = fract((vWP.y - 0.45) / 3.0);
-                vec3 skyRefl = mix(vec3(0.02, 0.02, 0.025), vec3(0.13, 0.135, 0.15), smoothstep(0.22, 0.92, k));
+                vec3 skyRefl = mix(vec3(0.20, 0.22, 0.23), vec3(0.50, 0.56, 0.60), smoothstep(0.22, 0.92, k));
                 float warmZone = smoothstep(0.05, 0.45, k) * (1.0 - smoothstep(0.55, 0.92, k));
                 float roomVar = 0.6 + 0.4 * sin(vWP.x * 1.7 + floor((vWP.y - 0.45) / 3.0) * 2.3);
-                vec3 warmRoom = vec3(0.27, 0.265, 0.25) * warmZone * roomVar * (FAINT == 1 ? 0.25 : 0.75);
+                vec3 warmRoom = vec3(0.30, 0.25, 0.17) * warmZone * roomVar * (FAINT == 1 ? 0.25 : 0.75);
                 diffuseColor.rgb = skyRefl + warmRoom;
-                diffuseColor.rgb += 0.065 * smoothstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
+                diffuseColor.rgb += 0.05 * smoothstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
               #elif KIND == 9
                 diffuseColor.rgb *= 0.94 + 0.10 * vnoise(q * 45.0);
               #endif
@@ -500,19 +507,23 @@ export function createStage(cfg = {}) {
               vec2 q = planeUV(vWP, N);
               vec3 col = uPaper;
               float hw = hatchWipe(vWP) * step(0.001, uHatchIn);
+              // paper tooth: chalk catches the grain of the sheet, so every mark is a little soft and broken
+              float tooth = 0.55 + 0.45 * vnoise(gl_FragCoord.xy * 0.85) * (0.6 + 0.4 * vnoise(gl_FragCoord.xy * 0.23));
               #if KIND == 3
-                col += 0.032 * hw;
+                col = mix(col, uChalk, 0.10 * hw);
               #endif
               #if KIND == 7
-                shade = 0.0;
+                shade = 0.0; lit = 0.0;
               #endif
-              // depth cue: what sits back gets a little grey, so the relief reads before the lens moves
-              col += uDepthCue * 0.055 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
-              float hatchK = FAINT == 1 ? 0.10 : 0.6;
+              // sunlit faces are heightened in white chalk, so the light reads lighter than the paper
+              col = mix(col, uChalk, lit * hw * (FAINT == 1 ? 0.18 : 0.62) * tooth);
+              // depth cue: what sits back gets a little darker, so the relief reads before the lens moves
+              col -= uDepthCue * 0.05 * smoothstep(0.0, -1.1, vWP.z) * (FAINT == 1 ? 0.4 : 1.0);
+              float hatchK = FAINT == 1 ? 0.16 : 0.74;
               float hl = lineAt(q.x + q.y, uHatch, uLinePx * 0.95);
               float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
               hl = mix(hl, 0.32, dense);
-              col += 0.03 * shade * hw * (FAINT == 1 ? 0.3 : 1.0);
+              hl *= 0.62 + 0.38 * tooth;
               col = mix(col, uInk, hl * shade * hatchK * hw);
               float det = detailWipe(vWP) * (FAINT == 1 ? 0.3 : 1.0);
               #if KIND == 1
@@ -534,7 +545,7 @@ export function createStage(cfg = {}) {
               gl_FragColor.rgb = mix(col, gl_FragColor.rgb, rv);
               #if KIND != 7
                 float fb = frontBand(vWP);
-                vec3 scanCol = mix(uAccent, vec3(1.0, 0.34, 0.38), smoothstep(0.42, 0.92, fb));
+                vec3 scanCol = mix(uAccent, uAccentHi, smoothstep(0.42, 0.92, fb));
                 gl_FragColor.rgb = mix(gl_FragColor.rgb, scanCol, clamp(fb * 0.85, 0.0, 0.94));
               #endif
               #if CLEAR == 1
@@ -553,7 +564,7 @@ export function createStage(cfg = {}) {
   function lineMat(px, o = {}) {
     const key = px + JSON.stringify(o);
     if (lineCache[key]) return lineCache[key];
-    const m = new LineMaterial({ color: o.color || 0xf1eeea, linewidth: px * DPR, transparent: true, toneMapped: false });
+    const m = new LineMaterial({ color: o.color || 0x2a2522, linewidth: px * DPR, transparent: true, toneMapped: false });
     m.resolution.set(W * DPR, H * DPR);
     m.userData.px = px;
     m.userData.drawOnly = !!o.drawOnly || !(o.realLines > 0);   // nothing of this pen is left once the whole picture is real
@@ -575,7 +586,8 @@ export function createStage(cfg = {}) {
         float grow = (uDraw - vT0) / (FIRST == 1 ? 0.16 : 0.12);
         if (vT > grow) discard;
         if (vis < 0.01) discard;
-        gl_FragColor.a *= vis;`);
+        // black chalk: the stroke breaks up a little on the grain of the paper
+        gl_FragColor.a *= vis * (0.74 + 0.26 * vnoise(gl_FragCoord.xy * 0.8));`);
     };
     m.customProgramCacheKey = () => `eline-${drawOnly}-${first}`;
     LMATS.push(m);
@@ -724,16 +736,16 @@ export function createStage(cfg = {}) {
     const floor = mat('oakFloor');
     const black = mat('wood');                              // black-stained oak joinery
     const plaster = mat('plaster');
-    const ceil = mat('plaster', { color: 0xf6f5f2 });
+    const ceil = mat('plaster');
     const slab = mat('travertine');                          // pale honed stone: worktops, table tops
-    const basalt = mat('stone', { color: 0x38383c });
+    const basalt = mat('stone', { color: 0x2f2c2a });
     const brick = mat('brick', { color: v.brick });
     const steel = mat('steel');
     const red = mat('lacquer');
-    const redCloth = mat('linen', { color: 0xb9141f });
+    const redCloth = mat('linen', { color: 0x9a3f2a });
     const linen = mat('linen');
-    const coal = mat('linen', { color: 0x2b2b2f });
-    const rug = mat('linen', { color: 0x77777b });
+    const coal = mat('linen', { color: 0x2f2c2a });
+    const rug = mat('linen', { color: 0x7a858d });
     const glow = mat('interior', { realOnly: true });
     const paving = mat('paving');
     const clear = mat('glass', { clear: true });
@@ -805,7 +817,7 @@ export function createStage(cfg = {}) {
         if (i % 2 === 0) bars.push(bM(1.135, y + rise, z - 0.135, 1.16, y + rise + 0.95, z - 0.11));
         if (i < n - 1) bars.push(bM(1.125, y + rise * 1.5 + 0.93, z - go - 0.02, 1.17, y + rise * 1.5 + 0.975, z + 0.02));
       }
-      many(plate, mat('steel', { color: 0x2c2c31 }), 0.5, O);
+      many(plate, mat('steel', { color: 0x2f2c2a }), 0.5, O);
       many(bars, steel, 0.35, O);
     }
     // a large framed drawing over the stair, a cluster of three lamps hanging in the height of the hall
@@ -813,12 +825,12 @@ export function createStage(cfg = {}) {
     addM(0.3, 3.81, -4.64, 0.313, 5.39, -2.36, ceil, 0);
     addM(0.313, 4.15, -4.2, 0.322, 5.05, -3.3, red, 0);
     addM(0.313, 4.02, -3.18, 0.322, 5.18, -3.1, steel, 0);
-    [[-2.9, 3.35, 1.75], [-3.6, 4.1, 2.15], [-4.25, 3.0, 1.9]].forEach(([pz, py, px]) => {
+    [[-2.9, 4.5, 1.75], [-3.6, 5.0, 2.15], [-4.25, 4.2, 1.9]].forEach(([pz, py, px]) => {
       addM(px - 0.006, py, pz - 0.006, px + 0.006, CEIL, pz + 0.006, steel, 0);
-      add(new THREE.SphereGeometry(0.15, 16, 12).translate(X(px), py, pz), glow, 0, { parent: g, cast: false });
+      add(new THREE.SphereGeometry(0.12, 16, 12).translate(X(px), py, pz), glow, 0, { parent: g, cast: false });
     });
 
-    // 3. The sitting room, under the gallery: a red sofa on the east wall, a low stone table, a chair by the window
+    // 3. The sitting room, under the gallery: a rust-red sofa on the east wall, a low stone table, a chair by the window
     const SZ = -1.55; // how far back the group sits
     addM(3.35, G0, -5.3 + SZ + 0.9, 5.6, G0 + 0.018, -1.5 + SZ, rug, 0.4, O);
     addM(4.86, G0 + 0.02, -4.1 + SZ, 5.72, G0 + 0.14, -1.7 + SZ, black, 0.5, O);
@@ -871,7 +883,7 @@ export function createStage(cfg = {}) {
     addM(1.78, 2.3, -9.0, 1.84, 2.36, -7.2, steel, 0.5, O);
     addM(1.79, 2.275, -8.9, 1.83, 2.3, -7.3, glow, 0, { cast: false });
     addM(1.8, 2.36, -8.12, 1.82, L1 - 0.25, -8.08, steel, 0);
-    // a sideboard on the east wall, and on it the one red vessel
+    // a sideboard on the east wall, and on it a vessel
     addM(5.3, G0, -8.7, 5.76, 1.05, -6.5, black, 0.6, O);
     addM(5.28, 1.05, -8.72, 5.76, 1.09, -6.48, slab, 0.5, O);
     add(new THREE.LatheGeometry([[0, 0], [0.07, 0], [0.125, 0.1], [0.115, 0.24], [0.05, 0.34], [0.06, 0.4]].map((q) => new THREE.Vector2(q[0], q[1])), 28).translate(X(5.52), 1.09, -7.1), red, 0, { parent: g });
@@ -917,9 +929,9 @@ export function createStage(cfg = {}) {
     pane(gDoorL, 1.62, 3.0, -11.96); pane(gDoorR, 3.0, 4.38, -11.96);
     add(box(2.9, 1.1, -11.93, 2.93, 1.5, -11.9), steel, 0, { parent: gDoorL }); add(box(3.07, 1.1, -11.93, 3.1, 1.5, -11.9), steel, 0, { parent: gDoorR });
 
-    // 6. The garden: a terrace, one step down to gravel, white brick walls, and a red maple in a raised bed
+    // 6. The garden: a terrace, one step down to gravel, white brick walls, and a russet maple in a raised bed
     addM(0.0, 0.0, -14.4, 6.0, G0 - 0.02, -12.08, paving, 0.5, O);
-    addM(0.0, 0.0, -17.8, 6.0, 0.14, -14.4, paving, 0.5, O);
+    addM(0.0, 0.0, -17.8, 6.0, 0.14, -14.4, mat('plain', { color: 0x86995f }), 0.5, O);                     // the lawn
     addM(0.22, 0.14, -14.46, 5.78, G0 - 0.015, -14.34, basalt, 0.5, O);
     addM(0.0, 0.14, -17.8, 0.24, 2.5, -12.3, brick, 0.6, O);
     addM(-0.02, 2.5, -17.82, 0.26, 2.58, -12.3, mat('stone'), 0.5, O);
@@ -930,7 +942,7 @@ export function createStage(cfg = {}) {
     addM(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, brick, 0.6, O);                              // the raised bed, in the same brick, a stone cap on it
     addM(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, mat('stone'), 0.5, O);
     addM(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, mat('foliage'), 0);
-    tree(ox + X(4.68), (v.setback || 0) - 16.15, 6.3, 1.5, 0xb3141f);
+    tree(ox + X(4.68), (v.setback || 0) - 16.15, 6.3, 1.5);
     addM(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, black, 0.5, O);                               // a bench along the west wall
     addM(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, steel, 0.4, O);
     addM(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, steel, 0.4, O);
@@ -948,7 +960,7 @@ export function createStage(cfg = {}) {
 
   function house(ox, v = {}) {
     const g = new THREE.Group(); g.position.set(ox, 0, v.setback || 0); root.add(g);
-    const faint = !!v.faint, lc = faint ? 0x4a4a50 : v.accent ? 0xe5202e : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
+    const faint = !!v.faint, lc = faint ? 0x8a7d69 : v.accent ? 0xa5432b : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
     const rl = v.accent ? 0.75 : undefined;
     const PAR = v.par || 6.7;
     const doorL = v.door !== 'right';
@@ -964,7 +976,7 @@ export function createStage(cfg = {}) {
     const O = { parent: g, lineColor: lc, realLines: rl };
     add(panel([0, 0, 6, PAR], holes, -T, 0), brick, LW, O);
     const st = mat('stone', { faint });
-    const base = mat('stone', { faint, color: 0x38383c });
+    const base = mat('stone', { faint, color: 0x2f2c2a });
     const stm = mat('steel', { faint });
     const zm = mat('zinc', { faint });
 
@@ -992,7 +1004,7 @@ export function createStage(cfg = {}) {
       add(bx((EX[0] + EX[1]) / 2 - 0.7, 2.985, -0.74, (EX[0] + EX[1]) / 2 + 0.7, 3.0, -0.66), mat('interior', { realOnly: true }), 0, { parent: g, cast: false });
     }
 
-    // the door: a black steel portal, and in it two leaves of glass in red frames, 2.0 m by 2.55 m together
+    // the door: a steel portal, and in it two leaves of glass in oxide-red frames, 2.0 m by 2.55 m together
     const show = !faint && v.interior !== false;
     add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), stm, lw, O);
     const hA = Math.min(X(DX[0]), X(DX[1])) + 0.012, hB = Math.max(X(DX[0]), X(DX[1])) - 0.012, wL = (hB - hA) / 2 - 0.004;
@@ -1004,7 +1016,7 @@ export function createStage(cfg = {}) {
       const f = 0.06, y0 = G0 + 0.012, y1 = 2.85, bars = [];
       const B = (a, b, c, d, z0 = -0.05, z1 = 0) => { const [p0, p1] = q(a, b); return box(p0, c, z0, p1, d, z1); };
       bars.push(B(0, wL, y0, y0 + 0.11), B(0, wL, y1 - f, y1), B(0, f, y0, y1), B(wL - f, wL, y0, y1));
-      add(mergeGeometries(bars), red, lw, { parent: piv, lineColor: lc, realLines: rl });
+      add(mergeGeometries(bars), red, faint ? lw : 1.1, { parent: piv, lineColor: lc || (faint ? undefined : 0xa5432b), realLines: rl });   // the door is drawn in Rötel
       add(B(f, wL - f, y0 + 0.11, y1 - f, -0.031, -0.019), doorGlass, 0, { parent: piv, cast: false });
       if (!faint) {
         add(B(wL - 0.16, wL - 0.125, 1.0, 1.9, 0.03, 0.06), stm, 0.6, { parent: piv });       // pulls, outside and in
@@ -1021,8 +1033,8 @@ export function createStage(cfg = {}) {
     windowIn(g, ...R4(3.55, 1.0, 5.5, 3.0), 0.22, { faint, lc, rl, sill: true, panes: 2 });
     // upstairs
     if (first === 'frame') {
-      add(panel([0.72, 3.77, 5.28, 6.18], [[0.9, 3.95, 5.1, 6.0]], 0, 0.38), mat('stone', { faint, color: 0xc9c9c7 }), LW, O);
-      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xbdbdbb }), 0, { parent: g });
+      add(panel([0.72, 3.77, 5.28, 6.18], [[0.9, 3.95, 5.1, 6.0]], 0, 0.38), mat('stone', { faint, color: 0xd6cfc0 }), LW, O);
+      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xc2baa9 }), 0, { parent: g });
       windowIn(g, 0.9, 3.95, 5.1, 6.0, 0.16, { faint, lc, rl, panes: 3, transom: 5.4 });
     } else {
       // a bay of zinc, 800 mm out over the porch, glazed across its front
@@ -1072,7 +1084,7 @@ export function createStage(cfg = {}) {
           bricks.push(box(x, y, 0, x + 0.215, y + 0.065, v.relief));
         }
       }
-      add(mergeGeometries(bricks), mat('brick', { faint, color: v.header || 0x2b2b2f }), faint ? 0 : 0.55, O);
+      add(mergeGeometries(bricks), mat('brick', { faint, color: v.header || 0x2f2c2a }), faint ? 0 : 0.55, O);
     }
 
     const zs = v.setback || 0;
@@ -1103,7 +1115,7 @@ export function createStage(cfg = {}) {
   function street(x0, x1, sky = true) {
     add(box(x0, -0.15, 0, x1, 0, 3.2), mat('paving'), 0, { cast: false });
     add(box(x0, -0.15, 3.2, x1, 0.01, 3.38), mat('stone'), 0, { cast: false });
-    add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('plain', { color: 0x1c1c1f }), 0, { cast: false });
+    add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('paving'), 0, { cast: false });
     if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false, order: 1 });   // drawn last of the solids: it only costs the pixels that stay sky
     lines([x0, 0, 3.4, x1, 0, 3.4], 2.6, { first: true });
   }
@@ -1112,19 +1124,20 @@ export function createStage(cfg = {}) {
     const P = [[0, 1.75], [0.07, 1.73], [0.1, 1.66], [0.09, 1.58], [0.06, 1.53], [0.2, 1.47], [0.24, 1.36], [0.26, 1.06], [0.24, 0.84], [0.2, 0.86], [0.2, 1.2], [0.18, 1.0], [0.17, 0.84], [0.14, 0.45], [0.13, 0.06], [0.17, 0.0], [0.03, 0.0], [0.02, 0.8]];
     const pts = [...P, ...P.slice(1, -1).reverse().map(([a, b]) => [-a, b])].map(([a, b]) => [x + (flip ? -a : a) * s, b * s]);
     const shape = new THREE.Shape(pts.map((p) => new THREE.Vector2(p[0], p[1])));
-    add(new THREE.ShapeGeometry(shape).translate(0, 0, z), mat('plain', { drawOnly: true, color: 0x0c0c0e }), 0, { cast: false });
+    add(new THREE.ShapeGeometry(shape).translate(0, 0, z), mat('plain', { drawOnly: true, color: 0xdfd2ba }), 0, { cast: false });
     lines(loop(pts, z + 0.01), 0.9);
   }
 
   function tree(x, z, h = 7.5, r = 2.3, leaf) {
+    const LEAVES = [0xc9622a, 0xd98b2f, 0xa8452f];   // late October: russet, orange, brick
     const R = mulberry(Math.round(x * 100) + 7);
-    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x2a2a2d }), 0);
-    const blobs = [];
+    add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { realOnly: true, color: 0x2f2c2a }), 0);
+    const blobs = [[], [], []];
     for (let i = 0; i < 70; i++) {
       const a = R() * Math.PI * 2, e = (R() - 0.5) * 2.4, rr = r * (0.25 + 0.65 * Math.sqrt(R()));
-      blobs.push(new THREE.IcosahedronGeometry(0.32 + R() * 0.4, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
+      blobs[i % 3 === 0 ? 1 : i % 5 === 0 ? 2 : 0].push(new THREE.IcosahedronGeometry(0.32 + R() * 0.4, 1).translate(x + Math.cos(a) * rr, h - r + Math.sin(e) * r * 0.75, z + Math.sin(a) * rr * 0.7));
     }
-    add(mergeGeometries(blobs), mat('foliage', { realOnly: true, color: leaf }), 0);
+    blobs.forEach((bl, i) => add(mergeGeometries(bl), mat('foliage', { realOnly: true, color: LEAVES[i] }), 0));
     const zz = z + 0.3, segs = [];
     segs.push(x - 0.11, 0, zz, x - 0.06, h - r * 1.1, zz, x + 0.13, 0, zz, x + 0.07, h - r * 1.1, zz);
     segs.push(x - 0.05, h - r * 1.2, zz, x - r * 0.45, h - r * 0.55, zz, x + 0.05, h - r * 1.05, zz, x + r * 0.5, h - r * 0.35, zz, x, h - r * 0.9, zz, x - r * 0.05, h - r * 0.1, zz);
@@ -1334,14 +1347,14 @@ export function run(S, o) {
       <svg viewBox="-4.2 -0.6 22.4 7.2">
         ${zoneRects}
         <!-- the plan: plot walls, the facade with its porch, the glass wall to the garden -->
-        <path d="M-4.0 0 H17.6 M-4.0 6.0 H17.6 M0 0 V0.5 M0 2.9 V6.0 M0 0.5 H1.2 M0 2.9 H1.2 M1.2 0.5 V0.7 M1.2 2.7 V2.9 M12.0 0 V1.64 M12.0 4.36 V6.0 M17.6 0 V6.0" fill="none" stroke="#f1eeea" stroke-width="0.28" opacity="0.82" pointer-events="none"/>
+        <path d="M-4.0 0 H17.6 M-4.0 6.0 H17.6 M0 0 V0.5 M0 2.9 V6.0 M0 0.5 H1.2 M0 2.9 H1.2 M1.2 0.5 V0.7 M1.2 2.7 V2.9 M12.0 0 V1.64 M12.0 4.36 V6.0 M17.6 0 V6.0" fill="none" stroke="#2a2522" stroke-width="0.28" opacity="0.82" pointer-events="none"/>
         <!-- steps, the two door leaves, the stair, the edge of the gallery, sofa, low table, island, dining table, the garden step -->
-        <path d="M-0.6 0.5 V2.9 M-0.3 0.5 V2.9 M1.2 0.7 L2.15 0.84 M1.2 2.7 L2.15 2.56 M1.9 0.24 H5.9 V1.14 H1.9 Z M1.7 4.86 H4.1 V5.72 H1.7 Z M2.3 3.95 H3.5 V4.45 H2.3 Z M6.95 1.4 H9.25 V2.2 H6.95 Z M9.3 3.95 H11.5 V4.95 H9.3 Z M14.4 0 V6.0" fill="none" stroke="#f1eeea" stroke-width="0.16" opacity="0.48" pointer-events="none"/>
-        <path d="M1.3 3.1 H6.0 V1.2" fill="none" stroke="#f1eeea" stroke-width="0.14" stroke-dasharray="0.35 0.25" opacity="0.5" pointer-events="none"/>
-        <circle cx="16.15" cy="4.68" r="1.0" fill="none" stroke="#e5202e" stroke-width="0.18" stroke-dasharray="0.4 0.3" opacity="0.8" pointer-events="none"/>
-        <line id="cm-scan" x1="0" y1="-0.5" x2="0" y2="6.5" stroke="#e5202e" stroke-width="0.28" stroke-dasharray="0.6 0.4" opacity="0" pointer-events="none"/>
-        <polygon id="cm-cone" points="-2.5,3.0 0.5,1.8 0.5,4.2" fill="rgba(229,32,46,0.3)" stroke="#e5202e" stroke-width="0.18" pointer-events="none"/>
-        <circle id="cm-dot" cx="-2.5" cy="3.0" r="0.52" fill="#e5202e" stroke="#f1eeea" stroke-width="0.14" pointer-events="none"/>
+        <path d="M-0.6 0.5 V2.9 M-0.3 0.5 V2.9 M1.2 0.7 L2.15 0.84 M1.2 2.7 L2.15 2.56 M1.9 0.24 H5.9 V1.14 H1.9 Z M1.7 4.86 H4.1 V5.72 H1.7 Z M2.3 3.95 H3.5 V4.45 H2.3 Z M6.95 1.4 H9.25 V2.2 H6.95 Z M9.3 3.95 H11.5 V4.95 H9.3 Z M14.4 0 V6.0" fill="none" stroke="#2a2522" stroke-width="0.16" opacity="0.48" pointer-events="none"/>
+        <path d="M1.3 3.1 H6.0 V1.2" fill="none" stroke="#2a2522" stroke-width="0.14" stroke-dasharray="0.35 0.25" opacity="0.5" pointer-events="none"/>
+        <circle cx="16.15" cy="4.68" r="1.0" fill="none" stroke="#a5432b" stroke-width="0.18" stroke-dasharray="0.4 0.3" opacity="0.8" pointer-events="none"/>
+        <line id="cm-scan" x1="0" y1="-0.5" x2="0" y2="6.5" stroke="#a5432b" stroke-width="0.28" stroke-dasharray="0.6 0.4" opacity="0" pointer-events="none"/>
+        <polygon id="cm-cone" points="-2.5,3.0 0.5,1.8 0.5,4.2" fill="rgba(165,67,43,0.3)" stroke="#a5432b" stroke-width="0.18" pointer-events="none"/>
+        <circle id="cm-dot" cx="-2.5" cy="3.0" r="0.52" fill="#a5432b" stroke="#2a2522" stroke-width="0.14" pointer-events="none"/>
       </svg>
       <div class="cm-pills">${zoneBtns}</div>`;
     document.body.appendChild(cm);

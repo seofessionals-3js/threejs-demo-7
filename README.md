@@ -1,8 +1,8 @@
 # three.js Demo 7
 
-Die Vorderansicht eines Stadthauses, mit weißer Tusche auf schwarzem Papier gezeichnet und mit 45°-Schraffur in jedem Schatten. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan das Papier in weißen Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Garten.
+Die Vorderansicht eines Stadthauses, in Trois Crayons auf Tonpapier gezeichnet: schwarze Kreide für Umriss und 45°-Schraffur in jedem Schatten, weiße Kreide für alles, was die Sonne trifft. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan in Rötel das Papier in weißen Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Garten.
 
-Das Haus dieser Fassung ist **No. 7 Kreidegasse**: sechs Meter breit, zwei Geschosse, weißer Backstein unter einem Dach aus Zink. Der Eingang liegt 1,20 m zurück, darüber kragt ein Erker 800 mm aus. Die Tür ist eine Glastür mit zwei Flügeln in roten Stahlrahmen, 2,00 m breit. Dahinter liegt eine Halle über beide Geschosse. Die Farben sind Schwarz, Weiß und ein einziges Rot.
+Das Haus dieser Fassung ist **No. 7 Kreidegasse**: sechs Meter breit, zwei Geschosse, weißer Backstein unter einem Dach aus Zink. Der Eingang liegt 1,20 m zurück, darüber kragt ein Erker 800 mm aus. Die Tür ist eine Glastür mit zwei Flügeln in oxidroten Stahlrahmen, 2,00 m breit. Dahinter liegt eine Halle über beide Geschosse. 
 
 [**Live ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/a-one-door/) · [**Startprompt**](PROMPT.md) · [**Alle Demos**](https://seofessionals-3js.github.io/threejs-demos/)
 
@@ -11,6 +11,21 @@ Drei Varianten mit einer Engine:
 - [`a-one-door/`](a-one-door/): ein Stadthaus, durch die Glastür hinein (die Hauptdemo)
 - [`b-the-row/`](b-the-row/): eine Straße mit sechs Stadthäusern und Hausnummern, Haus 04 reservieren
 - [`c-the-face/`](c-the-face/): ein Ziegeldetail 1:20, schwarze Binder in weißer Wand, die Sonne streift über das Relief
+
+## Farben
+
+Das Blatt ist ein Trois Crayons: schwarze Kreide, weiße Kreide und ein einziges Rötel auf getöntem Papier. Nach dem Scan folgt das gebaute Haus im späten Oktoberlicht. Der Scan ändert keinen Schatten, nur das Material.
+
+| Rolle | Farbe |
+| --- | --- |
+| Papier | `#dfd2ba` (hell `#eadfcb`, dunkel `#d2c3a7`) |
+| Umriss und Schraffur, schwarze Kreide | `#2a2522`, weich `#6e6257` |
+| Lichter, weiße Kreide | `#fcf9f2` |
+| Akzent Rötel (Tür, Scankante, Links) | `#a5432b`, hell `#c65e42`, Text `#8f3620` |
+| Weißer Backstein, Fuge, schwarzer Binder | `#efebe2`, `#d9d3c7`, `#2f2c2a` |
+| Zink, oxidroter Stahl, Eiche, Stein, Putz | `#7a858d`, `#9a3f2a`, `#b88b55`, `#cdc5b5`, `#f2efe8` |
+| Rasen, Ahorn im Oktober | `#86995f`, `#c9622a` `#d98b2f` `#a8452f` |
+| Himmel | `#dfe6ea` im Zenit, `#f0e2c8` am Horizont, tiefe warme Sonne |
 
 ## So funktioniert es
 
