@@ -10,12 +10,18 @@
 //
 // Only three.js: the scroll is the page's own, eased in run().
 // URL: ?at=VH jumps to a scroll position (vh) and skips the intro, ?skip skips the intro,
-//      ?nosmooth follows the scroll without easing (recordings), ?debug shows p in the corner.
+//      ?nosmooth follows the scroll without easing (recordings), ?debug shows p in the corner,
+//      ?q=low|mid|high forces the device tier, ?dpr=1.5 pins the render resolution (see quality.js).
+//
+// Built to run on a phone: everything that does not move is merged into one mesh per material and one
+// line object per pen (flush()), the shadow map is only drawn again when the sun or a door has moved,
+// a frame is only rendered when something changed, and the lit model is only shaded once the sun has arrived.
 import * as THREE from 'three';
 import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
 import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { tier, low, high, startDpr, pinnedDpr, governor, visible } from './quality.js';
 
 export { THREE, mergeGeometries };
 export const Q = new URLSearchParams(location.search);
@@ -34,6 +40,7 @@ const GLSL_COMMON = /* glsl */`
   uniform vec3 uSun; uniform vec4 uSweep; uniform float uReal;
   uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uAccent; uniform float uHatch; uniform float uLinePx;
   uniform float uDraw; uniform vec2 uDrawSpan; uniform vec2 uDrawDir; uniform float uHatchIn; uniform vec2 uWipe; uniform float uDetailIn; uniform float uDepthCue;
+  uniform float uLive;
   float sweepS(vec3 p) { return dot(p.xy, uSweep.xy); }
   float revealAt(vec3 p) {
     float s = sweepS(p);
@@ -82,19 +89,34 @@ const GLSL_COMMON = /* glsl */`
   }
 `;
 
+// three's own light loop, with the sun's shadow taken from elevShadow instead of being sampled a second time
+const LIGHTS_BEGIN = THREE.ShaderChunk.lights_fragment_begin.replace(
+  /directLight\.color \*= \( directLight\.visible && receiveShadow \) \? getShadow\( directionalShadowMap\[ i \][^;]*;/,
+  'directLight.color *= elevShadow;');
+if (LIGHTS_BEGIN === THREE.ShaderChunk.lights_fragment_begin) console.warn('elevation: the light loop of this three.js has changed, the shadow is sampled twice');
+
 /* =========================================================================== */
 export function createStage(cfg = {}) {
   const S = {};
-  const DPR = Math.min(2, Math.max(1, devicePixelRatio || 1));
-  let W = innerWidth, H = innerHeight;
+  // The picture is as wide as the window and as high as the LARGE viewport: on a phone the URL bar slides in and
+  // out while you scroll, and neither the canvas nor the camera should notice (no reallocation, no stretching).
+  const probe = document.documentElement.appendChild(document.createElement('div'));
+  probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100vh;height:100lvh;visibility:hidden;pointer-events:none';
+  const measure = () => [Math.max(1, innerWidth), Math.max(1, innerHeight, probe.offsetHeight || 0)];
+  let [W, H] = measure();
+  let DPR = startDpr();
+  const DPR0 = DPR;
+  document.documentElement.classList.add('q-' + tier);     // the stylesheet drops what a phone cannot afford
   const phone = () => W / H < 0.8;
   const canvas = document.getElementById('gl');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
   renderer.setPixelRatio(DPR);
-  renderer.setSize(W, H, false);
+  renderer.setSize(W, H, true);
   renderer.setClearColor(0x0c0c0e, 1);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;       // drawn again only when the sun or a caster has moved (shadowDirty)
+  let shadowDirty = true, dirty = true;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.04;
   const scene = new THREE.Scene();
@@ -108,7 +130,7 @@ export function createStage(cfg = {}) {
     uPaper: { value: raw(0x0c0c0e) },
     uInk: { value: raw(0xf1eeea) },
     uAccent: { value: raw(0xe5202e) },
-    uHatch: { value: hatch0 * (DPR < 1.5 ? 1.3 : 1) },
+    uHatch: { value: hatch0 * (DPR0 < 1.5 ? 1.3 : 1) },
     uLinePx: { value: 1.05 * DPR },
     uDraw: { value: 1 },
     uDrawSpan: { value: new THREE.Vector2(...(cfg.drawSpan || [0, 12])) },
@@ -118,6 +140,9 @@ export function createStage(cfg = {}) {
     uDetailIn: { value: 1 },
     uDepthCue: { value: 0 },
     uBump: { value: 1.25 },
+    uLive: { value: 1 },                       // 0 while the whole picture is still drawing: the lit model is not shaded at all
+    uShTexel: { value: 0.012 },                // one texel of the shadow map, in metres
+    uShRange: { value: 200 },                  // depth of the shadow camera, in metres
   };
 
   /* ---------- environment and light ---------- */
@@ -138,28 +163,56 @@ export function createStage(cfg = {}) {
         gl_FragColor = vec4(h > 0.0 ? sky : ground, 1.0);
       }`,
     })));
-    scene.environment = new THREE.PMREMGenerator(renderer).fromScene(envScene, 0.015).texture;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(envScene, 0.015).texture;
+    pmrem.dispose();
+    envScene.children[0].geometry.dispose(); envScene.children[0].material.dispose();
   }
   const sun = new THREE.DirectionalLight(0xfff6ee, 3.5);
   scene.add(sun, sun.target);
   const hemi = new THREE.HemisphereLight(0xd4d7dc, 0x8c8c90, 0.52); scene.add(hemi);
-  const sunAim = { t: new THREE.Vector3(), ext: 24 };
-  function aimSun(cx, cy, ext, map = 4096) {
+  // The shadow map: 2048 on a phone, 4096 on a desktop. Its camera is fitted to the box of everything that casts
+  // (sunAim.box, measured in flush()): in light space a caster and its shadow share x and y, so nothing else
+  // needs to be inside, and a small map still gives the hatching a sharp edge.
+  const sunAim = { t: new THREE.Vector3(), ext: 24, box: null };
+  const SHADOW_MAP = low ? 2048 : high ? 4096 : 3072;
+  const _lm = new THREE.Matrix4(), _lv = new THREE.Vector3(), _up = new THREE.Vector3(0, 1, 0);
+  function aimSun(cx, cy, ext, map = SHADOW_MAP) {
     sunAim.t.set(cx, cy, -3.5); sunAim.ext = ext;
     sun.castShadow = true;
     sun.shadow.mapSize.set(map, map);
-    sun.shadow.bias = -0.00035; sun.shadow.normalBias = 0.014;
-    const c = sun.shadow.camera;
-    c.left = -ext; c.right = ext; c.top = ext; c.bottom = -ext; c.near = 6; c.far = 210;
-    c.updateProjectionMatrix();
+    sun.shadow.bias = 0; sun.shadow.normalBias = 0.012;     // the depth bias is slope scaled, in elevShadowAt()
     placeSun();
+  }
+  function fitShadow() {
+    const c = sun.shadow.camera, b = sunAim.box, e = sunAim.ext;
+    if (!b) { c.left = -e; c.right = e; c.top = e; c.bottom = -e; c.near = 6; c.far = 210; }
+    else {
+      _lm.lookAt(sun.position, sun.target.position, _up).setPosition(sun.position).invert();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (let i = 0; i < 8; i++) {
+        _lv.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z).applyMatrix4(_lm);
+        x0 = Math.min(x0, _lv.x); x1 = Math.max(x1, _lv.x); y0 = Math.min(y0, _lv.y); y1 = Math.max(y1, _lv.y); z0 = Math.min(z0, _lv.z); z1 = Math.max(z1, _lv.z);
+      }
+      c.left = x0 - 0.3; c.right = x1 + 0.3; c.bottom = y0 - 0.3; c.top = y1 + 0.3;
+      c.near = Math.max(0.5, -z1 - 2); c.far = -z0 + 2;
+    }
+    c.updateProjectionMatrix();
+    U.uShTexel.value = Math.max(c.right - c.left, c.top - c.bottom) / sun.shadow.mapSize.x;
+    U.uShRange.value = c.far - c.near;
   }
   function placeSun() {
     sun.target.position.copy(sunAim.t);
     sun.position.copy(U.uSun.value).multiplyScalar(90).add(sunAim.t);
     sun.target.updateMatrixWorld();
+    fitShadow();
+    shadowDirty = true; dirty = true;
   }
-  function setSun(dir) { U.uSun.value.copy(dir).normalize(); placeSun(); }
+  function setSun(dir) {
+    _lv.copy(dir).normalize();
+    if (_lv.distanceToSquared(U.uSun.value) < 1e-10) return;   // the pages call this every frame: only a sun that moved costs a shadow pass
+    U.uSun.value.copy(_lv); placeSun();
+  }
 
   /* ---------- materials ---------- */
   const KIND = {
@@ -207,7 +260,7 @@ export function createStage(cfg = {}) {
         #endif
         vWP = (modelMatrix * wpp).xyz;
         vWN = normalize(mat3(modelMatrix) * objectNormal);`);
-      sh.fragmentShader = `#define KIND ${K}\n#define FAINT ${faint}\n#define REAL_ONLY ${realOnly}\n#define DRAW_ONLY ${drawOnly}\n#define CLEAR ${clear}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump;\n${GLSL_COMMON}
+      sh.fragmentShader = `#define KIND ${K}\n#define FAINT ${faint}\n#define REAL_ONLY ${realOnly}\n#define DRAW_ONLY ${drawOnly}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${low ? 4 : 16}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump; uniform float uShTexel; uniform float uShRange;\n${GLSL_COMMON}
         // brick: running bond 215 x 65, 10 mm joints. x: along the course, y: up
         vec4 brickAt(vec2 q) {
           float course = floor(q.y / 0.075);
@@ -261,7 +314,32 @@ export function createStage(cfg = {}) {
           #endif
         }
       ` + sh.fragmentShader
-          .replace('#include <shadowmap_pars_fragment>', '#include <shadowmap_pars_fragment>\n#include <shadowmask_pars_fragment>')
+          // the sun's shadow, read once per pixel and used twice: by the light of the real model and by the hatching.
+          // The depth bias follows the slope of the surface to the sun, so a brick 60 mm proud keeps its small shadow.
+          .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>
+            float elevShadowAt() {
+              #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+                if ( ! receiveShadow ) return 1.0;
+                float ndl = clamp(dot(normalize(vWN), uSun), 0.08, 1.0);
+                float bias = - uShTexel * (0.6 + 1.3 * min(sqrt(1.0 - ndl * ndl) / ndl, 6.0)) / uShRange;
+                #if ELEV_TAPS == 4
+                  vec4 sc = vDirectionalShadowCoord[ 0 ];
+                  sc.xyz /= sc.w; sc.z += bias;
+                  if (sc.x < 0.0 || sc.x > 1.0 || sc.y < 0.0 || sc.y > 1.0 || sc.z > 1.0) return 1.0;
+                  vec2 size = directionalLightShadows[ 0 ].shadowMapSize, tx = 1.0 / size;
+                  vec2 st = sc.xy * size - 0.5, f = fract(st), b = (floor(st) + 0.5) * tx;
+                  float s00 = texture2DCompare(directionalShadowMap[ 0 ], b, sc.z);
+                  float s10 = texture2DCompare(directionalShadowMap[ 0 ], b + vec2(tx.x, 0.0), sc.z);
+                  float s01 = texture2DCompare(directionalShadowMap[ 0 ], b + vec2(0.0, tx.y), sc.z);
+                  float s11 = texture2DCompare(directionalShadowMap[ 0 ], b + tx, sc.z);
+                  return mix(mix(s00, s10, f.x), mix(s01, s11, f.x), f.y);
+                #else
+                  return getShadow( directionalShadowMap[ 0 ], directionalLightShadows[ 0 ].shadowMapSize, bias, directionalLightShadows[ 0 ].shadowRadius, vDirectionalShadowCoord[ 0 ] );
+                #endif
+              #else
+                return 1.0;
+              #endif
+            }`)
           .replace('void main() {', `void main() {
             float rv = revealAt(vWP);
             #if REAL_ONLY
@@ -269,7 +347,17 @@ export function createStage(cfg = {}) {
             #endif
             #if DRAW_ONLY
               if (rv > 0.5 || uHatchIn < 0.02) discard;
-            #endif`)
+            #endif
+            float elevShadow = elevShadowAt();`)
+          // while the whole sheet is still a drawing (uLive = 0) the lit model is skipped: textures, lights, reflections
+          .replace('vec3 totalEmissiveRadiance = emissive;', `vec3 totalEmissiveRadiance = emissive;
+            vec3 elevOut = vec3(0.0);
+            if (uLive > 0.5) {`)
+          .replace('#include <lights_fragment_begin>', LIGHTS_BEGIN)
+          .replace('#include <opaque_fragment>', `elevOut = outgoingLight;
+            }
+            vec3 outgoingLight = elevOut;
+            #include <opaque_fragment>`)
           .replace('#include <color_fragment>', `#include <color_fragment>
             {
               vec2 q = planeUV(vWP, vWN);
@@ -407,7 +495,7 @@ export function createStage(cfg = {}) {
             {
               vec3 N = normalize(vWN);
               float ndl = dot(N, uSun);
-              float lit = getShadowMask() * smoothstep(-0.02, 0.06, ndl);
+              float lit = elevShadow * smoothstep(-0.02, 0.06, ndl);
               float shade = 1.0 - lit;
               vec2 q = planeUV(vWP, N);
               vec3 col = uPaper;
@@ -454,7 +542,7 @@ export function createStage(cfg = {}) {
               #endif
             }`);
     };
-    m.customProgramCacheKey = () => `elev-${K}-${faint}-${realOnly}-${drawOnly}-${clear}`;
+    m.customProgramCacheKey = () => `elev-${tier}-${K}-${faint}-${realOnly}-${drawOnly}-${clear}`;
     return (MATS[key] = m);
   }
 
@@ -467,6 +555,8 @@ export function createStage(cfg = {}) {
     if (lineCache[key]) return lineCache[key];
     const m = new LineMaterial({ color: o.color || 0xf1eeea, linewidth: px * DPR, transparent: true, toneMapped: false });
     m.resolution.set(W * DPR, H * DPR);
+    m.userData.px = px;
+    m.userData.drawOnly = !!o.drawOnly || !(o.realLines > 0);   // nothing of this pen is left once the whole picture is real
     const drawOnly = o.drawOnly ? 1 : 0, first = o.first ? 1 : 0;
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
@@ -500,25 +590,83 @@ export function createStage(cfg = {}) {
     const s = rect(...outer); holes.forEach((h) => s.holes.push(hole(...h)));
     return new THREE.ExtrudeGeometry(s, { depth: z1 - z0, bevelEnabled: false }).translate(0, 0, z0);
   }
+  // Nothing is put into the scene one box at a time. add() and lines() only collect: flush() then merges everything
+  // that shares a material (or a pen) into one mesh (one line object), with the offset of its house baked in.
+  // Only what moves keeps a node of its own: mark the group with userData.moving (door leaves, sliding panes).
+  // zone 1 is the inside of a show house and its garden: hidden until the sun arrives (nothing of it is on the drawing).
+  const MB = new Map(), LB = new Map();
+  const rootIn = new THREE.Group(); rootIn.visible = false; root.add(rootIn);
+  const interiorNodes = [rootIn], drawOnlyNodes = [];
+  let ZONE = 0, pending = false;
+  const hostOf = (parent, zone) => { for (let q = parent; q && q !== root; q = q.parent) if (q.userData.moving) return q; return zone ? rootIn : root; };
   function add(geo, m, lw = 1, o = {}) {
-    const mesh = new THREE.Mesh(geo, m);
-    mesh.castShadow = o.cast !== false; mesh.receiveShadow = o.receive !== false;
-    (o.parent || root).add(mesh);
+    const parent = o.parent || root, zone = o.zone ?? ZONE, host = hostOf(parent, zone);
+    const cast = o.cast !== false, receive = o.receive !== false, order = o.order || 0;
+    const key = `${host.id}|${m.id}|${cast ? 1 : 0}${receive ? 1 : 0}|${order}`;
+    let b = MB.get(key); if (!b) MB.set(key, b = { host, m, cast, receive, order, items: [] });
+    b.items.push({ geo, parent });
     if (lw > 0) {
       const eg = new THREE.EdgesGeometry(geo, o.angle || 25);
-      const lg = new LineSegmentsGeometry().fromEdgesGeometry(eg);
-      const l = new LineSegments2(lg, lineMat(lw, { color: o.lineColor, drawOnly: o.drawOnlyLines, realLines: o.realLines }));
-      l.renderOrder = 2;
-      (o.parent || root).add(l);
+      pushLines(eg.attributes.position.array, lineMat(lw, { color: o.lineColor, drawOnly: o.drawOnlyLines, realLines: o.realLines }), parent, host, 2);
+      eg.dispose();
     }
-    return mesh;
+    pending = true;
+  }
+  function pushLines(arr, lm, parent, host, order) {
+    const key = `${host.id}|${lm.id}|${order}`;
+    let b = LB.get(key); if (!b) LB.set(key, b = { host, lm, order, items: [] });
+    b.items.push({ arr, parent });
+    pending = true;
   }
   function lines(segs, lw, o = {}) {
-    const lg = new LineSegmentsGeometry(); lg.setPositions(segs);
-    const l = new LineSegments2(lg, lineMat(lw, { drawOnly: o.drawOnly !== false, color: o.color, first: o.first, realLines: o.realLines }));
-    l.renderOrder = 3;
-    (o.parent || root).add(l);
-    return l;
+    const parent = o.parent || root;
+    pushLines(segs, lineMat(lw, { drawOnly: o.drawOnly !== false, color: o.color, first: o.first, realLines: o.realLines }), parent, hostOf(parent, o.zone ?? ZONE), 3);
+  }
+  const _rel = new THREE.Matrix4(), _inv = new THREE.Matrix4(), _p = new THREE.Vector3(), _bb = new THREE.Box3();
+  const relTo = (parent, host) => { _inv.copy(host.matrixWorld).invert(); return _rel.multiplyMatrices(_inv, parent.matrixWorld); };
+  const isIdentity = (m) => m.elements.every((v, i) => Math.abs(v - (i % 5 === 0 ? 1 : 0)) < 1e-9);
+  function flush() {
+    if (!pending) return;
+    pending = false;
+    scene.updateMatrixWorld(true);
+    const castBox = sunAim.box || new THREE.Box3();
+    MB.forEach((b) => {
+      const geos = b.items.map(({ geo, parent }) => {
+        // position and normal are all the shaders read. Everything gets an index, so boxes and extrusions merge.
+        Object.keys(geo.attributes).forEach((k) => { if (k !== 'position' && k !== 'normal') geo.deleteAttribute(k); });
+        if (!geo.index) { const n = geo.attributes.position.count, ix = new Uint32Array(n); for (let i = 0; i < n; i++) ix[i] = i; geo.setIndex(new THREE.BufferAttribute(ix, 1)); }
+        const rel = relTo(parent, b.host);
+        if (!isIdentity(rel)) geo.applyMatrix4(rel);
+        return geo;
+      });
+      const merged = geos.length > 1 ? mergeGeometries(geos, false) : geos[0];
+      if (geos.length > 1) geos.forEach((g) => g.dispose());
+      const mesh = new THREE.Mesh(merged, b.m);
+      mesh.castShadow = b.cast; mesh.receiveShadow = b.receive; mesh.renderOrder = b.order;
+      b.host.add(mesh);
+      if (b.m.userData.drawOnly) drawOnlyNodes.push(mesh);
+      if (b.cast) { merged.computeBoundingBox(); castBox.union(_bb.copy(merged.boundingBox).applyMatrix4(b.host.matrixWorld)); }
+    });
+    MB.clear();
+    LB.forEach((b) => {
+      let n = 0; b.items.forEach((it) => { n += it.arr.length; });
+      const pos = new Float32Array(n); let k = 0;
+      b.items.forEach(({ arr, parent }) => {
+        const rel = relTo(parent, b.host), id = isIdentity(rel);
+        for (let i = 0; i < arr.length; i += 3) {
+          if (id) { pos[k++] = arr[i]; pos[k++] = arr[i + 1]; pos[k++] = arr[i + 2]; }
+          else { _p.set(arr[i], arr[i + 1], arr[i + 2]).applyMatrix4(rel); pos[k++] = _p.x; pos[k++] = _p.y; pos[k++] = _p.z; }
+        }
+      });
+      const l = new LineSegments2(new LineSegmentsGeometry().setPositions(pos), b.lm);
+      l.renderOrder = b.order;
+      b.host.add(l);
+      if (b.lm.userData.drawOnly) drawOnlyNodes.push(l);
+    });
+    LB.clear();
+    if (!castBox.isEmpty()) { sunAim.box = castBox; fitShadow(); }
+    drawOnlyNodes.forEach((n) => { n.visible = !allReal; });
+    shadowDirty = true; dirty = true;
   }
   const loop = (pts, z) => { const s = []; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s.push(a[0], a[1], z, b[0], b[1], z); } return s; };
 
@@ -763,6 +911,8 @@ export function createStage(cfg = {}) {
     };
     pane(g, 0.24, 1.64, -12.03); pane(g, 4.36, 5.76, -12.03);
     const gDoorL = new THREE.Group(), gDoorR = new THREE.Group();
+    gDoorL.userData.moving = gDoorR.userData.moving = true;
+    gDoorL.visible = gDoorR.visible = false; interiorNodes.push(gDoorL, gDoorR);
     g.add(gDoorL, gDoorR);
     pane(gDoorL, 1.62, 3.0, -11.96); pane(gDoorR, 3.0, 4.38, -11.96);
     add(box(2.9, 1.1, -11.93, 2.93, 1.5, -11.9), steel, 0, { parent: gDoorL }); add(box(3.07, 1.1, -11.93, 3.1, 1.5, -11.9), steel, 0, { parent: gDoorR });
@@ -849,6 +999,7 @@ export function createStage(cfg = {}) {
     const red = mat('lacquer', { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
     const leaves = [1, -1].map((s) => {
       const piv = new THREE.Group(); piv.position.set(s > 0 ? hA : hB, 0, pz - 0.035); g.add(piv);
+      piv.userData.moving = show;                            // only the leaves of a show house swing: the others are merged into the row
       const q = (a, b) => (s > 0 ? [a, b] : [-b, -a]);       // along the leaf, from the hinge
       const f = 0.06, y0 = G0 + 0.012, y1 = 2.85, bars = [];
       const B = (a, b, c, d, z0 = -0.05, z1 = 0) => { const [p0, p1] = q(a, b); return box(p0, c, z0, p1, d, z1); };
@@ -902,8 +1053,8 @@ export function createStage(cfg = {}) {
       if (!faint) add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g });
     }
 
-    let gardenDoors = null;
-    if (show) gardenDoors = buildInterior(g, ox, v, doorL, PAR, O);
+    let gardenDoors = null, doorA = 0, gardenD = 0;
+    if (show) { ZONE = 1; gardenDoors = buildInterior(g, ox, v, doorL, PAR, O); ZONE = 0; }
     else add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
 
     if (v.relief) {
@@ -934,12 +1085,17 @@ export function createStage(cfg = {}) {
       key(p, cam, yaw, pitch, fov, fh, extra) { return viewKey(p, [ox + X(cam[0]), cam[1], zs + cam[2]], doorL ? yaw : -yaw, pitch, fov, fh, extra); },
       setDoor(open01) {
         const a = clamp01(open01) * (82 * Math.PI / 180);
+        if (!show || a === doorA) return;
+        doorA = a;
         leaves.forEach(({ piv, s }) => { piv.rotation.y = s * a; });
+        shadowDirty = true;
       },
       setGardenDoor(open01) {
-        if (!gardenDoors) return;
         const d = clamp01(open01) * 1.3;
+        if (!gardenDoors || d === gardenD) return;
+        gardenD = d;
         gardenDoors.gDoorL.position.x = -d; gardenDoors.gDoorR.position.x = d;
+        shadowDirty = true;
       },
     };
   }
@@ -948,7 +1104,7 @@ export function createStage(cfg = {}) {
     add(box(x0, -0.15, 0, x1, 0, 3.2), mat('paving'), 0, { cast: false });
     add(box(x0, -0.15, 3.2, x1, 0.01, 3.38), mat('stone'), 0, { cast: false });
     add(new THREE.PlaneGeometry(x1 - x0, 30).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, -0.15, 18.4), mat('plain', { color: 0x1c1c1f }), 0, { cast: false });
-    if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false });
+    if (sky) add(new THREE.PlaneGeometry(400, 120).translate(0, 40, -60), mat('sky'), 0, { cast: false, order: 1 });   // drawn last of the solids: it only costs the pixels that stay sky
     lines([x0, 0, 3.4, x1, 0, 3.4], 2.6, { first: true });
   }
 
@@ -1015,7 +1171,9 @@ export function createStage(cfg = {}) {
     lastTarget.set(...c.t);
     const dir = new THREE.Vector3(Math.sin(c.yaw * D2R) * Math.cos(c.pitch * D2R), Math.sin(c.pitch * D2R), Math.cos(c.yaw * D2R) * Math.cos(c.pitch * D2R));
     camera.position.copy(lastTarget).addScaledVector(dir, d);
-    camera.near = Math.max(0.05, d - 80, d * 0.03); camera.far = d + 260;
+    // the lens never comes closer than 40 cm to anything (window.__clear), so the near plane can stand at 20 cm:
+    // four times the depth precision indoors
+    camera.near = Math.max(0.2, d - 80, d * 0.03); camera.far = d + 260;
     camera.lookAt(lastTarget); camera.updateProjectionMatrix();
     S.camDist = d;
     S.camTarget = lastTarget;
@@ -1029,23 +1187,74 @@ export function createStage(cfg = {}) {
     pins.forEach((q) => {
       v3.copy(q.p).project(camera);
       const x = (v3.x + 1) / 2 * W, y = (1 - v3.y) / 2 * H;
-      q.el.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) ${q.tf || ''}`;
-      q.el.style.visibility = v3.z > 1 ? 'hidden' : '';
+      const tf = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) ${q.tf || ''}`, vis = v3.z > 1 ? 'hidden' : '';
+      if (tf !== q.tfNow) { q.tfNow = tf; q.el.style.transform = tf; }
+      if (vis !== q.visNow) { q.visNow = vis; q.el.style.visibility = vis; }
     });
   }
 
-  function resize() {
-    W = innerWidth; H = innerHeight;
-    renderer.setSize(W, H, false);
-    LMATS.forEach((m) => m.resolution.set(W * DPR, H * DPR));
+  /* ---------- size, resolution, what is drawn ---------- */
+  // A pen thinner than one pixel of the buffer flickers: it is drawn one pixel wide and lighter instead.
+  function applySize() {
+    renderer.setPixelRatio(DPR); renderer.setSize(W, H, true);
+    LMATS.forEach((m) => {
+      const w = m.userData.px * DPR;
+      m.resolution.set(W * DPR, H * DPR); m.linewidth = Math.max(1, w); m.opacity = Math.min(1, w);
+    });
+    U.uLinePx.value = 1.05 * DPR;
+    dirty = true;
   }
-  addEventListener('resize', resize);
+  const gov = governor({ apply: (d) => { DPR = d; applySize(); } });
+  function resize() {
+    const [w, h] = measure();
+    if (w === W && h === H) return;                // the URL bar of a phone sliding away is not a resize
+    W = w; H = h;
+    gov.hold(800);
+    if (pinnedDpr == null) gov.refit(); else applySize();
+  }
+  addEventListener('resize', resize, { passive: true });
 
-  Object.assign(S, {
-    THREE, U, scene, root, renderer, camera, sun, hemi, DPR, phone, get W() { return W; }, get H() { return H; },
+  // live: some pixel may already show the real house. allReal: no pixel is a drawing any more.
+  let live = null, allReal = false;
+  function phase() {
+    const sw = U.uSweep.value.z, real = U.uReal.value;
+    const lv = real > 0.001 || sw > -59, ar = real >= 0.999 || sw >= 59;
+    if (lv !== live) {
+      live = lv; U.uLive.value = lv ? 1 : 0;
+      interiorNodes.forEach((n) => { n.visible = lv; });   // the rooms are behind paper until then
+      shadowDirty = true;
+    }
+    if (ar !== allReal) { allReal = ar; drawOnlyNodes.forEach((n) => { n.visible = !ar; }); }
+  }
+  function render() {
+    flush(); phase();
+    placePins();
+    if (shadowDirty) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
+    renderer.render(scene, camera);
+    dirty = false;
+  }
+  // before the first frame: everything visible once, so every buffer is on the GPU and every shader is built
+  // while the loader still covers the sheet
+  async function warm() {
+    flush();
+    const vis = [...interiorNodes, ...drawOnlyNodes].map((n) => [n, n.visible]);
+    vis.forEach(([n]) => { n.visible = true; });
+    U.uLive.value = 1;
+    try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); } catch (e) { renderer.compile(scene, camera); }
+    renderer.shadowMap.needsUpdate = true;
+    renderer.render(scene, camera);
+    vis.forEach(([n, v]) => { n.visible = v; });
+    live = null; shadowDirty = true; dirty = true;
+  }
+
+  // (defineProperties, not Object.assign: the getters have to stay getters)
+  Object.defineProperties(S, Object.getOwnPropertyDescriptors({
+    THREE, U, scene, root, renderer, camera, sun, hemi, phone, tier, gov,
+    get DPR() { return DPR; }, get W() { return W; }, get H() { return H; },
+    get dirty() { return dirty || shadowDirty || pending; }, touch() { dirty = true; },
     mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, camAt, setCam, viewKey, pin, placePins,
-    render() { placePins(); renderer.render(scene, camera); },
-  });
+    flush, warm, render,
+  }));
   return S;
 }
 
@@ -1078,17 +1287,25 @@ export function run(S, o) {
     hudOptic = sf.querySelector('#hudOptic');
   }
 
-  // p follows the page's own scroll position with a short lag
+  // p follows the page's own scroll position with a short lag. One vh is measured on the track itself (the large
+  // viewport), not from innerHeight: on a phone innerHeight changes when the URL bar slides, and p must not jump with it.
   const noSmooth = Q.has('nosmooth');
-  let pEase = (scrollY / innerHeight) * 100, pT = performance.now();
+  let vhPx = innerHeight / 100;
+  const measureVh = () => { vhPx = (track.offsetHeight / (o.length + 100)) || innerHeight / 100; };
+  measureVh(); addEventListener('resize', measureVh, { passive: true });
+  let pEase = scrollY / vhPx, pT = performance.now();
   function scrollP(now) {
-    const target = (scrollY / innerHeight) * 100, dt = Math.min(0.25, Math.max(0, (now - pT) / 1000)); pT = now;
+    const target = scrollY / vhPx, dt = Math.min(0.25, Math.max(0, (now - pT) / 1000)); pT = now;
     pEase = noSmooth ? target : pEase + (target - pEase) * (1 - Math.exp(-7.5 * dt));
     if (Math.abs(target - pEase) < 0.01) pEase = target;
     return pEase;
   }
-  function jumpToP(targetP) { window.scrollTo({ top: (targetP / 100) * innerHeight, behavior: 'smooth' }); }
+  function jumpToP(targetP) { window.scrollTo({ top: targetP * vhPx, behavior: 'smooth' }); }
   window.__jumpToP = jumpToP;
+  // the page only writes to the DOM when a value has changed
+  const setText = (el, t) => { if (el.__t !== t) { el.__t = t; el.textContent = t; } };
+  const setAttr = (el, k, v) => { const c = el.__a || (el.__a = {}); if (c[k] !== v) { c[k] = v; el.setAttribute(k, v); } };
+  const setStyle = (el, k, v) => { const c = el.__s || (el.__s = {}); if (c[k] !== v) { c[k] = v; el.style[k] = v; } };
 
   // the little plan in the corner that shows where the lens is (#cad-map)
   const radarCfg = o.radar || {
@@ -1135,8 +1352,8 @@ export function run(S, o) {
     cmZones = [...cm.querySelectorAll('.cm-zone')];
     cmBtns = [...cm.querySelectorAll('.cm-btn')];
     [...cmZones, ...cmBtns].forEach((el) => {
-      el.addEventListener('mouseenter', () => { hoverTag = el.dataset.tag || ''; });
-      el.addEventListener('mouseleave', () => { hoverTag = ''; });
+      el.addEventListener('mouseenter', () => { hoverTag = el.dataset.tag || ''; S.touch(); });
+      el.addEventListener('mouseleave', () => { hoverTag = ''; S.touch(); });
       el.addEventListener('click', (e) => {
         e.stopPropagation();
         jumpToP(parseFloat(el.dataset.at || '0'));
@@ -1159,18 +1376,28 @@ export function run(S, o) {
   html.classList.add('locked');
   if (skip) { html.classList.add('in', 'done'); $('#loader')?.classList.add('gone'); }
 
-  let p = 0, t0 = performance.now(), introT = -1;
+  let p = 0, t0 = performance.now(), introT = -1, pLast = NaN, heroLast = '', activeId = '', idle = 0;
+  const zoneAt = (u) => { for (const z of radarCfg.zones) if (u >= z.u0 && u <= z.u1) return z; return radarCfg.zones[0]; };
+  // Render on demand: a frame is only worked out and drawn when the scroll has moved, the intro is running or the
+  // stage asks for it (resize, resolution, shadow). A page at rest costs nothing, a hidden page not even this check.
   function tick(now) {
+    requestAnimationFrame(tick);
+    if (!visible()) { S.gov.frame(now, false); return; }
     p = scrollP(now);
+    const intro = introT >= 0 && !skip && !html.classList.contains('done');
+    const active = intro || p !== pLast || S.dirty;
+    S.gov.frame(now, active);
+    if (!active) return;
+    pLast = p;
     // intro clock
-    if (introT >= 0 && !skip) {
+    if (intro) {
       const t = (now - introT) / 1000;
       S.U.uDraw.value = Math.min(1.2, ease(span(t, 0, 3.3)) * 1.2);
       S.U.uHatchIn.value = ease(span(t, 2.4, 3.8));
       S.U.uDetailIn.value = ease(span(t, 2.6, 3.8));
       if (t > 0.35) $('#loader')?.classList.add('gone');
       if (t > 1.9) html.classList.add('in');
-      if (t > 3.9 && !html.classList.contains('done')) {
+      if (t > 3.9) {
         html.classList.add('done'); html.classList.remove('locked');
         window.__introDone = true;
       }
@@ -1180,9 +1407,9 @@ export function run(S, o) {
       const sd = S.U.uSun.value;
       const alt = (Math.asin(Math.max(-1, Math.min(1, sd.y))) * 180 / Math.PI).toFixed(1);
       const az = (((Math.atan2(-sd.x, sd.z) * 180 / Math.PI) + 90 + 360) % 360).toFixed(0);
-      hudSun.textContent = `ALT ${alt}° · AZ ${az}°`;
+      setText(hudSun, `ALT ${alt}° · AZ ${az}°`);
       const fov = S.camera.fov;
-      hudOptic.textContent = `${fov.toFixed(1)}° ${fov < 4 ? 'ORTHO' : fov < 22 ? 'RELIEF' : 'PERSP'}`;
+      setText(hudOptic, `${fov.toFixed(1)}° ${fov < 4 ? 'ORTHO' : fov < 22 ? 'RELIEF' : 'PERSP'}`);
     }
     if (cmDot && cmCone && cmLbl) {
       // Map camera position to plan radar coordinates: u = depth into plot (-z), v = x inside house
@@ -1191,8 +1418,8 @@ export function run(S, o) {
       const u = Math.max(-3.6, Math.min(17.0, -camPos.z));
       const rawV = camPos.x - (radarCfg.ox || 0);
       const v = Math.max(0.4, Math.min(5.6, radarCfg.mirrorX ? 6 - rawV : rawV));
-      cmDot.setAttribute('cx', u.toFixed(2));
-      cmDot.setAttribute('cy', v.toFixed(2));
+      setAttr(cmDot, 'cx', u.toFixed(2));
+      setAttr(cmDot, 'cy', v.toFixed(2));
 
       const du = (-camTgt.z) - (-camPos.z);
       const dv = (radarCfg.mirrorX ? -1 : 1) * (camTgt.x - camPos.x);
@@ -1200,49 +1427,53 @@ export function run(S, o) {
       const r = 2.8, sp = 0.42;
       const u1 = u + Math.cos(ang - sp) * r, v1 = v + Math.sin(ang - sp) * r;
       const u2 = u + Math.cos(ang + sp) * r, v2 = v + Math.sin(ang + sp) * r;
-      cmCone.setAttribute('points', `${u.toFixed(2)},${v.toFixed(2)} ${u1.toFixed(2)},${v1.toFixed(2)} ${u2.toFixed(2)},${v2.toFixed(2)}`);
+      setAttr(cmCone, 'points', `${u.toFixed(2)},${v.toFixed(2)} ${u1.toFixed(2)},${v1.toFixed(2)} ${u2.toFixed(2)},${v2.toFixed(2)}`);
 
       // Active zone highlight
-      let activeZone = radarCfg.zones[0];
-      for (const z of radarCfg.zones) {
-        if (u >= z.u0 && u <= z.u1) { activeZone = z; break; }
-      }
+      let activeZone = zoneAt(u);
       if (p > 340 && u < 0.2) activeZone = radarCfg.zones[1] || activeZone;
-      cmZones.forEach((el) => el.classList.toggle('active', el.dataset.id === activeZone.id));
-      cmBtns.forEach((el) => el.classList.toggle('active', el.dataset.id === activeZone.id));
+      if (activeZone.id !== activeId) {
+        activeId = activeZone.id;
+        cmZones.forEach((el) => el.classList.toggle('active', el.dataset.id === activeId));
+        cmBtns.forEach((el) => el.classList.toggle('active', el.dataset.id === activeId));
+      }
 
       const swZ = S.U.uSweep.value.z;
       if (hoverTag) {
-        cmLbl.textContent = `SPRUNG // ${hoverTag}`;
+        setText(cmLbl, `SPRUNG // ${hoverTag}`);
       } else if (swZ > -30 && swZ < 30) {
-        cmLbl.textContent = `SCAN // S:${swZ.toFixed(1)}M`;
+        setText(cmLbl, `SCAN // S:${swZ.toFixed(1)}M`);
       } else if (S.camera.fov < 22) {
-        cmLbl.textContent = `${activeZone.label} · ${S.camera.fov.toFixed(0)}° OBJEKTIV`;
+        setText(cmLbl, `${activeZone.label} · ${S.camera.fov.toFixed(0)}° OBJEKTIV`);
       } else {
-        cmLbl.textContent = `${activeZone.label} · Z:${(-camPos.z >= 0 ? '+' : '')}${(-camPos.z).toFixed(1)}M`;
+        setText(cmLbl, `${activeZone.label} · Z:${(-camPos.z >= 0 ? '+' : '')}${(-camPos.z).toFixed(1)}M`);
       }
 
       // Sweep scan line indicator
       if (swZ > -30 && swZ < 30) {
         const su = lerp(-3.5, 16.5, clamp01((swZ + 14) / 28));
-        cmScan.setAttribute('x1', su.toFixed(2));
-        cmScan.setAttribute('x2', su.toFixed(2));
-        cmScan.setAttribute('opacity', '0.9');
+        setAttr(cmScan, 'x1', su.toFixed(2));
+        setAttr(cmScan, 'x2', su.toFixed(2));
+        setAttr(cmScan, 'opacity', '0.9');
       } else {
-        cmScan.setAttribute('opacity', '0');
+        setAttr(cmScan, 'opacity', '0');
       }
     }
     beats.forEach((b) => {
       const f = b.fade || 14;
       const v = Math.min(span(p, b.from - f, b.from), 1 - span(p, b.to - f, b.to));
-      b.el.style.opacity = v.toFixed(3);
-      b.el.style.transform = `translate3d(0, ${((1 - v) * 14).toFixed(1)}px, 0)`;
-      b.el.style.visibility = v <= 0.001 ? 'hidden' : 'visible';
+      const on = v > 0.001;
+      if (on || b.on !== false) {
+        setStyle(b.el, 'opacity', v.toFixed(3));
+        setStyle(b.el, 'transform', `translate3d(0, ${((1 - v) * 14).toFixed(1)}px, 0)`);
+        setStyle(b.el, 'visibility', on ? 'visible' : 'hidden');
+        b.on = on;
+      }
     });
-    html.style.setProperty('--hero-out', span(p, o.heroOut?.[0] ?? 12, o.heroOut?.[1] ?? 60).toFixed(3));
-    if (debug) debug.textContent = `p ${p.toFixed(1)} vh`;
+    const hero = span(p, o.heroOut?.[0] ?? 12, o.heroOut?.[1] ?? 60).toFixed(3);
+    if (hero !== heroLast) { heroLast = hero; html.style.setProperty('--hero-out', hero); }
+    if (debug) setText(debug, `p ${p.toFixed(1)} vh · ${S.tier} · dpr ${S.DPR.toFixed(2)}`);
     S.render();
-    requestAnimationFrame(tick);
   }
 
   // loader: a percent above the ground line. Fonts, a first frame, every shader built.
@@ -1250,17 +1481,20 @@ export function run(S, o) {
   const minT = 1100;
   const fonts = Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]);
   o.frame(0, S, 0);
-  S.renderer.compile(S.scene, S.camera);
   let shown = 0;
   const count = setInterval(() => { shown = Math.min(99, shown + 3 + Math.random() * 7); if (fill) fill.textContent = `${Math.floor(shown)}%`; }, 70);
-  fonts.then(() => new Promise((r) => setTimeout(r, Math.max(0, minT - (performance.now() - t0))))).then(() => {
+  // shaders are built off the main thread where the browser can (compileAsync), so the counter keeps running
+  Promise.all([fonts, S.warm()]).then(() => new Promise((r) => setTimeout(r, Math.max(0, minT - (performance.now() - t0))))).then(() => {
     clearInterval(count); if (fill) fill.textContent = '100%';
+    measureVh();
+    o.frame(0, S, 0);
     S.render();
+    S.gov.hold(1500);
     window.__ready = true;
     if (skip) {
       html.classList.remove('locked'); window.__introDone = true;
       const at = num('at', 0);
-      requestAnimationFrame(() => { scrollTo(0, at / 100 * innerHeight); pEase = at; });
+      requestAnimationFrame(() => { scrollTo(0, at * vhPx); pEase = at; });
     } else {
       setTimeout(() => { introT = performance.now(); }, 250);
     }
@@ -1293,7 +1527,7 @@ export function run(S, o) {
       if (best < out.worst) { out.worst = +best.toFixed(3); out.at = pp; }
       if (best < warn) out.near.push({ p: pp, d: +best.toFixed(3), eye: e.toArray().map((x) => +x.toFixed(2)), where });
     }
-    o.frame(p, S, 0);
+    o.frame(p, S, 0); S.touch();
     return out;
   };
 }
