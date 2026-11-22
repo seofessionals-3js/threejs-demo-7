@@ -6,10 +6,13 @@
 //   ?id=emscher-gaerten   the project      ?zeile=2   the row (1...)      ?haus=14   a house, by its number
 import { createStage, run, THREE, Q, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
 
+const mark = (n) => performance.mark('wf:' + n);            // where the start-up time goes (see performance.getEntriesByType('mark'))
+mark('module');
 const FALLBACK = { id: '', name: 'Kreidegasse', district: 'Musterreihe', type: 'Stadthäuser', arch: 'Fünf Häuser aus Ziegel, zwei Geschosse, jedes unter einem Dach aus Zink.',
   style: { variants: [{ par: 7.0, first: 'frame', brick: '0xe0dbcf' }, { par: 6.7, first: 'bay', setback: -0.3 }] },
   rows: [{ name: 'Zeile', houses: ['Verkauft', 'Frei', 'Verkauft', 'Verkauft', 'Frei'].map((s, i) => ({ no: '0' + (i + 1), status: s, rooms: 4 + (i % 2), area: 112 + i * 4, price: s === 'Frei' ? '498.000 €' : '' })) }] };
 const list = await fetch('/threejs-demos/dortmund/js/projects.json').then((r) => r.json()).catch(() => []);
+mark('data');
 const PR = list.find((x) => x.id === Q.get('id')) || list[0] || FALLBACK;
 const hex = (o) => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, typeof v === 'string' && v.startsWith('0x') ? parseInt(v, 16) : v]));
 const ST = PR.style || {}, BASE = hex(ST.base), VAR = (ST.variants || [{}]).map(hex);
@@ -28,10 +31,15 @@ const GROUP = ST.group || 0, GAP = ST.gap || 0, OPEN = !!(GROUP || ST.open);
 const xOf = (i) => i * 6 + (GROUP ? Math.floor(i / GROUP) * GAP : 0);
 const LEN = xOf(N - 1) + 6, MID = LEN / 2;
 
+// which house: the one asked for, else the first free one
+let sel = Math.max(0, HOUSES.findIndex((h) => h.no === wantNo));
+if (!wantNo) sel = Math.max(0, HOUSES.findIndex(free));
+
 const S = createStage({ hatch: 0.18, hatchPhone: 0.24, drawSpan: [-2, LEN + 9], drawDir: [1, 0.9], wipe: [-10, Math.max(26, LEN - 4)], soft: 1.6 });
+mark('stage');
 const houses = HOUSES.map((h, i) => {
   const first = GROUP ? i % GROUP === 0 : i === 0, last = GROUP ? i % GROUP === GROUP - 1 : i === N - 1;
-  return S.house(xOf(i), { ...BASE, ...VAR[i % VAR.length], ...(i % 2 ? { door: 'right' } : {}), interior: true, sideL: OPEN && first, sideR: OPEN && last });
+  return S.house(xOf(i), { ...BASE, ...VAR[i % VAR.length], ...(i % 2 ? { door: 'right' } : {}), interior: i === sel ? true : 'later', sideL: OPEN && first, sideR: OPEN && last });   // the other houses get their rooms once the page stands
 });
 if (!OPEN) {                                   // a street in town: the neighbours stand on, drawn faintly
   S.house(-6, { faint: true, par: 7.6, roof: 'none', first: 'frame', brick: 0xd9d3c7 });
@@ -55,9 +63,7 @@ S.figure(8.2, 2.0, 1, false); if (LEN > 24) { S.figure(LEN - 9.4, 2.3, 1, true);
 S.tree(LEN + (OPEN ? 3.4 : 2.6), 2.6, 6.6, 1.9); if (OPEN) S.tree(-3.6, 2.4, 5.8, 1.7);
 S.aimSun(MID, 4, Math.max(30, LEN));
 
-// ---- which house
-let sel = Math.max(0, HOUSES.findIndex((h) => h.no === wantNo));
-if (!wantNo) sel = Math.max(0, HOUSES.findIndex(free));
+mark('built');
 let pNow = 0, KEYS = [];
 const P = { choose: [286, 340], approach: 372, entry: 448, hall: 523, turn: 603, kitchen: 688, end: 704 };
 function keysFor(i) {
@@ -140,7 +146,7 @@ function fill() {
 function choose(i, go) {
   if (!document.documentElement.classList.contains('done')) return;
   const inside = pNow > P.approach - 8;
-  const swap = () => { sel = i; KEYS = keysFor(sel); fill(); S.touch(); };
+  const swap = () => { houses[i].rooms(); lookY = lookP = 0; sel = i; KEYS = keysFor(sel); fill(); S.touch(); };
   if (i === sel) { if (go && pNow < P.entry - 30) window.__jumpToP(P.entry); return; }
   if (!inside) { swap(); if (go) window.__jumpToP(P.entry); return; }
   curtain.classList.add('on');
@@ -158,6 +164,66 @@ addEventListener('click', (e) => {
   const i = HOUSES.findIndex((_, k) => hit.x >= xOf(k) && hit.x < xOf(k) + 6);
   if (i >= 0) choose(i, true);
 });
+
+// ---- the tools: sun, storeys, materials, looking around
+let sunHour = null, plan = '', planP = 0, lookY = 0, lookP = 0, lookAtP = 0;
+const D2R = Math.PI / 180, CUT = { eg: 2.92, og: 6.02 }, cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 0);
+function lens(p) {
+  if (plan && Math.abs(p - planP) > 9) setPlan('');          // scrolling on leaves the plan
+  if (plan) {
+    // a plan: the house cut at the height of a storey, seen straight from above, street at the bottom
+    const cx = xOf(sel) + 3;
+    cutPlane.constant = CUT[plan]; S.renderer.clippingPlanes = [cutPlane];
+    S.camera.up.set(0, 0, -1);
+    S.setCam({ t: [cx, CUT[plan], -6.4], fh: Math.max(21.5, 9 / (innerWidth / innerHeight)), fov: 16, yaw: 0, pitch: 89.9 });
+    return;
+  }
+  if (S.renderer.clippingPlanes.length) { S.renderer.clippingPlanes = []; S.camera.up.set(0, 1, 0); }
+  const c = S.camAt(p, KEYS);
+  if (Math.abs(p - lookAtP) > 3) { lookY *= 0.86; lookP *= 0.86; if (Math.abs(lookY) + Math.abs(lookP) < 0.2) lookY = lookP = 0; else S.touch(); }
+  if (lookY || lookP) {
+    // look around from where the lens stands: the place stays, only the direction turns (and never through a wall)
+    const d = (c.fh / 2) / Math.tan(c.fov * D2R / 2), cy = Math.cos(c.pitch * D2R);
+    const pos = [c.t[0] + Math.sin(c.yaw * D2R) * cy * d, c.t[1] + Math.sin(c.pitch * D2R) * d, c.t[2] + Math.cos(c.yaw * D2R) * cy * d];
+    S.setCam(S.viewKey(0, pos, c.yaw + lookY, Math.max(-38, Math.min(30, c.pitch + lookP)), c.fov, c.fh));
+  } else S.setCam(c);
+}
+{
+  let drag = null;
+  addEventListener('pointerdown', (e) => { if (!(e.target instanceof Element && e.target.closest('button, a, input, #cad-map, .beat, .kit'))) drag = { x: e.clientX, y: e.clientY }; }, { passive: true });
+  addEventListener('pointermove', (e) => {
+    if (!drag || plan || pNow < P.entry - 12) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+    lookY = Math.max(-75, Math.min(75, lookY + dx * 0.16)); if (e.pointerType === 'mouse') lookP = Math.max(-28, Math.min(28, lookP - dy * 0.12));
+    lookAtP = pNow; S.touch();
+  }, { passive: true });
+  const end = () => { drag = null; }; addEventListener('pointerup', end, { passive: true }); addEventListener('pointercancel', end, { passive: true });
+}
+const kit = $('kit'), kitBtn = $('kitBtn');
+kitBtn.addEventListener('click', () => { const o = kit.hidden; kit.hidden = !o; kitBtn.setAttribute('aria-expanded', String(o)); });
+$('sun').addEventListener('input', (e) => {
+  sunHour = +e.target.value; const h = Math.floor(sunHour), mi = Math.round((sunHour - h) * 60);
+  $('sunLabel').textContent = `${h}:${String(mi).padStart(2, '0')} Uhr`;
+  if (pNow < 262) window.__jumpToP(P.choose[0] + 12);            // the sun only shines on the built house
+  S.touch();
+});
+$('floors').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  setPlan(b.dataset.f);
+});
+function setPlan(f) {
+  plan = f; lookY = lookP = 0;
+  [...$('floors').children].forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === f)));
+  if (plan && pNow < 262) { window.__jumpToP(P.choose[0] + 12); planP = P.choose[0] + 12; } else planP = pNow;
+  document.documentElement.classList.toggle('plan', !!plan); S.touch();
+}
+const swatches = (id, kind, list) => list.forEach(([name, col], k) => {
+  const b = $(id).appendChild(document.createElement('button'));
+  b.innerHTML = `<i class="sw" style="background:#${col.toString(16).padStart(6, '0')}"></i>${name}`; b.setAttribute('aria-pressed', String(k === 0));
+  b.addEventListener('click', () => { S.mat(kind).color.setHex(col); [...$(id).children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); S.touch(); });
+});
+swatches('mFloor', 'oakFloor', [['Eiche', 0xb88b55], ['Räuchereiche', 0x6e5038], ['Esche', 0xd8c6a2]]);
+swatches('mWood', 'wood', [['Eiche', 0xa67b49], ['Schwarz', 0x2f2c2a], ['Weiß', 0xe9e5dc]]);
 
 const LATE = new THREE.Vector3(-1.45, 0.62, 0.78).normalize();
 const sunDir = new THREE.Vector3();
@@ -181,18 +247,24 @@ run(S, {
   radar,
   frame(p) {
     pNow = p;
-    S.setCam(S.camAt(p, KEYS));
-    pins.style.opacity = (1 - span(p, P.approach - 14, P.approach + 22)).toFixed(3);
+    lens(p);
+    pins.style.opacity = plan ? '0' : (1 - span(p, P.approach - 14, P.approach + 22)).toFixed(3);
     pins.style.pointerEvents = p > P.approach + 10 ? 'none' : '';
     S.U.uDepthCue.value = span(p, 22, 95) * (1 - span(p, 160, 230));
     // one sun crossing the facades, at the drawing's angle
     const u = span(p, 118, 255);
     S.U.uSweep.value.z = u <= 0 ? -60 : u >= 1 ? 60 + LEN : lerp(-12, Math.max(28, LEN - 2), smooth(u));
     const m = ease(span(p, 262, P.approach));
-    sunDir.copy(CONVENTION).lerp(LATE, m).normalize();
+    if (sunHour === null) {
+      sunDir.copy(CONVENTION).lerp(LATE, m).normalize();
+      S.sun.color.copy(white).lerp(late, m); S.sun.intensity = lerp(3.2, 3.0, m);
+    } else {
+      // the sun of the slider: up in the east, over the garden in the south at noon, down in the west
+      const t = (sunHour - 5.5) / 15.5, a = Math.PI * t, up = Math.sin(a);
+      sunDir.set(Math.cos(a) * 1.0, up * 0.95 + 0.1, -up * 0.95 + 0.3).normalize();
+      S.sun.color.copy(late).lerp(white, Math.min(1, up * 1.5)); S.sun.intensity = lerp(2.3, 3.3, up);
+    }
     S.setSun(sunDir);
-    S.sun.color.copy(white).lerp(late, m);
-    S.sun.intensity = lerp(3.2, 3.0, m);
     const d = smooth(span(p, P.entry - 40, P.entry + 30)), g = smooth(span(p, P.turn + 5, P.kitchen - 5));
     houses.forEach((H, i) => { H.setDoor(i === sel ? d : 0); H.setGardenDoor(i === sel ? g : 0); });
   },
@@ -205,6 +277,14 @@ run(S, {
     { from: P.turn + 10, to: P.end + 40, html: '' },
   ],
 });
+mark('run');
+// the rooms of the other houses, one house at a time when the browser has nothing else to do
+{
+  const rest = houses.map((_, i) => i).filter((i) => i !== sel).sort((a, b) => Math.abs(a - sel) - Math.abs(b - sel));
+  const idle = window.requestIdleCallback ? (f) => requestIdleCallback(f, { timeout: 700 }) : (f) => setTimeout(f, 120);
+  const more = () => { const i = rest.shift(); if (i === undefined) return; houses[i].rooms(); S.touch(); idle(more); };
+  const wait = setInterval(() => { if (window.__ready) { clearInterval(wait); setTimeout(() => idle(more), 300); } }, 100);
+}
 beatEls = [...document.querySelectorAll('#beats .beat')];
 fill();
-window.__haeuser = { get sel() { return sel; }, choose, P, get p() { return pNow; }, PR, ROW };
+window.__haeuser = { get sel() { return sel; }, choose, P, get p() { return pNow; }, PR, ROW, S };
