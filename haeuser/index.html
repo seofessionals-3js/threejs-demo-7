@@ -5,11 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#dfd2ba" />
   <title>Wohnungsfinder · Die Häuser</title>
-  <meta name="description" content="Fünf Stadthäuser in einer Reihe: Jedes lässt sich anklicken und betreten. Drei sind verkauft, zwei sind frei." />
+  <meta name="description" content="Die Häuser eines Projekts der Dortmund-Karte: Jedes lässt sich anklicken und betreten, jedes zeigt, ob es frei oder verkauft ist." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <!-- the import map stands before every module and preload: a cached module would otherwise be resolved without it -->
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+    } }
+  </script>
   <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" />
   <link rel="modulepreload" href="../engine/elevation.js" />
   <link rel="modulepreload" href="../engine/quality.js" />
@@ -34,6 +41,12 @@
     .chooser .frei small { color: var(--frei); } .chooser .verkauft small { color: var(--verkauft); }
     .chooser button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
     .chooser button[aria-pressed="true"].frei small { color: #7fd6a0; } .chooser button[aria-pressed="true"].verkauft small { color: #ff9c94; }
+    /* a project with several rows: one row is shown at a time */
+    .rows { position: fixed; z-index: 6; left: 50%; top: 112px; transform: translateX(-50%); display: flex; gap: 4px; opacity: 0; transition: opacity .6s; }
+    html.done .rows { opacity: 1; }
+    .rows a { border: 1px solid var(--ink); background: rgba(234, 223, 203, .94); color: var(--ink); text-decoration: none; padding: 5px 10px 4px; font: 600 10px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
+    .rows a[aria-current="true"] { background: var(--ink); color: var(--paper); }
+    .rows a small { font: inherit; opacity: .75; }
     .st { font-weight: 700; } .st.frei { color: var(--frei); } .st.verkauft { color: var(--verkauft); }
     .beat .go { appearance: none; border: 1px solid var(--frei); background: none; color: var(--frei); font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px; margin: 8px 6px 0 0; cursor: pointer; pointer-events: auto; }
     .beat .go:hover { background: var(--frei); color: #fff; }
@@ -42,6 +55,7 @@
     .curtain.on { opacity: 1; }
     @media (max-width: 700px) {
       .plot { width: 62px; margin-left: -31px; padding: 4px 3px 0; } .plot b { font-size: 15px; } .plot span { font-size: 7.5px; letter-spacing: .02em; margin: 4px -3px 0; }
+      .rows { top: 100px; } .rows a { padding: 6px 9px 5px; font-size: 9.5px; letter-spacing: .06em; } .rows a small { display: none; }
       .chooser { top: 58px; gap: 3px; } .chooser button { min-width: 50px; padding: 5px 4px 4px; font-size: 13px; } .chooser button small { font-size: 7.5px; letter-spacing: .02em; }
     }
   </style>
@@ -62,11 +76,12 @@
 
   <section class="hero" aria-label="Straßenansicht der fünf Häuser">
     <p class="kicker mono"><span id="kickName">Kreidegasse</span> <span class="soft">&nbsp;·&nbsp; Straßenansicht 1:100</span></p>
-    <h1><span class="mask"><span>Fünf Haustüren.</span></span><span class="mask"><span>Zwei noch <em>frei.</em></span></span></h1>
+    <h1><span class="mask"><span id="h1a">Fünf Haustüren.</span></span><span class="mask"><span id="h1b">Zwei noch <em>frei.</em></span></span></h1>
   </section>
 
   <div class="pins" id="pins"></div>
   <nav class="chooser" id="chooser" aria-label="Haus wählen"></nav>
+  <nav class="rows" id="rows" aria-label="Zeile wählen" hidden></nav>
 
   <div class="tb tb-top" aria-hidden="true">
     <div><span>Projekt</span><b id="tbName" style="font-weight:inherit">Kreidegasse</b></div>
@@ -81,12 +96,6 @@
   <main class="track" id="track"></main>
   <p id="live" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
 
-  <script type="importmap">
-    { "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
-    } }
-  </script>
   <script type="module" src="page.js"></script>
 </body>
 </html>
