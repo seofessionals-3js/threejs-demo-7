@@ -10,6 +10,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <!-- the import map stands before every module and preload: a cached module would otherwise be resolved without it -->
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+    } }
+  </script>
   <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" />
   <link rel="modulepreload" href="../engine/elevation.js" />
   <link rel="modulepreload" href="../engine/quality.js" />
@@ -47,12 +54,6 @@
   <div id="beats"></div>
   <main class="track" id="track"></main>
 
-  <script type="importmap">
-    { "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
-    } }
-  </script>
   <script type="module" src="page.js"></script>
 <!-- three.js Portfolio: when this demo has played to its end, the next one starts by itself -->
 <script src="/threejs-demos/portfolio.js" defer></script>

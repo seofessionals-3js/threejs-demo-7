@@ -14,7 +14,7 @@ Drei Varianten mit einer Engine:
 - [`a-one-door/`](a-one-door/): ein Stadthaus, durch die Glastür hinein (die Hauptdemo)
 - [`b-the-row/`](b-the-row/): eine Straße mit sechs Stadthäusern und Hausnummern, Haus 04 reservieren
 - [`c-the-face/`](c-the-face/): ein Ziegeldetail 1:20, schwarze Binder in weißer Wand, die Sonne streift über das Relief
-- [`haeuser/`](haeuser/): fünf Stadthäuser eines Projekts der [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/). Jedes Haus lässt sich anklicken, am Schild über dem Dach, an den Tasten oben oder an der Fassade, und jedes lässt sich betreten. Drei sind verkauft (rot), zwei sind frei (grün). `?id=…` nennt das Projekt, `?haus=5` wählt ein Haus vor.
+- [`haeuser/`](haeuser/): die Häuser eines Projekts der [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/). Die Seite liest das Projekt aus den Daten der Karte: seine Architektur, seine Zeilen und für jedes Haus, ob es frei (grün) oder verkauft (rot) ist. Sechs Projekte, sechs Bauformen: Stadthäuser mit Zinkerker, weiße Kuben mit Dachterrasse, Klinker-Giebelhäuser, 24 Doppelhaushälften mit Garagen in vier Zeilen, Holzhäuser mit Pultdach, Reihenhäuser mit Gaube unter Schiefer. Jedes Haus lässt sich anklicken, am Schild über dem Dach, an den Tasten oben oder an der Fassade, und jedes lässt sich betreten. `?id=…` nennt das Projekt, `?zeile=2` die Zeile, `?haus=14` ein Haus.
 
 ## Farben
 
@@ -36,6 +36,7 @@ Das Blatt ist ein Trois Crayons: schwarze Kreide, weiße Kreide und ein einziges
 
 - **Die Ansicht ist das Haus.** Das 3D-Modell wird frontal durch ein 2°-Objektiv gesehen und wirkt deshalb wie eine orthogonale Zeichnung.
 - **Die Schraffur wird berechnet.** Die Sonne startet nach der Zeichenkonvention, Licht von links oben unter 45°. Jedes Pixel, das die Shadow-Map in den Schatten legt, bekommt eine 45°-Schraffur, sodass gezeichnete und echte Schatten dieselben Formen haben.
+- **Bauformen.** `house()` in `engine/elevation.js` baut ein Haus aus Optionen: Wand (`wall`, `brick`), Tür (`doorColor`), Obergeschoss (`first`: Erker, Steinrahmen, Fenster, Balkon), Dach (`roof`: Satteldach, Giebel zur Straße, Pultdach, Flachdach; dazu `dormer`, `terrace`, `roofColor`) und Giebelwände, wo kein Nachbar steht (`sideL`, `sideR`).
 - **Ein Material für jede Fläche.** `mat()` in `engine/elevation.js` patcht das Standardmaterial: Papier und Schraffur auf der einen Seite des Scans, Backstein, Stein, Zink und Glas auf der anderen. Das Glas der Haustür ist auf der Zeichnung Papier und wird erst mit dem Scan durchsichtig.
 - **Kamera-Keys sind Bildausschnitte** (Ziel, Bildhöhe, Objektiv). Der Abstand ergibt sich daraus, und das Objektiv wird im Log-Raum überblendet, sodass es sich ohne Sprung von 2° auf 55° öffnet. Im Haus werden die Keys vom Standpunkt der Kamera aus geschrieben (`h.key`), und ein Haus mit der Tür rechts spiegelt sie selbst.
 - **Kein Clipping.** Die Kamera hält im Haus mindestens 40 cm Abstand zu jeder Fläche. `window.__clear()` misst das: der exakte Abstand vom Auge zu jedem Dreieck über den ganzen Weg. Zurzeit ist der kleinste Wert 0,55 m, neben der Treppe.

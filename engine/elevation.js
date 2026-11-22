@@ -972,13 +972,18 @@ export function createStage(cfg = {}) {
     const holes = [R4(EX[0], G0, EX[1], 3.0), R4(3.55, 1.0, 5.5, 3.0)];
     const ff = first === 'frame' ? [[0.9, 3.95, 5.1, 6.0]] : [R4(0.75, 3.9, 3.25, 5.9), R4(4.05, 3.9, 5.35, 6.0)];
     holes.push(...ff);
-    const brick = mat('brick', { faint, color: v.brick });
+    // what a project can vary: v.wall ('brick' | 'plaster' | 'wood') and v.brick (its colour), v.doorColor, v.roofColor,
+    // v.first ('bay' | 'frame' | 'plain' | 'balcony'), v.roof ('pitch' | 'front' | 'mono' | 'none'), v.dormer, v.terrace,
+    // v.chimney, v.sideL / v.sideR (an outer wall where no neighbour stands)
+    const brick = mat(v.wall || 'brick', { faint, color: v.brick });
+    const DC = v.doorColor || 0x9a3f2a;
     const O = { parent: g, lineColor: lc, realLines: rl };
     add(panel([0, 0, 6, PAR], holes, -T, 0), brick, LW, O);
     const st = mat('stone', { faint });
     const base = mat('stone', { faint, color: 0x2f2c2a });
     const stm = mat('steel', { faint });
     const zm = mat('zinc', { faint });
+    const rm = v.roofColor ? mat('zinc', { faint, color: v.roofColor }) : zm;      // the roof skin
 
     // a base course of dark stone, with a thin ledge on top
     add(bx(0, 0, 0, EX[0], G0, 0.026), base, lw, O);
@@ -1006,9 +1011,9 @@ export function createStage(cfg = {}) {
 
     // the door: a steel portal, and in it two leaves of glass in oxide-red frames, 2.0 m by 2.55 m together
     const show = !faint && v.interior !== false;
-    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), mat('steel', { faint, color: 0x9a3f2a }), lw, O);   // the door frame: the one oxide red
+    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), mat('steel', { faint, color: DC }), lw, O);   // the door frame: the one oxide red
     const hA = Math.min(X(DX[0]), X(DX[1])) + 0.012, hB = Math.max(X(DX[0]), X(DX[1])) - 0.012, wL = (hB - hA) / 2 - 0.004;
-    const red = mat('lacquer', { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
+    const red = mat('lacquer', v.doorColor ? { faint, color: DC } : { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
     const leaves = [1, -1].map((s) => {
       const piv = new THREE.Group(); piv.position.set(s > 0 ? hA : hB, 0, pz - 0.035); g.add(piv);
       piv.userData.moving = show;                            // only the leaves of a show house swing: the others are merged into the row
@@ -1037,12 +1042,24 @@ export function createStage(cfg = {}) {
       if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xc2baa9 }), 0, { parent: g });
       windowIn(g, 0.9, 3.95, 5.1, 6.0, 0.16, { faint, lc, rl, panes: 3, transom: 5.4 });
     } else {
-      // a bay of zinc, 800 mm out over the porch, glazed across its front
-      add(bx(0.6, 3.72, 0, 3.4, 3.9, 0.8), zm, LW, O);
-      add(bx(0.6, 5.9, 0, 3.4, 6.08, 0.8), zm, LW, O);
-      add(bx(0.6, 3.9, 0, 0.75, 5.9, 0.8), zm, lw, O);
-      add(bx(3.25, 3.9, 0, 3.4, 5.9, 0.8), zm, lw, O);
-      windowIn(g, ...R4(0.75, 3.9, 3.25, 5.9), -0.74, { faint, lc, rl, panes: 3 });
+      if (first === 'bay') {
+        // a bay of zinc, 800 mm out over the porch, glazed across its front
+        add(bx(0.6, 3.72, 0, 3.4, 3.9, 0.8), zm, LW, O);
+        add(bx(0.6, 5.9, 0, 3.4, 6.08, 0.8), zm, LW, O);
+        add(bx(0.6, 3.9, 0, 0.75, 5.9, 0.8), zm, lw, O);
+        add(bx(3.25, 3.9, 0, 3.4, 5.9, 0.8), zm, lw, O);
+        windowIn(g, ...R4(0.75, 3.9, 3.25, 5.9), -0.74, { faint, lc, rl, panes: 3 });
+      } else {
+        // a plain window over the porch; with 'balcony' a stone slab and a guard of steel bars in front of it
+        windowIn(g, ...R4(0.75, 3.9, 3.25, 5.9), 0.2, { faint, lc, rl, sill: first !== 'balcony', panes: 2, transom: 5.35 });
+        if (first === 'balcony') {
+          add(bx(0.45, 3.7, 0, 3.55, 3.86, 1.05), st, LW, O);
+          const rail = [bx(0.45, 4.84, 0.98, 3.55, 4.88, 1.04), bx(0.45, 4.84, 0, 0.49, 4.88, 1.04), bx(3.51, 4.84, 0, 3.55, 4.88, 1.04)];
+          for (let x = 0.47; x < 3.52; x += 0.118) rail.push(bx(x, 3.86, 1.0, x + 0.02, 4.84, 1.02));
+          for (let z = 0.14; z < 0.95; z += 0.2) rail.push(bx(0.46, 3.86, z, 0.48, 4.84, z + 0.02), bx(3.52, 3.86, z, 3.54, 4.84, z + 0.02));
+          add(mergeGeometries(rail), stm, faint ? 0 : 0.55, O);
+        }
+      }
       // beside it a tall window with a guard of steel bars
       windowIn(g, ...R4(4.05, 3.9, 5.35, 6.0), 0.2, { faint, lc, rl, sill: true, panes: 1, transom: 5.35 });
       const bars = [];
@@ -1052,17 +1069,55 @@ export function createStage(cfg = {}) {
       add(mergeGeometries(bars), stm, faint ? 0 : 0.55, O);
     }
 
-    if (v.roof !== 'none') {
+    const roof = v.roof || 'pitch';
+    const V2 = (pts) => pts.map((q) => new THREE.Vector2(q[0], q[1]));
+    const alongX = (shape, depth, x1) => new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).rotateY(-Math.PI / 2).translate(x1, 0, 0);   // a profile in z/y, extruded from x1 - depth to x1
+    if (roof === 'mono') {
+      // one slope that rises to the street: a band of wall above the eaves with a strip of clerestory glass
+      add(panel([0, PAR, 6, PAR + 1.55], [[0.9, PAR + 0.42, 5.1, PAR + 1.2]], -T, 0), brick, LW, O);
+      windowIn(g, 0.9, PAR + 0.42, 5.1, PAR + 1.2, 0.14, { faint, lc, rl, panes: 4 });
+      add(alongX(new THREE.Shape(V2([[0.75, PAR + 1.55], [0.75, PAR + 1.8], [-9.56, PAR + 0.4], [-9.56, PAR + 0.15]])), 6, 6), rm, LW, O);
+    } else if (roof !== 'none') {
       // eaves, then a roof of standing-seam zinc that falls to the street, and a chimney on the ridge
-      add(box(0, PAR - 0.03, -T, 6, PAR + 0.1, 0.36), zm, LW, O);
-      const prof = new THREE.Shape([[0.36, PAR + 0.1], [-4.6, PAR + RH], [-9.56, PAR + 0.1]].map((p) => new THREE.Vector2(p[0], p[1])));
-      add(new THREE.ExtrudeGeometry(prof, { depth: 6, bevelEnabled: false }).rotateY(-Math.PI / 2).translate(6, 0, 0), zm, LW, O);
-      add(bx(4.5, PAR + RH - 0.9, -5.0, 5.3, PAR + RH + 0.85, -4.2), brick, lw, O);
-      add(bx(4.46, PAR + RH + 0.85, -5.04, 5.34, PAR + RH + 0.93, -4.16), st, lw, O);
+      add(box(0, PAR - 0.03, -T, 6, PAR + 0.1, 0.36), rm, LW, O);
+      add(alongX(new THREE.Shape(V2([[0.36, PAR + 0.1], [-4.6, PAR + RH], [-9.56, PAR + 0.1]])), 6, 6), rm, LW, O);
+      if (v.chimney !== false) {
+        add(bx(4.5, PAR + RH - 0.9, -5.0, 5.3, PAR + RH + 0.85, -4.2), brick, lw, O);
+        add(bx(4.46, PAR + RH + 0.85, -5.04, 5.34, PAR + RH + 0.93, -4.16), st, lw, O);
+      }
+      if (roof === 'front') {
+        // a gable to the street: the wall runs up into a triangle, its own little roof meets the big one behind
+        const gh = 2.35, gz = 3.5;
+        add(new THREE.ExtrudeGeometry(new THREE.Shape(V2([[0.55, PAR], [5.45, PAR], [3, PAR + gh]])), { depth: gz, bevelEnabled: false }).translate(0, 0, -gz), brick, LW, O);
+        add(new THREE.ExtrudeGeometry(new THREE.Shape(V2([[0.22, PAR - 0.04], [3, PAR + gh + 0.3], [5.78, PAR - 0.04], [5.52, PAR - 0.04], [3, PAR + gh + 0.06], [0.48, PAR - 0.04]])), { depth: gz + 0.32, bevelEnabled: false }).translate(0, 0, -gz), rm, LW, O);
+        windowIn(g, 2.45, PAR + 0.32, 3.55, PAR + 1.28, -0.035, { faint, lc, rl, panes: 1 });
+      }
+      if (v.dormer) {
+        // a dormer of zinc on the street slope
+        const d0 = PAR + 0.5, d1 = PAR + 1.82, dz = -0.72;
+        add(panel([1.5, d0, 4.5, d1], [[1.72, PAR + 0.68, 4.28, PAR + 1.62]], dz - 0.12, dz), zm, LW, O);
+        add(box(1.5, PAR + 0.3, -3.1, 1.62, d1, dz), zm, lw, O); add(box(4.38, PAR + 0.3, -3.1, 4.5, d1, dz), zm, lw, O);
+        add(box(1.4, d1, -3.3, 4.6, d1 + 0.1, dz + 0.14), zm, LW, O);
+        windowIn(g, 1.72, PAR + 0.68, 4.28, PAR + 1.62, -dz + 0.05, { faint, lc, rl, panes: 3 });
+      }
     } else {
       // a parapet with a stone coping
       add(box(0, PAR, -T - 0.04, 6, PAR + 0.085, 0.055), st, LW, O);
       if (!faint) add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g });
+      if (v.terrace) {
+        // a roof terrace: a guard of steel behind the coping, and the head of the stair
+        const rail = [box(0.08, PAR + 1.02, -0.34, 5.92, PAR + 1.06, -0.28)];
+        for (let x = 0.1; x < 5.9; x += 0.145) rail.push(box(x, PAR + 0.085, -0.32, x + 0.02, PAR + 1.02, -0.3));
+        add(mergeGeometries(rail), stm, faint ? 0 : 0.55, O);
+        add(bx(3.3, PAR, -7.6, 5.9, PAR + 2.35, -4.4), brick, LW, O);
+        add(bx(3.24, PAR + 2.35, -7.66, 5.96, PAR + 2.44, -4.34), st, lw, O);
+      }
+    }
+    // an outer wall with its gable, where the house has no neighbour
+    for (const side of [v.sideL ? 0 : null, v.sideR ? 6.3 : null]) {
+      if (side === null) continue;
+      const top = roof === 'none' ? [[0, PAR + 0.08], [-9.56, PAR + 0.08]] : roof === 'mono' ? [[0, PAR + 1.55], [-9.56, PAR + 0.18]] : [[0, PAR], [-4.6, PAR + RH - 0.05], [-9.56, PAR]];
+      add(alongX(new THREE.Shape(V2([[0, 0], ...top, [-12.3, PAR - 0.3], [-12.3, 0]])), 0.3, side), brick, LW, O);
     }
 
     let gardenDoors = null, doorA = 0, gardenD = 0;
