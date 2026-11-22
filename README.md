@@ -14,6 +14,7 @@ Drei Varianten mit einer Engine:
 - [`a-one-door/`](a-one-door/): ein Stadthaus, durch die Glastür hinein (die Hauptdemo)
 - [`b-the-row/`](b-the-row/): eine Straße mit sechs Stadthäusern und Hausnummern, Haus 04 reservieren
 - [`c-the-face/`](c-the-face/): ein Ziegeldetail 1:20, schwarze Binder in weißer Wand, die Sonne streift über das Relief
+- [`haeuser/`](haeuser/): fünf Stadthäuser eines Projekts der [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/). Jedes Haus lässt sich anklicken, am Schild über dem Dach, an den Tasten oben oder an der Fassade, und jedes lässt sich betreten. Drei sind verkauft (rot), zwei sind frei (grün). `?id=…` nennt das Projekt, `?haus=5` wählt ein Haus vor.
 
 ## Farben
 
