@@ -8,7 +8,7 @@
   <meta name="description" content="Die Häuser eines Projekts der Dortmund-Karte: Jedes lässt sich anklicken und betreten, jedes zeigt, ob es frei oder verkauft ist." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />   <!-- the fonts must not hold back the first picture -->
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <!-- the import map stands before every module and preload: a cached module would otherwise be resolved without it -->
   <script type="importmap">
@@ -51,10 +51,27 @@
     .beat .go { appearance: none; border: 1px solid var(--frei); background: none; color: var(--frei); font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px; margin: 8px 6px 0 0; cursor: pointer; pointer-events: auto; }
     .beat .go:hover { background: var(--frei); color: #fff; }
     .pill.sold { border-color: var(--verkauft); color: var(--verkauft); pointer-events: none; }
+    /* the tools: sun, storeys, materials. One small button, one small sheet */
+    .kit-btn { position: fixed; z-index: 7; right: var(--gut, 28px); top: 66px; appearance: none; border: 1px solid var(--ink); background: rgba(234, 223, 203, .94); color: var(--ink); height: 37px; padding: 0 12px; cursor: pointer; font: 600 10px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; opacity: 0; transition: opacity .6s; -webkit-tap-highlight-color: transparent; }
+    html.done .kit-btn { opacity: 1; }
+    .kit-btn[aria-expanded="true"] { background: var(--ink); color: var(--paper); }
+    .kit { position: fixed; z-index: 7; right: var(--gut, 28px); top: 110px; width: 252px; background: rgba(234, 223, 203, .97); border: 1px solid var(--ink); padding: 12px 14px 14px; font: 500 11px/1.3 var(--font-mono); color: var(--ink); }
+    .kit h3 { margin: 12px 0 6px; font: 600 9.5px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--soft); display: flex; justify-content: space-between; }
+    .kit h3:first-child { margin-top: 0; }
+    .kit h3 b { color: var(--ink); font-weight: 600; }
+    .kit input[type=range] { width: 100%; margin: 2px 0 0; accent-color: var(--accent); height: 22px; }
+    .kit .seg { display: flex; gap: 3px; flex-wrap: wrap; }
+    .kit .seg button { flex: 1 1 auto; appearance: none; border: 1px solid var(--ink); background: none; color: var(--ink); padding: 7px 6px 6px; cursor: pointer; font: 600 9.5px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+    .kit .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+    .kit .sw { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border: 1px solid rgba(42, 37, 34, .5); vertical-align: -1px; }
+    .kit p { margin: 10px 0 0; font-size: 9.5px; color: var(--soft); letter-spacing: .02em; }
+    html.plan #beats, html.plan .hint, html.plan .pins { display: none; }
+    html, body, .track { touch-action: pan-y; }      /* a finger moved sideways looks around, up and down it scrolls */
     .curtain { position: fixed; inset: 0; z-index: 5; background: var(--paper); opacity: 0; pointer-events: none; transition: opacity .28s ease; }
     .curtain.on { opacity: 1; }
     @media (max-width: 700px) {
       .plot { width: 62px; margin-left: -31px; padding: 4px 3px 0; } .plot b { font-size: 15px; } .plot span { font-size: 7.5px; letter-spacing: .02em; margin: 4px -3px 0; }
+      .kit-btn { top: 14px; right: auto; left: 50%; transform: translateX(-50%); height: 26px; padding: 0 9px; font-size: 9px; } .kit { top: 46px; right: 8px; left: 8px; width: auto; }
       .rows { top: 100px; } .rows a { padding: 6px 9px 5px; font-size: 9.5px; letter-spacing: .06em; } .rows a small { display: none; }
       .chooser { top: 58px; gap: 3px; } .chooser button { min-width: 50px; padding: 5px 4px 4px; font-size: 13px; } .chooser button small { font-size: 7.5px; letter-spacing: .02em; }
     }
@@ -82,6 +99,19 @@
   <div class="pins" id="pins"></div>
   <nav class="chooser" id="chooser" aria-label="Haus wählen"></nav>
   <nav class="rows" id="rows" aria-label="Zeile wählen" hidden></nav>
+
+  <button class="kit-btn" id="kitBtn" aria-expanded="false" aria-controls="kit">Werkzeuge</button>
+  <div class="kit" id="kit" hidden>
+    <h3>Sonne <b id="sunLabel">nach Zeichnung</b></h3>
+    <input type="range" id="sun" min="6" max="20" step="0.25" value="14" aria-label="Uhrzeit für den Sonnenstand" />
+    <h3>Geschoss</h3>
+    <div class="seg" id="floors"><button data-f="" aria-pressed="true">Rundgang</button><button data-f="eg">Grundriss EG</button><button data-f="og">Grundriss OG</button></div>
+    <h3>Boden</h3>
+    <div class="seg" id="mFloor"></div>
+    <h3>Einbauten</h3>
+    <div class="seg" id="mWood"></div>
+    <p>Im Haus: seitlich ziehen zum Umsehen.</p>
+  </div>
 
   <div class="tb tb-top" aria-hidden="true">
     <div><span>Projekt</span><b id="tbName" style="font-weight:inherit">Kreidegasse</b></div>

@@ -1120,9 +1120,17 @@ export function createStage(cfg = {}) {
       add(alongX(new THREE.Shape(V2([[0, 0], ...top, [-12.3, PAR - 0.3], [-12.3, 0]])), 0.3, side), brick, LW, O);
     }
 
-    let gardenDoors = null, doorA = 0, gardenD = 0;
-    if (show) { ZONE = 1; gardenDoors = buildInterior(g, ox, v, doorL, PAR, O); ZONE = 0; }
-    else add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
+    let gardenDoors = null, doorA = 0, gardenD = 0, hasRooms = false;
+    // the rooms. interior: 'later' leaves them out until rooms() is called, so a row of houses is on screen
+    // before every hall and kitchen is built
+    const rooms = () => {
+      if (hasRooms || !show) return;
+      hasRooms = true; ZONE = 1; gardenDoors = buildInterior(g, ox, v, doorL, PAR, O); ZONE = 0;
+      if (live !== null) interiorNodes.forEach((n) => { n.visible = live; });
+      shadowDirty = true; dirty = true;
+    };
+    if (show && v.interior !== 'later') rooms();
+    else if (!show) add(box(0, 0, -12, 6, PAR - 0.3, pz - 0.12), mat('plain', { faint }), 0, { parent: g });
 
     if (v.relief) {
       const bricks = [];
@@ -1144,7 +1152,7 @@ export function createStage(cfg = {}) {
 
     const zs = v.setback || 0;
     return {
-      g, PAR, ox, doorL,
+      g, PAR, ox, doorL, rooms,
       door: [ox + X((DX[0] + DX[1]) / 2), 1.7, zs + pz],
       doorX: [ox + Math.min(X(DX[0]), X(DX[1])), ox + Math.max(X(DX[0]), X(DX[1]))],
       // a camera key from where the lens stands, written for a house with its door on the left
@@ -1252,6 +1260,7 @@ export function createStage(cfg = {}) {
   function pin(el, p, o = {}) { pins.push({ el, p: new THREE.Vector3(...p), ...o }); return el; }
   const v3 = new THREE.Vector3();
   function placePins() {
+    if (pins.length) camera.updateMatrixWorld();          // the pins follow this frame's camera, not the last one's
     pins.forEach((q) => {
       v3.copy(q.p).project(camera);
       const x = (v3.x + 1) / 2 * W, y = (1 - v3.y) / 2 * H;
@@ -1546,8 +1555,9 @@ export function run(S, o) {
 
   // loader: a percent above the ground line. Fonts, a first frame, every shader built.
   const fill = $('#loadPct');
-  const minT = 1100;
-  const fonts = Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]);
+  // arriving at a place on the page (?at=, ?skip) there is no title sequence to wait for: no minimum time, no wait for fonts
+  const minT = skip ? 0 : 1100;
+  const fonts = skip ? Promise.resolve() : Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 2500))]);
   o.frame(0, S, 0);
   let shown = 0;
   const count = setInterval(() => { shown = Math.min(99, shown + 3 + Math.random() * 7); if (fill) fill.textContent = `${Math.floor(shown)}%`; }, 70);
