@@ -31,9 +31,9 @@ import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js
 import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { tier, low, high, startDpr, pinnedDpr, governor, visible, safeMode, enterSafeMode } from './quality.js';
-import { buildInterior, PLANS, fitFor, FLOORS, WOODS, STONES } from './interior.js';
+import { buildInterior, PLANS, planInfo, fitFor, FLOORS, WOODS, STONES } from './interior.js';
 
-export { THREE, mergeGeometries, PLANS, fitFor, FLOORS, WOODS, STONES };
+export { THREE, mergeGeometries, PLANS, planInfo, fitFor, FLOORS, WOODS, STONES };
 export const Q = new URLSearchParams(location.search);
 export const num = (k, d) => (Q.has(k) ? parseFloat(Q.get(k)) : d);
 export const clamp01 = (x) => Math.min(1, Math.max(0, x));
@@ -847,7 +847,7 @@ export function createStage(cfg = {}) {
   // slate, planted), v.first ('bay' | 'frame' | 'plain' | 'balcony'), v.roof ('pitch' | 'front' | 'mono' | 'none'),
   // v.dormer, v.terrace, v.chimney, v.sideL / v.sideR (an outer wall where no neighbour stands).
   // v.interior: true (rooms now), 'later' (rooms when rooms() is called), false (a house that cannot be entered).
-  // v.plan ('A' ... 'D') and v.fit (see interior.js): which rooms, and what they are made of.
+  // v.plan ('A' ... 'D'), v.variant (0 ... 4, the make of that plan) and v.fit (see interior.js): which rooms, and what they are made of.
   function house(ox, v = {}) {
     const g = new THREE.Group(); g.position.set(ox, 0, v.setback || 0); root.add(g);
     const faint = !!v.faint, lc = faint ? 0x8a7d69 : v.accent ? 0xa5432b : undefined, LW = faint ? 0.8 : 1.5, lw = faint ? 0.6 : 0.8;
@@ -1038,7 +1038,7 @@ export function createStage(cfg = {}) {
     if (show) syncs.push(sync);
     const rooms = () => {
       if (inside || !show) return;
-      inside = buildInterior({ THREE, add, box, panel, mat, tree, mulberry }, { g: gi, doorL, PAR, O, v, plan: v.plan, fit: v.fit });
+      inside = buildInterior({ THREE, add, box, panel, mat, tree, mulberry }, { g: gi, doorL, PAR, O, v, plan: v.plan, variant: v.variant, fit: v.fit });
       pending = true; sync(); dirty = true;
     };
     if (show && v.interior !== 'later') rooms();
@@ -1065,6 +1065,7 @@ export function createStage(cfg = {}) {
     return {
       g, PAR, ox, doorL, rooms, walkable: show,
       get built() { return !!inside; }, get plan() { return inside ? inside.plan : (PLANS[v.plan] ? v.plan : 'A'); }, get fit() { return inside ? inside.fit : v.fit; },
+      get info() { return planInfo(PLANS[v.plan] ? v.plan : 'A', v.variant || 0); },        // what the page says about its rooms, and the way through them
       door: [ox + X((DX[0] + DX[1]) / 2), 1.7, zs + pz],
       doorX: [ox + Math.min(X(DX[0]), X(DX[1])), ox + Math.max(X(DX[0]), X(DX[1]))],
       // a point of the house (written for a house with its door on the left) in the world

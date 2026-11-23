@@ -47,7 +47,7 @@ const WALK = sel >= 0;
 
 const S = createStage({ hatch: 0.18, hatchPhone: 0.24, drawSpan: [-2, LEN + 9], drawDir: [1, 0.9], wipe: [-10, Math.max(26, LEN - 4)], soft: 1.6 });
 mark('stage');
-const forcePlan = (Q.get('plan') || '').toUpperCase(), forceFit = Q.has('fit') ? parseInt(Q.get('fit'), 10) : null;      // for trying things out
+const forcePlan = (Q.get('plan') || '').toUpperCase(), forceFit = Q.has('fit') ? parseInt(Q.get('fit'), 10) : null, forceVar = Q.has('var') ? parseInt(Q.get('var'), 10) : null;      // for trying things out
 const looks = HOUSES.map((h, i) => lookFor(PR, K0 + i));
 const houses = HOUSES.map((h, i) => {
   const first = GROUP ? i % GROUP === 0 : i === 0, last = GROUP ? i % GROUP === GROUP - 1 : i === N - 1;
@@ -55,7 +55,7 @@ const houses = HOUSES.map((h, i) => {
   const plan = PLANS[forcePlan] ? forcePlan : PLANS[h.plan] ? h.plan : 'ABCD'[(K0 + i) % 4];
   return S.house(xOf(i), { ...BASE, ...VAR[i % VAR.length], ...look, ...(i % 2 ? { door: 'right' } : {}),
     interior: free(h) ? (i === sel ? true : 'later') : false,              // the rooms of the other free houses are built once the page stands
-    plan, fit: free(h) ? fitFor(forceFit ?? h.fit ?? K0 + i + 1, plan) : undefined, sideL: OPEN && first, sideR: OPEN && last });
+    plan, variant: forceVar ?? h.var ?? 0, fit: free(h) ? fitFor(forceFit ?? h.fit ?? K0 + i + 1, plan, BASE.wall || 'brick') : undefined, sideL: OPEN && first, sideR: OPEN && last });
 });
 if (!OPEN) {                                   // a street in town: the neighbours stand on, drawn faintly
   S.house(-6, { faint: true, par: 7.6, roof: 'none', first: 'frame', brick: 0xd9d3c7 });
@@ -95,7 +95,7 @@ function keysFor(i) {
   ];
   if (i < 0) return street;
   // into the house: every plan has its own way through its rooms (PLANS[...].tour), written from where the lens stands
-  const H = houses[i], T = PLANS[H.plan].tour, k = (p, s) => H.key(p, s[0], s[1], s[2], s[3], s[4]);
+  const H = houses[i], T = H.info.tour, k = (p, s) => H.key(p, s[0], s[1], s[2], s[3], s[4]);
   return [...street,
     { p: P.approach, t: [xOf(i) + 3, 3.6, -0.3], fh: 9.6, fov: 28, yaw: 0, pitch: -4, phone: { minW: 7.6 } },
     H.key(P.entry, [1.78, 1.72, 1.55], 2, -1, 54, 2.65),
@@ -146,10 +146,10 @@ const PLOT = Math.round(6 * 17.8 + (GROUP ? (GAP / 2) * 17.8 : 0));
 const m2 = (a) => a.toFixed(1).replace('.', ',') + ' m²';
 // the rooms of the two storeys as they are built, and what the roof holds: together the living area of the data
 function schedule(i) {
-  const h = HOUSES[i], pl = PLANS[houses[i].plan], ar = (r) => (r[3] - r[1]) * (r[4] - r[2]);
+  const h = HOUSES[i], pl = houses[i].info, ar = (r) => (r[3] - r[1]) * (r[4] - r[2]);
   let eg = pl.rooms.eg.map((r) => [r[0], ar(r)]), og = pl.rooms.og.map((r) => [r[0], ar(r)]);
   const sum = [...eg, ...og].reduce((a, r) => a + r[1], 0), rest = h.area - sum;
-  const count = [...eg, ...og].filter((r) => /^(Wohnen|Schlafen|Kind|Arbeiten|Galerie)/.test(r[0])).length, need = h.rooms - count;
+  const count = [...eg, ...og].filter((r) => /^(Wohnen|Wohnhalle|Schlafen|Kind|Arbeiten|Galerie|Studio)/.test(r[0])).length, need = h.rooms - count;
   // what the two storeys do not hold lies under the roof, up to 28 m²; beyond that the rooms are a little larger than drawn
   const dgA = rest >= 6 ? Math.min(rest, 28) : 0, f = (h.area - dgA) / sum;
   eg = eg.map(([n, a]) => [n, a * f]); og = og.map(([n, a]) => [n, a * f]);
@@ -165,7 +165,7 @@ function fill() {
   tags.forEach((t, i) => { t.classList.toggle('on', i === sel); t.classList.toggle('look', i === focus && i !== sel); });
   keysEl.forEach((b, i) => { b.setAttribute('aria-pressed', String(i === sel)); b.classList.toggle('look', i === focus && i !== sel); });
   if (sel >= 0) {
-    const h = HOUSES[sel], H = houses[sel], pl = PLANS[H.plan], fit = H.fit;
+    const h = HOUSES[sel], H = houses[sel], pl = H.info, fit = H.fit;
     if (radar) {
       radar.ox = xOf(sel); radar.mirrorX = !H.doorL;
       radar.draw?.(pl.radar, { entry: [`HAUS ${h.no}`, 'EINGANG'], hall: [pl.zones[0], `${pl.zones[0]} +0.30M`], kitchen: [pl.zones[1], `${pl.zones[1]} +0.30M`] });
@@ -303,7 +303,7 @@ $('bau').addEventListener('input', (e) => { bauStep = +e.target.value; bauLabel(
 const roomEls = Array.from({ length: 6 }, () => { const el = $('rooms3d').appendChild(document.createElement('div')); el.className = 'room'; S.pin(el, [0, 0, 0], { tf: 'translate(-50%, -50%)' }); el.__pin.off = true; el.hidden = true; return el; });
 function placeRooms() {
   const on = (mode === 'eg' || mode === 'og') && sel >= 0;
-  const rooms = on ? PLANS[houses[sel].plan].rooms[mode] : [], sc = on ? schedule(sel)[mode] : [];
+  const rooms = on ? houses[sel].info.rooms[mode] : [], sc = on ? schedule(sel)[mode] : [];
   roomEls.forEach((el, k) => {
     const r = rooms[k]; el.hidden = !r; el.__pin.off = !r; el.__pin.tfNow = '';
     if (!r) return;
@@ -334,7 +334,7 @@ const PHASES = ['Planung & Genehmigung', 'Erdarbeiten & Bodenplatte', 'Rohbau', 
 const calc = { ek: 20, zins: 3.6, tilg: 2.0 };
 function rate(price) { const loan = price * (1 - calc.ek / 100); return { loan, month: loan * (calc.zins + calc.tilg) / 100 / 12, own: price * calc.ek / 100, extra: price * 0.085 }; }
 function sheetBody(i, print = false) {
-  const h = HOUSES[i], ok = free(h), H = houses[i], pl = PLANS[H.plan], sc = ok ? schedule(i) : null, price = priceOf(h), b = PR.build, sp = PR.spec;
+  const h = HOUSES[i], ok = free(h), H = houses[i], pl = H.info, sc = ok ? schedule(i) : null, price = priceOf(h), b = PR.build, sp = PR.spec;
   const mine = chosen.get(i) || {}, fl = ok ? H.fit.list.map(([k, v], n) => [k, (n === 0 && mine.floor?.[2]) || (n === 1 && mine.wood?.[2]) || (n === 2 && mine.stone?.[2]) || v]) : [];
   const dl = (rows) => `<dl>${rows.filter(Boolean).map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>`;
   const roomList = (t, rs) => (rs.length ? `<h4>${t}</h4>${dl(rs.map(([n, a]) => [n, m2(a)]))}` : '');
@@ -418,7 +418,7 @@ const LATE = new THREE.Vector3(-1.45, 0.62, 0.78).normalize();
 const sunDir = new THREE.Vector3();
 const late = new THREE.Color(0xffd9a8), white = new THREE.Color(0xfff1dc);
 radar = {
-  ox: xOf(Math.max(0, sel)), mirrorX: sel >= 0 ? !houses[sel].doorL : false, plan: sel >= 0 ? PLANS[houses[sel].plan].radar : undefined,
+  ox: xOf(Math.max(0, sel)), mirrorX: sel >= 0 ? !houses[sel].doorL : false, plan: sel >= 0 ? houses[sel].info.radar : undefined,
   zones: [
     { id: 'street', label: 'REIHE', tag: 'STRASSE 1:100', at: P.choose[0] + 10, u0: -4.0, u1: 0.0 },
     { id: 'entry', label: 'HAUS', tag: 'EINGANG', at: Math.min(P.entry, P.end), u0: 0.0, u1: 1.3 },

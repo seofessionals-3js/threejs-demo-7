@@ -1,5 +1,5 @@
 // The inside of a house, and its walled garden. Four plans, each with its own stair, its own rooms and its own way
-// through them. A house picks a plan and a fit-out: floor, joinery, stone, fabrics, the finish of one wall, metal,
+// through them, and each in five makes: twenty houses, twenty plans. A house picks a plan, a make and a fit-out: floor, joinery, stone, fabrics, the finish of one wall, metal,
 // and which sofa, table, kitchen, lamps and stair it gets. No two houses of the Wohnungsfinder share all of that.
 //
 // Everything is written for a house with its door on the left (x 0.7 ... 2.7) and mirrored for the others.
@@ -81,23 +81,30 @@ const STAIRS = ['Stahl, gefaltet', 'Kragstufen aus Holz, Glas', 'Massiv, verputz
 
 // The fit-out of house number n: every list is walked at its own pace, so neighbours differ in everything and the
 // whole combination only comes round again after 2520 houses. n = 0 is the house of the three older pages.
-export function fitFor(n = 0, plan = 'A') {
+// wall: what the house is built of. A rendered house has no bare wall to show indoors: it gets one of the other finishes.
+export function fitFor(n = 0, plan = 'A', wall = 'brick') {
   const pick = (list, k) => list[((k % list.length) + list.length) % list.length], f = Math.floor;
   const floor = pick(FLOORS, n), wood = pick(WOODS, n * 3), stone = pick(STONES, n * 3), sofa = pick(FABRICS, n * 5 + (n ? 1 : 0)), rug = pick(RUGS, n);
-  const wall = pick(WALLS, n), accent = pick(ACCENTS, n * 2), metal = pick(METALS, n * 2);
+  const paint = pick(WALLS, n), metal = pick(METALS, n * 2);
+  let accent = pick(ACCENTS, n * 2);
+  if (accent[0] === 'own' && wall === 'plaster') accent = ACCENTS[1 + n % (ACCENTS.length - 1)];
+  else if (accent[0] === 'own' && wall === 'wood') accent = ['own', {}, 'Lärche wie außen'];
   return {
     n, plan, floor, up: pick(FLOORS, [0, 2, 7, 6, 0, 1][n % 6]), wood, wood2: pick(WOODS, n * 3 + (n ? 5 : 0)), stone, sofa,
-    cush: n ? pick(FABRICS, n * 5 + 4) : [{}, ''], cush2: n ? pick(FABRICS, n * 5 + 6) : [{ color: 0x2f2c2a }, ''], rug, wall, accent, metal, art: pick(ARTS, n),
+    cush: n ? pick(FABRICS, n * 5 + 4) : [{}, ''], cush2: n ? pick(FABRICS, n * 5 + 6) : [{ color: 0x2f2c2a }, ''], rug, wall: paint, accent, metal, art: pick(ARTS, n),
     style: { sofa: n % 3, coffee: f(n / 3) % 3, dining: (n + f(n / 3)) % 3, kitchen: f(n / 2) % 3, island: n % 2, lamp: (n * 2 + f(n / 3)) % 3, stair: f(n / 4) % 3, garden: f(n / 5) % 3, art: (n + f(n / 2)) % 3 },
     // what the data sheet of the house says
     list: [['Boden', floor[2]], ['Einbauten', wood[2]], ['Arbeitsplatte', stone[2]], ['Treppe', plan === 'C' ? 'Stufenmöbel mit Lamellen' : STAIRS[plan === 'D' ? 2 : f(n / 4) % 3]], ['Akzentwand', accent[2]], ['Beschläge', metal[1]], ['Polster', sofa[1]]],
   };
 }
 
-/* ---------- the four plans: what the page needs to know about them ---------- */
+/* ---------- the plans: what the page needs to know about them ---------- */
+// Four plans (A ... D), each in five makes (variant 0 ... 4): the same bones (where the stair stands, where the house
+// is two storeys high), other rooms on them. Twenty houses, twenty plans.
 // tour: where the lens stands [x, y, z], yaw, pitch, lens, frame height, for the five stations inside
 // rooms: [name, x0, z0, x1, z1] in metres, per storey. radar: the little plan (u = depth into the plot, v = x)
 const GARDEN = [[2.6, 2.0, -13.2], -24, -5, 56, 2.45];
+const STAIR_W = [1.9, 0.24, 5.9, 1.14], ISLAND_W = [6.95, 1.4, 9.25, 2.2];
 export const PLANS = {
   A: {
     name: 'Halle', claim: 'Halle über zwei Geschosse',
@@ -108,7 +115,7 @@ export const PLANS = {
       eg: [['Halle', 0.24, -6.0, 3.1, -1.3], ['Wohnen', 3.1, -6.0, 5.76, -0.4], ['Kochen', 0.24, -12, 2.9, -6.0], ['Essen', 2.9, -12, 5.76, -6.0]],
       og: [['Galerie', 3.1, -6.0, 5.76, -0.4], ['Flur', 0.24, -7.3, 5.76, -6.0], ['Schlafen', 0.24, -12, 2.85, -7.4], ['Bad', 2.95, -9.5, 5.76, -7.4], ['Ankleide', 2.95, -12, 5.76, -9.6]],
     },
-    radar: { rects: [[1.9, 0.24, 5.9, 1.14], [3.25, 4.86, 5.65, 5.72], [3.8, 3.9, 5.1, 4.5], [6.95, 1.4, 9.25, 2.2], [9.3, 3.95, 11.5, 4.95]], dash: 'M1.3 3.1 H6.0 V0.24' },
+    radar: { rects: [STAIR_W, [3.25, 4.86, 5.65, 5.72], [3.8, 3.9, 5.1, 4.5], ISLAND_W, [9.3, 3.95, 11.5, 4.95]], dash: 'M1.3 3.1 H6.0 V0.24' },
   },
   B: {
     name: 'Gartenhalle', claim: 'Wohnraum über zwei Geschosse am Garten',
@@ -141,9 +148,84 @@ export const PLANS = {
       eg: [['Diele', 0.24, -5.2, 3.1, -1.3], ['Wohnen', 3.1, -5.2, 5.76, -0.4], ['Kochen', 0.24, -12, 2.9, -5.2], ['Essen', 2.9, -12, 5.76, -5.2]],
       og: [['Arbeiten', 0.24, -5.2, 3.1, -0.4], ['Flur', 0.24, -6.3, 5.76, -5.2], ['Schlafen', 0.24, -9.8, 2.9, -6.35], ['Bad', 0.24, -12, 2.9, -9.9], ['Kind', 3.0, -12, 4.67, -6.35]],
     },
-    radar: { rects: [[5.9, 4.84, 10.0, 5.74], [2.0, 3.3, 4.4, 4.16], [0.7, 5.44, 5.0, 5.76], [6.95, 1.4, 9.25, 2.2], [10.7, 3.3, 11.5, 4.7]], dash: 'M0.4 3.1 H5.2 V5.76' },
+    radar: { rects: [[5.9, 4.84, 10.0, 5.74], [2.0, 3.3, 4.4, 4.16], [0.7, 5.44, 5.0, 5.76], ISLAND_W, [10.7, 3.3, 11.5, 4.7]], dash: 'M0.4 3.1 H5.2 V5.76' },
   },
 };
+// what the makes 1 ... 4 of a plan change in what the page says (make 0 is the plan as it stands above)
+const VARIANTS = {
+  A: [null,
+    { name: 'Halle mit Ostküche', claim: 'Halle über zwei Geschosse, die Küche an der Ostwand',
+      text: [PLANS.A.text[0], 'Die Küche steht an der Ostwand, die Insel davor, der Esstisch gegenüber am <em>Garten.</em>'],
+      rooms: { eg: [['Halle', 0.24, -6.0, 3.1, -1.3], ['Wohnen', 3.1, -6.0, 5.76, -0.4], ['Essen', 0.24, -12, 2.9, -6.0], ['Kochen', 2.9, -12, 5.76, -6.0]] },
+      radar: { rects: [STAIR_W, [3.25, 4.86, 5.65, 5.72], [3.8, 3.9, 5.1, 4.5], [6.95, 3.78, 9.25, 4.62], [9.3, 1.05, 11.5, 2.05]], dash: PLANS.A.radar.dash } },
+    { name: 'Halle mit Gartenzimmer', claim: 'Halle über zwei Geschosse, der Wohnraum am Garten',
+      text: ['Eine Halle über zwei Geschosse. Unter der Galerie steht der Esstisch am Fenster zur <em>Straße.</em>', 'Hinten die Küche mit Insel, daneben der Wohnraum direkt am <em>Garten.</em>'],
+      rooms: { eg: [['Halle', 0.24, -6.0, 3.1, -1.3], ['Essen', 3.1, -6.0, 5.76, -0.4], ['Kochen', 0.24, -12, 2.9, -6.0], ['Wohnen', 2.9, -12, 5.76, -6.0]] },
+      radar: { rects: [STAIR_W, [2.7, 3.9, 4.9, 4.9], ISLAND_W, [7.6, 4.86, 10.0, 5.72], [8.2, 3.9, 9.5, 4.5]], dash: PLANS.A.radar.dash } },
+    { name: 'Halle mit Kamin', claim: 'Halle über zwei Geschosse, ein Kamin nach zwei Seiten',
+      text: ['Eine Halle über zwei Geschosse. Der Wohnraum unter der Galerie hat einen Kamin, der nach beiden Seiten <em>offen</em> ist.', 'Hinter dem Kamin Küche und Essplatz, über die ganze Breite zum <em>Garten</em> geöffnet.'],
+      radar: { rects: [STAIR_W, [2.9, 4.86, 5.3, 5.72], [3.45, 3.9, 4.75, 4.5], [5.85, 3.7, 6.25, 5.76], ISLAND_W, [9.3, 3.95, 11.5, 4.95]], dash: PLANS.A.radar.dash } },
+    { name: 'Halle mit Tafel', claim: 'Halle über zwei Geschosse, eine Tafel für zwölf',
+      text: [PLANS.A.text[0], 'Eine Küchenzeile und eine Tafel für zwölf: Der lange Tisch steht an der Wand, mit einer Bank bis zum <em>Garten.</em>'],
+      radar: { rects: [STAIR_W, [3.25, 4.86, 5.65, 5.72], [3.8, 3.9, 5.1, 4.5], [6.9, 4.29, 11.3, 5.24]], dash: PLANS.A.radar.dash } }],
+  B: [null,
+    { name: 'Gartenhalle mit Ostkamin', claim: 'Wohnraum über zwei Geschosse am Garten, der Kamin an der Ostwand',
+      tour: { rear: [[2.75, 1.85, -8.2], -12, -15, 60, 2.4] },
+      text: [PLANS.B.text[0], 'Am Garten wird das Haus hoch: der Wohnraum über zwei Geschosse, der Kamin an der Ostwand, das Sofa ihm <em>gegenüber.</em>'],
+      radar: { rects: [[2.4, 0.24, 6.5, 1.14], [2.1, 3.3, 4.5, 4.14], [0.9, 5.12, 5.1, 5.76], [5.9, 3.75, 8.1, 4.75], [9.15, 0.28, 11.55, 1.14], [9.7, 5.2, 11.2, 5.76]], dash: PLANS.B.radar.dash } },
+    { name: 'Gartenhalle mit Tresen', claim: 'Küche mit Tresen, Wohnraum über zwei Geschosse am Garten',
+      text: ['Die Küche liegt vorn am Fenster zur Straße. Ein Tresen trennt sie vom <em>Essplatz.</em>', PLANS.B.text[1]],
+      radar: { rects: [[2.4, 0.24, 6.5, 1.14], [4.25, 3.3, 4.95, 5.1], [0.9, 5.12, 5.1, 5.76], [6.4, 3.65, 7.6, 4.85], [9.15, 4.86, 11.55, 5.72], [9.7, 0.24, 11.2, 0.8]], dash: PLANS.B.radar.dash } },
+    { name: 'Lichthof', claim: 'Lichthof über zwei Geschosse am Garten, darüber ein Studio',
+      tour: { rear: [[2.6, 1.85, -9.6], 6, -22, 62, 2.4] },
+      text: [PLANS.B.text[0], 'Der Wohnraum endet in einem Lichthof: Am Garten ist das Haus über zwei Geschosse offen, darüber liegt das <em>Studio.</em>'],
+      rooms: { og: [['Studio', 0.24, -10.3, 5.76, -6.5], ['Flur', 1.28, -6.5, 2.3, -3.0], ['Bad', 0.24, -3.0, 2.3, -0.4], ['Schlafen', 2.4, -3.4, 5.76, -0.4], ['Kind', 2.4, -6.5, 5.76, -3.5]] },
+      radar: { rects: [[2.4, 0.24, 6.5, 1.14], [2.1, 3.3, 4.5, 4.14], [0.9, 5.12, 5.1, 5.76], [5.9, 3.75, 8.1, 4.75], [9.15, 4.86, 11.55, 5.72], [10.4, 0.24, 11.7, 0.8]], dash: 'M10.3 0.24 V5.76' } },
+    { name: 'Speisehalle', claim: 'Speisehalle über zwei Geschosse am Garten',
+      tour: { rear: [[2.55, 1.85, -8.2], -6, -12, 60, 2.4] }, zones: ['KÜCHE', 'ESSEN'],
+      text: ['Die Küche liegt vorn am Fenster zur Straße. In der Mitte des Hauses, unter der niedrigen Decke, der <em>Wohnraum.</em>', 'Am Garten wird das Haus hoch: eine Speisehalle über zwei Geschosse, die Lampen hängen sechs Meter <em>herab.</em>'],
+      rooms: { eg: [['Diele', 0.24, -5.2, 3.1, -1.3], ['Kochen', 3.1, -5.2, 5.76, -0.4], ['Wohnen', 0.24, -8.6, 5.76, -5.2], ['Essen', 0.24, -12, 5.76, -8.6]] },
+      radar: { rects: [[2.4, 0.24, 6.5, 1.14], [2.1, 3.3, 4.5, 4.14], [0.9, 5.12, 5.1, 5.76], [5.6, 4.86, 8.0, 5.72], [9.2, 4.0, 11.4, 5.0], [9.7, 0.24, 11.2, 0.8]], dash: PLANS.B.radar.dash } }],
+  C: [null,
+    { name: 'Stufenmöbel mit Insel', claim: 'Treppe als Schrank, Küche mit Insel',
+      text: [PLANS.C.text[0], 'Dahinter die Küche: eine Zeile an der Treppenwand, davor die Insel, der Esstisch am <em>Garten.</em>'],
+      radar: { rects: [[5.6, 1.6, 6.6, 5.76], [2.6, 4.86, 5.0, 5.72], [6.72, 1.75, 7.36, 5.75], [8.3, 2.7, 9.1, 5.0], [9.6, 3.95, 11.5, 4.95]], dash: '' } },
+    { name: 'Bibliothek', claim: 'Bibliothek an der Straße, die Treppe als Schrank',
+      text: ['Vorn die Bibliothek: Bücher an der ganzen Wand, das Sofa davor. Die Treppe steht quer im Haus und ist zugleich <em>Schrank.</em>', PLANS.C.text[1]],
+      radar: { rects: [[5.6, 1.6, 6.6, 5.76], [2.2, 3.3, 4.6, 4.3], [0.7, 5.44, 5.3, 5.76], [6.72, 1.75, 7.36, 5.75], [9.3, 2.6, 10.3, 4.8]], dash: '' } },
+    { name: 'Ostgang', claim: 'Treppe quer im Haus, der Durchgang an der Ostwand',
+      tour: { hall: [[1.9, 1.72, -2.6], -30, -2, 58, 2.3], turn: [[5.08, 1.72, -5.0], 5, -1, 58, 2.3], rear: [[4.85, 1.8, -9.0], 112, -2, 62, 2.4], glass: [[3.7, 1.95, -10.8], 8, 0, 57, 2.5] },
+      text: ['Der Wohnraum liegt vorn an der Straße. Die Treppe steht quer im Haus, der Weg nach hinten führt an der Ostwand <em>vorbei.</em>', PLANS.C.text[1]],
+      rooms: { eg: [['Wohnen', 0.24, -5.6, 5.76, -0.4], ['Treppe', 0.24, -6.6, 4.4, -5.6], ['Wohnküche', 0.24, -12, 5.76, -6.7]] },
+      radar: { rects: [[5.6, 0.24, 6.6, 4.4], [2.7, 0.28, 5.1, 1.14], [6.72, 0.25, 7.36, 4.25], [9.3, 1.3, 10.3, 3.5]], dash: '' } },
+    { name: 'Arbeitszimmer', claim: 'Arbeitszimmer an der Straße, die Treppe als Schrank',
+      text: ['Vorn an der Straße ein Arbeitszimmer mit eigener Tür, dahinter der Wohnraum vor der Treppe, die zugleich <em>Schrank</em> ist.', PLANS.C.text[1]],
+      rooms: { eg: [['Arbeiten', 3.15, -3.15, 5.76, -0.4], ['Wohnen', 0.24, -5.6, 5.76, -3.25], ['Treppe', 1.6, -6.6, 5.76, -5.6], ['Wohnküche', 0.24, -12, 5.76, -6.7]] },
+      radar: { rects: [[5.6, 1.6, 6.6, 5.76], [1.2, 3.05, 3.2, 3.15], [3.15, 4.3, 3.25, 5.76], [3.4, 4.86, 5.4, 5.72], [6.72, 1.75, 7.36, 5.75], [9.3, 2.6, 10.3, 4.8]], dash: '' } }],
+  D: [null,
+    { name: 'Kaminhalle', claim: 'Wohnraum über zwei Geschosse mit hohem Kamin',
+      text: ['Der Wohnraum ist zwei Geschosse hoch. An seiner Wand steht ein Kamin, der bis unter die <em>Decke</em> reicht.', PLANS.D.text[1]],
+      radar: { rects: [[5.9, 4.84, 10.0, 5.74], [2.0, 3.3, 4.4, 4.16], [2.3, 5.2, 3.9, 5.76], ISLAND_W, [10.7, 3.3, 11.5, 4.7]], dash: PLANS.D.radar.dash } },
+    { name: 'Große Halle', claim: 'Halle über zwei Geschosse und die ganze Breite des Hauses',
+      text: ['Hinter der Tür öffnet sich eine Halle über die ganze Breite des Hauses, zwei Geschosse hoch, die Bücherwand bis unter die <em>Decke.</em>', PLANS.D.text[1]],
+      rooms: { eg: [['Wohnhalle', 0.24, -5.2, 5.76, -0.4], ['Kochen', 0.24, -12, 2.9, -5.2], ['Essen', 2.9, -12, 5.76, -5.2]],
+        og: [['Flur', 0.24, -6.3, 5.76, -5.2], ['Schlafen', 0.24, -9.8, 2.9, -6.35], ['Bad', 0.24, -12, 2.9, -9.9], ['Kind', 3.0, -12, 4.67, -6.35]] },
+      radar: { rects: PLANS.D.radar.rects, dash: 'M5.2 0.24 V5.76' } },
+    { name: 'Tafelhalle', claim: 'Tafel in der hohen Halle, der Wohnraum am Garten', zones: ['ESSEN', 'KÜCHE'],
+      text: ['In der hohen Halle an der Straße steht die Tafel vor der Bücherwand, die Lampen hängen von ganz <em>oben.</em>', 'Unter dem Obergeschoss die Küche mit Insel, dahinter der Wohnraum am <em>Garten.</em>'],
+      rooms: { eg: [['Diele', 0.24, -5.2, 3.1, -1.3], ['Essen', 3.1, -5.2, 5.76, -0.4], ['Kochen', 0.24, -9.2, 4.8, -5.2], ['Wohnen', 0.24, -12, 5.76, -9.2]] },
+      radar: { rects: [[5.9, 4.84, 10.0, 5.74], [2.4, 3.95, 4.6, 4.95], [0.7, 5.44, 5.0, 5.76], [6.3, 1.4, 8.5, 2.2], [9.3, 0.28, 11.6, 1.14]], dash: PLANS.D.radar.dash } },
+    { name: 'Gartenzimmer', claim: 'Wohnhalle an der Straße, ein Gartenzimmer hinter Glas',
+      text: [PLANS.D.text[0], 'Die Küche mit Insel liegt in der Mitte. Eine Glaswand trennt das Gartenzimmer ab, in dem der <em>Esstisch</em> steht.'],
+      rooms: { eg: [['Diele', 0.24, -5.2, 3.1, -1.3], ['Wohnen', 3.1, -5.2, 5.76, -0.4], ['Kochen', 0.24, -9.6, 4.8, -5.2], ['Gartenzimmer', 0.24, -12, 5.76, -9.6]] },
+      radar: { rects: [[5.9, 4.84, 10.0, 5.74], [2.0, 3.3, 4.4, 4.16], [0.7, 5.44, 5.0, 5.76], [6.9, 1.4, 9.0, 2.2], [9.55, 0.24, 9.65, 2.0], [9.55, 3.9, 9.65, 4.84], [10.7, 3.3, 11.5, 4.7]], dash: PLANS.D.radar.dash } }],
+};
+// everything the page needs to know about make `variant` of plan `plan`
+export function planInfo(plan, variant = 0) {
+  const base = PLANS[plan] || PLANS.A, v = (VARIANTS[PLANS[plan] ? plan : 'A'] || [])[variant];
+  if (!v) return base;
+  return { ...base, ...v, tour: { ...base.tour, ...(v.tour || {}) }, rooms: { ...base.rooms, ...(v.rooms || {}) }, radar: v.radar || base.radar };
+}
 
 /* =========================================================================== */
 // K: the tools of the stage (add, box, mat, tree ...). c: the house (its interior group g, door side, parapet, look).
@@ -249,7 +331,7 @@ export function buildInterior(K, c) {
       G(L(u0 + i * w + 0.03, 0.22, y + 0.42, u0 + (i + 1) * w - 0.03, 0.4, y + 0.84), M.sofa, 0.45);
     }
     G(L(u0 + 0.08, 0.4, y + 0.42, u0 + 0.42, 0.6, y + 0.72), M.cush, 0.4); G(L(len - u0 - 0.42, 0.4, y + 0.42, len - u0 - 0.08, 0.6, y + 0.72), M.cush2, 0.4);
-    if (style === 2) G(L(len / 2 - 0.4, 1.2, y + 0.04, len / 2 + 0.4, 1.85, y + 0.4), M.sofa);   // a stool in front of it
+    if (style === 2) { G(L(0.02, 0.86, y + 0.02, 0.86, 1.15, y + 0.14), M.wood2); G(L(0.03, 0.86, y + 0.14, 0.85, 1.15, y + 0.42), M.sofa); }   // one seat is longer: a chaise
   }
   function armchair(L) {
     const y = G0;
@@ -320,7 +402,7 @@ export function buildInterior(K, c) {
     if (style === 0) { if (alongZ) { A(x0, y, z1 - 0.08, x1, y + 0.84, z1, M.stone, 0.6); A(x0, y, z0, x1, y + 0.84, z0 + 0.08, M.stone, 0.6); } else { A(x0, y, z0, x0 + 0.08, y + 0.84, z1, M.stone, 0.6); A(x1 - 0.08, y, z0, x1, y + 0.84, z1, M.stone, 0.6); } }
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     A(cx - 0.22, y + 0.91, cz - 0.02, cx - 0.18, y + 1.22, cz + 0.02, M.steel, 0.4); A(cx - 0.22, y + 1.18, cz - 0.02, cx - 0.03, y + 1.22, cz + 0.02, M.steel, 0.4);
-    const len = alongZ ? z1 - z0 : x1 - x0, n = lo(3, Math.floor(len / 0.7));
+    const len = alongZ ? z1 - z0 : x1 - x0, n = side ? lo(3, Math.floor(len / 0.7)) : 0;       // no side: no stools
     for (let i = 0; i < n; i++) {
       const a = (alongZ ? z0 : x0) + len * (i + 0.5) / n, o = 0.19;
       const sx = side === 'x+' ? x1 + o : side === 'x-' ? x0 - o : a, sz = side === 'z+' ? z1 + o : side === 'z-' ? z0 - o : a;
@@ -381,6 +463,34 @@ export function buildInterior(K, c) {
   const accentW = (z0, z1, y0 = G0, y1 = CEIL) => A(0.24, y0, z0, 0.262, y1, z1, M.accent);
   const accentE = (z0, z1, y0 = G0, y1 = SL) => A(5.738, y0, z0, 5.76, y1, z1, M.accent);
   const upper = (x0, z0, x1, z1) => { A(x0, SL, z0, x1, L1, z1, M.ceil, 0.6); A(x0, L1, z0, x1, L1 + 0.012, z1, M.up, 0); };
+  const bench = (x1 = 5.76) => A(3.3, 0.92, -0.74, x1, 1.0, -0.2, M.wood, 0.6);            // a deep bench under the street window
+  // a chimney breast against a party wall ('W' / 'E') from z0 to z1, up to y1, with its hearth and its fire
+  const chimney = (side, z0, z1, y1 = CEIL, hd = 0.5) => {
+    const L = frame(side, side === 'W' ? 0.24 : 5.76, z1), len = z1 - z0;
+    G(L(0, 0, G0, len, 0.56, y1), M.accent); G(L(-0.15, 0.56, G0, len + 0.15, 0.56 + hd, G0 + 0.06), M.stone);
+    G(L(0.25, 0.56, G0 + 0.3, len - 0.25, 0.575, G0 + 1.05), M.basalt, 0); G(L(0.4, 0.575, G0 + 0.34, len - 0.4, 0.582, G0 + 0.62), M.glow, 0, NC);
+  };
+  // a stove with its flue, on a stone plate. f: +1 the fire looks east, -1 west
+  const stove = (x, z, f) => {
+    A(x - 0.35 + f * 0.03, G0, z - 0.5, x + 0.35 + f * 0.03, G0 + 0.03, z + 0.5, M.stone, 0.4);
+    G(cyl(0.24, 0.24, 0.95, 20, x, G0 + 0.505, z), M.dark, 0.5); G(cyl(0.07, 0.07, SL - G0 - 0.98, 12, x, (SL + G0 + 0.98) / 2, z), M.dark, 0.3);
+    A(x + f * 0.24, G0 + 0.3, z - 0.14, x + f * 0.248, G0 + 0.62, z + 0.14, M.glow, 0, NC);
+  };
+  // a sitting group: the sofa against a party wall from z0 towards the garden, a rug, a low table, a picture over the sofa
+  const sitting = (side, z0, len = 2.4, artStyle = st.art) => {
+    const e = side === 'E';
+    A(e ? 3.35 : 0.4, G0, hi(-11.88, z0 - len - 0.3), e ? 5.6 : 2.65, G0 + 0.018, z0 + 0.2, M.rug, 0.4);
+    sofa(frame(side, e ? 5.72 : 0.28, z0), len, st.sofa); coffee(e ? 4.2 : 1.8, z0 - len / 2, st.coffee);
+    art(frame(side, e ? 5.76 : 0.24, z0 - 0.2), len / 2 - 0.2, 2.15, len - 0.4, 1.2, artStyle);
+  };
+  // a long table against a party wall: a bench on the wall side, chairs on the other, lamps over it
+  const tafel = (side, z0, z1) => {
+    const e = side === 'E', xw = e ? 5.74 : 0.26, d = e ? -1 : 1, y = G0, n = Math.floor((z1 - z0) / 0.7);
+    A(xw, y, z0, xw + d * 0.44, y + 0.44, z1, M.wood, 0.5); A(xw, y + 0.44, z0 + 0.02, xw + d * 0.42, y + 0.49, z1 - 0.02, M.white, 0.3);
+    A(xw + d * 0.5, y + 0.72, z0, xw + d * 1.45, y + 0.78, z1, st.dining === 2 ? M.stone : M.wood2, 0.7);
+    for (const z of [z0 + 0.4, (z0 + z1) / 2, z1 - 0.4]) A(xw + d * 0.62, y, z - 0.05, xw + d * 1.33, y + 0.72, z + 0.05, M.wood2);
+    for (let i = 0; i < n; i++) { const z = z0 + (z1 - z0) * (i + 0.5) / n; chair(xw + d * 1.69, z, e ? 'x+' : 'x-'); if (i % 2 === 0) pend(xw + d * 0.97, y + 1.66 + (i % 4 ? 0.16 : 0), z, SL, st.lamp); }
+  };
 
   /* ---------- what every plan has ---------- */
   A(0.0, 0.0, -12.0, 6.0, G0, -0.4, M.floor);
@@ -394,13 +504,16 @@ export function buildInterior(K, c) {
   A(3.1, 1.0, -0.43, 3.55, 3.0, -0.4, M.wall, 0); A(5.5, 1.0, -0.43, 5.76, 3.0, -0.4, M.wall, 0);
 
   /* ---------- the plans ---------- */
+  // V: which make of the plan this house is (0 ... 4). The bones stay, the rooms on them change.
+  const V = c.variant || 0;
   const lampY = (k) => [4.5, 5.0, 4.2][k % 3];
   if (plan === 'A') {
     // the hall behind the door is two storeys high, a stair on its west wall, a gallery round it upstairs.
     // East of it, under the gallery, the sitting room. Behind both, kitchen and table.
+    // 1: kitchen on the east wall. 2: the table at the street, the sofa at the garden. 3: a chimney wall between
+    // sitting room and table, open to both. 4: no island, a long table along the wall.
     upper(3.1, -6.0, 5.76, -0.4); upper(0.24, -12.0, 5.76, -6.0);
-    accentW(-6.0, -1.3); accentE(-11.9, -6.05);
-    A(3.3, 0.92, -0.74, 5.76, 1.0, -0.2, M.wood, 0.6);                                     // a deep bench under the street window
+    accentW(-6.0, -1.3); bench();
     rail(3.1, -6.0, 3.1, -1.3); rail(1.2, -6.0, 3.1, -6.0); rail(0.24, -1.3, 3.1, -1.3);
     flight('z', -1.9, -1, 17, 0.25, 0.26, 1.16, st.stair, 1.1475);
     // upstairs: a landing as deep as a room is wide, the door to the bedroom on the axis of the front door
@@ -411,94 +524,158 @@ export function buildInterior(K, c) {
     // a large framed drawing over the stair, three lamps hanging in the height of the hall
     art(frame('W', 0.262, -2.3), 1.2, 4.6, 2.4, 1.7, st.art);
     [[1.75, -2.9], [2.15, -3.6], [1.9, -4.25]].forEach(([x, z], k) => pend(x, lampY(k), z, CEIL, st.lamp));
-    // the sitting room
-    A(3.35, G0, -5.95, 5.6, G0 + 0.018, -3.05, M.rug, 0.4);
-    sofa(frame('E', 5.72, -3.25), 2.4, st.sofa); coffee(4.2, -4.45, st.coffee); armchair(frame('N', -0.84, 3.5));
-    art(frame('E', 5.76, -3.45), 1.0, 2.15, 2.0, 1.2, (st.art + 1) % 3);
-    A(5.38, G0, -2.82, 5.42, 1.86, -2.78, M.steel, 0); G(new THREE.SphereGeometry(0.13, 14, 10).translate(X(5.4), 1.95, -2.8), M.glow, 0, NC);
+    // under the gallery
+    if (V === 2) { dining(3.9, -4.9, 4.9, -2.7, st.dining); art(frame('E', 5.76, -2.8), 1.0, 2.15, 2.0, 1.2, (st.art + 1) % 3); }
+    else {
+      sitting('E', V === 3 ? -2.9 : -3.25, 2.4, (st.art + 1) % 3); armchair(frame('N', -0.84, 3.5));
+      A(5.38, G0, -2.62, 5.42, 1.86, -2.58, M.steel, 0); G(new THREE.SphereGeometry(0.13, 14, 10).translate(X(5.4), 1.95, -2.6), M.glow, 0, NC);
+    }
     A(3.3, SL - 0.012, -5.4, 3.38, SL, -1.0, M.glow, 0, NC);
+    if (V === 3) {
+      A(3.7, G0, -6.25, 5.76, SL, -5.85, M.accent);
+      A(4.2, G0 + 0.3, -5.85, 5.3, G0 + 1.0, -5.835, M.basalt, 0); A(4.35, G0 + 0.34, -5.835, 5.15, G0 + 0.6, -5.828, M.glow, 0, NC);
+      A(4.2, G0 + 0.3, -6.265, 5.3, G0 + 1.0, -6.25, M.basalt, 0); A(4.35, G0 + 0.34, -6.272, 5.15, G0 + 0.6, -6.265, M.glow, 0, NC);
+    }
     // kitchen and table
-    kitchenRun(frame('W', 0.24, -6.4), 5.1, st.kitchen); island(1.38, -9.3, 2.22, -6.9, 'x+', st.island);
-    sideboard(frame('E', 5.76, -6.5), 2.2); dining(3.95, -11.5, 4.95, -9.3, st.dining);
+    if (V === 1) {
+      accentW(-11.9, -6.05, G0, SL);
+      kitchenRun(frame('E', 5.76, -6.4), 5.1, st.kitchen); island(3.78, -9.3, 4.62, -6.9, 'x-', st.island);
+      sideboard(frame('W', 0.24, -6.5), 2.2); dining(1.05, -11.5, 2.05, -9.3, st.dining);
+    } else {
+      accentE(-11.9, -6.05);
+      kitchenRun(frame('W', 0.24, -6.4), 5.1, st.kitchen);
+      if (V !== 4) island(1.38, -9.3, 2.22, -6.9, 'x+', st.island);
+      if (V === 2) { sitting('E', -7.6); armchair(frame('S', -11.5, 3.7)); }
+      else if (V === 4) tafel('E', -11.3, -6.9);
+      else { sideboard(frame('E', 5.76, -6.5), 2.2); dining(3.95, -11.5, 4.95, -9.3, st.dining); }
+    }
   } else if (plan === 'B') {
     // low at the street, high at the garden: the kitchen behind the street window, the stair up the west wall through
-    // a slot, the table in the middle, and at the back a living room two storeys high with a gallery looking into it
-    upper(1.28, -8.6, 5.76, -0.4); upper(0.24, -3.0, 1.28, -1.3); upper(0.24, -8.6, 1.28, -6.5);
+    // a slot, the table in the middle, and at the back a living room two storeys high with a gallery looking into it.
+    // 1: the fire on the east wall, the sofa opposite. 2: a counter instead of the island, a round table.
+    // 3: only a strip at the garden is two storeys high (a light well), a studio over the living room.
+    // 4: the sofa in the middle of the house, the high room at the garden is the dining hall.
+    const edge = V === 3 ? -10.3 : -8.6;
+    upper(1.28, edge, 5.76, -0.4); upper(0.24, -3.0, 1.28, -1.3); upper(0.24, edge, 1.28, -6.5);
     accentW(-6.5, -2.3);
     flight('z', -2.4, -1, 17, 0.25, 0.26, 1.16, st.stair, 1.1475);
-    rail(0.24, -8.6, 5.76, -8.6); rail(1.28, -6.5, 1.28, -3.0);
+    rail(0.24, edge, 5.76, edge); rail(1.28, -6.5, 1.28, -3.0);
     // upstairs: the rooms at the street, their doors on the gallery
     part('x', -6.5, 1.28, 5.76, [[1.4, 2.3, false], [3.6, 4.5]]); part('z', 2.35, -6.45, -0.4, [[-2.9, -2.0]]); part('x', -3.45, 2.4, 5.76); part('x', -3.0, 0.24, 2.3, [[1.4, 2.2]]);
     bed(frame('E', 5.76, -4.1)); bed(frame('E', 5.76, -1.0)); bath(frame('W', 0.24, -0.5));
-    // the kitchen: a run on the east wall, an island before it
-    A(3.3, 0.92, -0.74, 5.1, 1.0, -0.2, M.wood, 0.6);
-    kitchenRun(frame('E', 5.76, -0.9), 4.2, st.kitchen, 0, 1.0); island(3.3, -4.5, 4.14, -2.1, 'x-', st.island);
-    // the table, a cupboard under the landing
-    dining(3.75, -8.1, 4.75, -5.9, st.dining); wardrobe(frame('W', 0.24, -6.7), 1.8, 2.3, G0); plant(0.75, -5.7, 1.3);
-    // the garden room: a chimney breast two storeys high, the sofa facing it
-    A(0.24, G0, -11.2, 0.8, CEIL, -9.7, M.accent); A(0.8, G0, -11.35, 1.3, G0 + 0.06, -9.55, M.stone);
-    A(0.8, G0 + 0.3, -10.95, 0.815, G0 + 1.05, -9.95, M.basalt, 0); A(0.815, G0 + 0.34, -10.8, 0.822, G0 + 0.62, -10.1, M.glow, 0, NC);
-    A(3.0, G0, -11.65, 5.6, G0 + 0.018, -9.0, M.rug, 0.4);
-    sofa(frame('E', 5.72, -9.15), 2.4, st.sofa); coffee(4.2, -10.35, st.coffee); armchair(frame('S', -11.6, 1.5)); plant(0.8, -9.25, 2.3);
-    art(frame('E', 5.76, -9.35), 1.0, 2.2, 2.0, 1.2, st.art);
-    [[3.0, -10.1], [3.55, -10.7], [2.6, -10.9]].forEach(([x, z], k) => pend(x, lampY(k), z, CEIL, st.lamp));
+    if (V === 3) { A(2.2, L1, -10.1, 3.8, L1 + 0.74, -9.5, M.wood, 0.5); A(2.15, L1 + 0.74, -10.15, 3.85, L1 + 0.78, -9.45, M.stone, 0.4); }
+    // the kitchen: a run on the east wall, an island (or a counter) before it
+    bench(5.1);
+    kitchenRun(frame('E', 5.76, -0.9), 4.2, st.kitchen, 0, 1.0);
+    if (V === 2) island(3.3, -4.95, 5.1, -4.25, 'z-', 1); else island(3.3, -4.5, 4.14, -2.1, 'x-', st.island);
+    wardrobe(frame('W', 0.24, -6.7), 1.8, 2.3, G0); plant(0.75, -5.7, 1.3);
+    // the middle of the house and the garden room
+    if (V === 4) {
+      sitting('E', -5.6);
+      dining(4.0, -11.4, 5.0, -9.2, st.dining === 1 ? 0 : st.dining, CEIL);
+      chimney('W', -11.2, -9.7); armchair(frame('S', -11.6, 1.5)); plant(0.8, -9.25, 2.3);
+    } else {
+      const e = V === 1;
+      dining(3.75, -8.1, 4.75, -5.9, V === 2 ? 1 : st.dining);
+      if (V === 3) chimney('W', -11.7, -10.4); else chimney(e ? 'E' : 'W', -11.2, -9.7);
+      sitting(e ? 'W' : 'E', -9.15);
+      armchair(frame('S', -11.6, e ? 3.9 : 1.5)); plant(e ? 5.2 : 0.8, -9.25, 2.3);
+      (V === 3 ? [[3.0, -11.0], [3.6, -11.35], [2.5, -11.4]] : e ? [[3.0, -10.1], [2.45, -10.7], [3.4, -10.9]] : [[3.0, -10.1], [3.55, -10.7], [2.6, -10.9]]).forEach(([x, z], k) => pend(x, lampY(k), z, CEIL, st.lamp));
+    }
     // a high window over the garden glass
     A(1.3, 3.9, -12.02, 4.7, 3.96, -11.94, M.dark); A(1.3, 5.84, -12.02, 4.7, 5.9, -11.94, M.dark); A(1.3, 3.9, -12.02, 1.36, 5.9, -11.94, M.dark); A(4.64, 3.9, -12.02, 4.7, 5.9, -11.94, M.dark); A(2.97, 3.96, -12.02, 3.03, 5.84, -11.94, M.dark);
     A(1.36, 3.96, -11.99, 4.64, 5.84, -11.975, M.clear, 0, NC);
   } else if (plan === 'C') {
     // every room one storey high. The stair stands across the house, a stepped cupboard with a screen of slats: the
-    // living room in front of it, the kitchen with the long table behind it, a passage along the west wall
-    upper(3.1, -5.55, 5.76, -0.4); upper(0.24, -5.55, 3.1, -1.3); upper(0.24, -12.0, 5.76, -6.65); upper(0.24, -6.65, 2.3, -5.55);
-    const n = 16, go = 0.22, rise = (L1 - G0) / n, x0 = 1.6;
+    // living room in front of it, the kitchen with the long table behind it, a passage along the west wall.
+    // 1: an island in the kitchen, the table at the garden. 2: books along the whole wall of the living room.
+    // 3: the stair climbs the other way, the passage runs along the east wall. 4: a study at the street window.
+    const rev = V === 3, n = 16, go = 0.22, rise = (L1 - G0) / n;
+    upper(3.1, -5.55, 5.76, -0.4); upper(0.24, -5.55, 3.1, -1.3); upper(0.24, -12.0, 5.76, -6.65);
+    if (rev) upper(3.7, -6.65, 5.76, -5.55); else upper(0.24, -6.65, 2.3, -5.55);
     for (let i = 0; i < n; i++) {
-      const xa = x0 + i * go, xb = i === n - 1 ? 5.76 : xa + go, y = G0 + (i + 1) * rise;
-      A(xa, G0, -6.6, xb, y - 0.04, -5.6, M.wood, 0.5); A(xa - 0.02, y - 0.04, -6.6, xb, y, -5.6, M.wood2, 0.4);
-      if (i < n - 1) for (const k of [0.05, 0.16]) A(xa + k, y, -5.6, xa + k + 0.035, SL, -5.555, M.wood2, 0.3);   // the slats
+      const y = G0 + (i + 1) * rise, d = rev ? -1 : 1, xa = (rev ? 4.4 : 1.6) + d * i * go, xb = i === n - 1 ? (rev ? 0.24 : 5.76) : xa + d * go;
+      A(xa, G0, -6.6, xb, y - 0.04, -5.6, M.wood, 0.5); A(xa - d * 0.02, y - 0.04, -6.6, xb, y, -5.6, M.wood2, 0.4);
+      if (i < n - 1) for (const k of [0.05, 0.16]) A(xa + d * k, y, -5.6, xa + d * (k + 0.035), SL, -5.555, M.wood2, 0.3);   // the slats
     }
-    A(1.6, G0, -6.72, 5.76, SL, -6.6, M.wall);                                              // the wall behind the stair, the kitchen stands against it
-    A(1.56, G0, -5.6, 1.6, SL, -5.555, M.wood2, 0.3);
-    rail(2.3, -5.55, 4.9, -5.55); rail(2.3, -6.65, 2.3, -5.55);
-    part('x', -6.7, 0.24, 5.76, [[0.8, 1.7], [4.95, 5.72]]); part('z', 3.0, -12.0, -6.75); part('x', -3.85, 0.24, 5.76, [[1.2, 2.1], [3.6, 4.5]]); part('z', 2.85, -3.8, -0.4);
+    if (rev) { A(0.24, G0, -6.72, 4.4, SL, -6.6, M.wall); A(4.4, G0, -5.6, 4.44, SL, -5.555, M.wood2, 0.3); rail(1.1, -5.55, 3.7, -5.55); rail(3.7, -6.65, 3.7, -5.55); }
+    else { A(1.6, G0, -6.72, 5.76, SL, -6.6, M.wall); A(1.56, G0, -5.6, 1.6, SL, -5.555, M.wood2, 0.3); rail(2.3, -5.55, 4.9, -5.55); rail(2.3, -6.65, 2.3, -5.55); }   // the wall behind the stair: the kitchen stands against it
+    part('x', -6.7, 0.24, 5.76, rev ? [[0.28, 1.05], [4.3, 5.2]] : [[0.8, 1.7], [4.95, 5.72]]); part('z', 3.0, -12.0, -6.75); part('x', -3.85, 0.24, 5.76, [[1.2, 2.1], [3.6, 4.5]]); part('z', 2.85, -3.8, -0.4);
     bed(frame('E', 5.76, -1.0)); bath(frame('W', 0.24, -0.5)); bed(frame('W', 0.24, -8.0), 1.2); bed(frame('E', 5.76, -8.0), 1.2);
     // the living room
-    accentE(-5.5, -0.5);
-    A(3.3, 0.92, -0.74, 5.76, 1.0, -0.2, M.wood, 0.6);
-    A(3.2, G0, -5.2, 5.6, G0 + 0.018, -2.2, M.rug, 0.4);
-    sofa(frame('E', 5.72, -2.6), 2.4, st.sofa); coffee(4.2, -3.8, st.coffee); armchair(frame('N', -0.84, 3.5));
-    art(frame('E', 5.76, -2.8), 1.0, 2.15, 2.0, 1.2, st.art);
-    // a stove on the west wall
-    A(0.3, G0, -4.1, 1.0, G0 + 0.03, -3.1, M.stone, 0.4); G(cyl(0.24, 0.24, 0.95, 20, 0.62, G0 + 0.505, -3.6), M.dark, 0.5); G(cyl(0.07, 0.07, SL - G0 - 0.98, 12, 0.62, (SL + G0 + 0.98) / 2, -3.6), M.dark, 0.3);
-    A(0.86, G0 + 0.3, -3.74, 0.868, G0 + 0.62, -3.46, M.glow, 0, NC);
-    art(frame('W', 0.24, -1.6), 0.45, 1.9, 0.7, 0.9, (st.art + 1) % 3);
-    pend(4.2, 2.3, -3.8, SL, st.lamp); plant(3.6, -5.2, 1.5);
+    if (V === 4) {
+      A(3.05, G0, -3.2, 3.15, SL, -1.2, M.wall); part('x', -3.2, 3.15, 5.76, [[3.4, 4.3, false]], G0, SL);
+      bench(); chair(4.5, -1.15, 'z+'); bookWall(frame('E', 5.76, -0.8), 2.2, G0, SL - 0.05, 53);
+      accentE(-5.5, -3.3); sitting('E', -3.4, 2.0); pend(4.2, 2.3, -4.4, SL, st.lamp);
+    } else if (V === 2) {
+      bench(5.4); bookWall(frame('E', 5.76, -0.7), 4.6, G0, SL - 0.05, 53);
+      A(3.2, G0, -5.0, 5.3, G0 + 0.018, -1.9, M.rug, 0.4); sofa(frame('W', 3.3, -2.2), 2.4, st.sofa); coffee(4.75, -3.4, st.coffee);
+      armchair(frame('N', -0.84, 3.5)); pend(4.75, 2.3, -3.4, SL, st.lamp);
+    } else if (rev) {
+      bench(); accentW(-5.5, -2.5, G0, SL); sitting('W', -2.7); armchair(frame('N', -0.84, 3.5)); pend(1.8, 2.3, -3.9, SL, st.lamp);
+      art(frame('E', 5.76, -3.3), 0.75, 2.05, 1.5, 1.1, (st.art + 1) % 3);
+    } else { bench(); accentE(-5.5, -0.5); sitting('E', -2.6); armchair(frame('N', -0.84, 3.5)); pend(4.2, 2.3, -3.8, SL, st.lamp); }
+    if (rev) stove(5.38, -2.4, -1); else { stove(0.62, -3.6, 1); art(frame('W', 0.24, -1.6), 0.45, 1.9, 0.7, 0.9, (st.art + 1) % 3); }
+    plant(rev ? 2.6 : 3.6, -5.2, 1.5);
     // the kitchen
-    kitchenRun(frame('N', -6.72, 1.75), 4.0, st.kitchen); sideboard(frame('W', 0.24, -9.0), 2.4, 0.5);
-    dining(2.6, -10.3, 4.8, -9.3, st.dining === 1 ? 0 : st.dining); plant(0.7, -11.5, 1.9);
+    if (rev) { kitchenRun(frame('N', -6.72, 0.25), 4.0, st.kitchen); sideboard(frame('E', 5.76, -9.0), 2.4, 0.5); dining(1.3, -10.3, 3.5, -9.3, st.dining === 1 ? 0 : st.dining); plant(0.75, -11.6, 1.9); }
+    else {
+      kitchenRun(frame('N', -6.72, 1.75), 4.0, st.kitchen); sideboard(frame('W', 0.24, -9.0), 2.4, 0.5); plant(0.75, -11.65, 1.9);
+      if (V === 1) { island(2.7, -9.1, 5.0, -8.3, null, st.island); dining(3.95, -11.5, 4.95, -9.6, st.dining); }
+      else dining(2.6, -10.3, 4.8, -9.3, st.dining === 1 ? 0 : st.dining);
+    }
   } else {
     // high at the street, low at the garden: the living room two storeys high with a wall of books, a study over the
-    // entrance looking down into it, a solid stair at the east wall that climbs towards the street
-    upper(0.24, -5.2, 3.1, -1.3); upper(0.24, -12.0, 4.72, -5.2); upper(4.72, -5.9, 5.76, -5.2); upper(4.72, -12.0, 5.76, -9.1);
+    // entrance looking down into it, a solid stair at the east wall that climbs towards the street.
+    // 1: a chimney two storeys high instead of the books. 2: the hall takes the whole width of the house (no study).
+    // 3: the long table stands in the high hall, the sofa at the garden. 4: a wall of glass in front of a garden room.
+    const big = V === 2;
+    if (!big) upper(0.24, -5.2, 3.1, -1.3);
+    upper(0.24, -12.0, 4.72, -5.2); upper(4.72, -5.9, 5.76, -5.2); upper(4.72, -12.0, 5.76, -9.1);
     flight('z', -10.0, 1, 17, 0.25, 4.84, 5.74, 2, 4.8525);
-    rail(3.1, -5.2, 3.1, -0.4); rail(3.1, -5.2, 5.76, -5.2);
+    if (big) { rail(0.24, -5.2, 5.76, -5.2); rail(0.24, -1.3, 3.1, -1.3); rail(3.1, -1.3, 3.1, -0.4); }
+    else {
+      rail(3.1, -5.2, 3.1, -0.4); rail(3.1, -5.2, 5.76, -5.2);
+      A(2.2, L1, -3.6, 2.95, L1 + 0.74, -1.9, M.wood, 0.5); A(2.15, L1 + 0.74, -3.65, 3.0, L1 + 0.78, -1.85, M.stone, 0.4);   // the study over the entrance: a desk at the guard
+    }
     part('x', -6.3, 0.24, 4.72, [[1.0, 1.9], [3.3, 4.2]]); part('z', 4.72, -9.1, -6.3); rail(4.72, -6.3, 4.72, -5.9); part('x', -9.1, 4.72, 5.76); part('z', 2.95, -12.0, -6.35); part('x', -9.85, 0.24, 2.9, [[1.6, 2.4]]);
     bed(frame('W', 0.24, -6.9)); bath(frame('W', 0.24, -10.1)); bed(frame('S', -11.9, 3.2), 1.2);
-    // the study over the entrance: a desk at the guard
-    A(2.2, L1, -3.6, 2.95, L1 + 0.74, -1.9, M.wood, 0.5); A(2.15, L1 + 0.74, -3.65, 3.0, L1 + 0.78, -1.85, M.stone, 0.4);
-    // the living room: books up to the roof, a ladder, the sofa turned to them
-    bookWall(frame('E', 5.76, -0.7), 4.3, G0, CEIL - 0.1, 37);
-    A(5.36, G0, -2.42, 5.4, 5.6, -2.38, M.steel, 0.3); A(5.36, G0, -2.92, 5.4, 5.6, -2.88, M.steel, 0.3);
-    for (let y = G0 + 0.3; y < 5.5; y += 0.3) A(5.37, y, -2.9, 5.39, y + 0.025, -2.4, M.steel, 0);
-    A(3.2, G0, -4.7, 5.3, G0 + 0.018, -1.6, M.rug, 0.4);
-    sofa(frame('W', 3.3, -2.0), 2.4, st.sofa); coffee(4.75, -3.2, st.coffee); armchair(frame('N', -0.84, 3.6));
-    [[4.6, -2.8], [4.9, -3.4], [4.4, -3.7]].forEach(([x, z], k) => pend(x, lampY(k) - 0.3, z, CEIL, st.lamp));
+    // the hall at the street: books up to the roof and a ladder, or a chimney
+    if (V === 1) { chimney('E', -3.9, -2.3, CEIL, 0.25); art(frame('E', 5.2, -2.5), 0.6, 3.4, 1.0, 1.4, st.art); bookWall(frame('E', 5.76, -0.7), 1.5, G0, G0 + 1.45, 37); bookWall(frame('E', 5.76, -4.0), 1.0, G0, G0 + 1.45, 41); }
+    else {
+      bookWall(frame('E', 5.76, -0.7), 4.3, G0, CEIL - 0.1, 37);
+      A(5.36, G0, -2.42, 5.4, 5.6, -2.38, M.steel, 0.3); A(5.36, G0, -2.92, 5.4, 5.6, -2.88, M.steel, 0.3);
+      for (let y = G0 + 0.3; y < 5.5; y += 0.3) A(5.37, y, -2.9, 5.39, y + 0.025, -2.4, M.steel, 0);
+    }
+    if (V === 3) dining(3.95, -4.6, 4.95, -2.4, st.dining, CEIL);
+    else {
+      A(3.2, G0, -4.7, 5.3, G0 + 0.018, -1.6, M.rug, 0.4);
+      sofa(frame('W', 3.3, -2.0), 2.4, st.sofa); coffee(V === 1 ? 4.55 : 4.75, -3.2, st.coffee);
+      (big ? [[2.5, -3.0], [3.5, -3.7], [4.5, -3.1]] : [[4.6, -2.8], [4.9, -3.4], [4.4, -3.7]]).forEach(([x, z], k) => pend(x, lampY(k) - 0.3, z, CEIL, st.lamp));
+    }
+    armchair(frame('N', -0.84, 3.6));
     // the entrance: a wall of cupboards, the special wall beside it
-    accentW(-5.2, -1.3, G0, SL); wardrobe(frame('W', 0.262, -2.7), 2.3, 2.3, G0);
-    // kitchen with island, the table at the garden with a bench on the glass side
-    kitchenRun(frame('W', 0.24, -6.4), 5.1, st.kitchen); island(1.38, -9.3, 2.22, -6.9, 'x+', st.island);
-    A(3.3, G0 + 0.72, -11.5, 4.7, G0 + 0.78, -10.7, st.dining === 2 ? M.stone : M.wood2, 0.7); A(3.42, G0, -11.2, 3.52, G0 + 0.72, -11.0, M.wood2); A(4.48, G0, -11.2, 4.58, G0 + 0.72, -11.0, M.wood2);
-    A(3.3, G0, -11.86, 4.7, G0 + 0.44, -11.56, M.wood, 0.5); A(3.32, G0 + 0.44, -11.84, 4.68, G0 + 0.49, -11.58, M.white, 0.3);
-    chair(3.65, -10.46, 'z-'); chair(4.35, -10.46, 'z-');
-    pend(3.65, G0 + 1.7, -11.1, SL, st.lamp); pend(4.35, G0 + 1.86, -11.1, SL, st.lamp);
+    accentW(-5.2, -1.3, G0, big ? CEIL : SL); wardrobe(frame('W', 0.262, -2.7), 2.3, 2.3, G0);
+    // under the upper floor
+    if (V === 3) {
+      kitchenRun(frame('W', 0.24, -5.6), 3.4, st.kitchen, 0.9, 0); island(1.38, -8.5, 2.22, -6.3, 'x+', st.island);
+      sitting('W', -9.3, 2.3); armchair(frame('S', -11.6, 3.6));
+    } else {
+      const cut = V === 4;
+      kitchenRun(frame('W', 0.24, -6.4), cut ? 3.1 : 5.1, st.kitchen, 0.9, cut ? 0 : 1.0); island(1.38, cut ? -9.0 : -9.3, 2.22, -6.9, 'x+', st.island);
+      if (cut) {                // steel and glass from wall to stair, open in the middle
+        A(0.24, SL - 0.06, -9.63, 4.84, SL, -9.57, M.dark);
+        for (const x of [0.24, 2.0, 3.9, 4.78]) A(x, G0, -9.63, x + 0.06, SL - 0.06, -9.57, M.dark);
+        A(0.3, G0 + 2.2, -9.625, 2.0, G0 + 2.24, -9.575, M.dark); A(3.96, G0 + 2.2, -9.625, 4.78, G0 + 2.24, -9.575, M.dark);
+        A(0.3, G0, -9.606, 2.0, SL - 0.06, -9.594, M.clear, 0, NC); A(3.96, G0, -9.606, 4.78, SL - 0.06, -9.594, M.clear, 0, NC);
+        plant(0.8, -11.3, 1.8);
+      }
+      // the table at the garden with a bench on the glass side
+      A(3.3, G0 + 0.72, -11.5, 4.7, G0 + 0.78, -10.7, st.dining === 2 ? M.stone : M.wood2, 0.7); A(3.42, G0, -11.2, 3.52, G0 + 0.72, -11.0, M.wood2); A(4.48, G0, -11.2, 4.58, G0 + 0.72, -11.0, M.wood2);
+      A(3.3, G0, -11.86, 4.7, G0 + 0.44, -11.56, M.wood, 0.5); A(3.32, G0 + 0.44, -11.84, 4.68, G0 + 0.49, -11.58, M.white, 0.3);
+      chair(3.65, -10.46, 'z-'); chair(4.35, -10.46, 'z-');
+      pend(3.65, G0 + 1.7, -11.1, SL, st.lamp); pend(4.35, G0 + 1.86, -11.1, SL, st.lamp);
+    }
     art(frame('E', 5.76, -10.2), 0.8, 2.0, 1.2, 0.9, st.art);
   }
 
@@ -539,5 +716,5 @@ export function buildInterior(K, c) {
   }
   A(3.28, 0.14, -14.84, 3.4, 0.78, -14.72, M.gSteel, 0.4); A(3.3, 0.62, -14.82, 3.38, 0.74, -14.74, M.gGlow, 0, NC);   // a bollard lamp
 
-  return { gDoorL, gDoorR, plan, fit, M, inn };
+  return { gDoorL, gDoorR, plan, variant: V, fit, M, inn };
 }

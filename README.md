@@ -20,11 +20,11 @@ Die Häuserseiten nutzen eine gemeinsame Engine (`engine/`), jede hat oben den W
 
 - **Jedes Haus ist ein anderes.** Sechs Projekte, sechs Bauformen (Stadthäuser mit Zinkerker, weiße Kuben mit Dachterrasse, Klinker-Giebelhäuser, Doppelhaushälften mit Garagen, Holzhäuser mit Pultdach, Reihenhäuser mit Gaube). Innerhalb eines Projekts hat jedes Haus seine eigene Fassade: Ton, Ziegelformat und Verband, Putzart, Schalung, Dachdeckung, Tür- und Fensterfarbe (`style.looks` in den Projektdaten).
 - **Frei oder verkauft.** Grün ist frei, rot ist verkauft. Freie Häuser lassen sich betreten: am Schild über dem Dach, an den Tasten oben oder an der Fassade. Verkaufte Häuser bleiben zu; die Seite nennt stattdessen die freien.
-- **Vier Grundrisse, zwanzig Ausstattungen.** Jedes freie Haus hat seinen Grundriss (`plan`) und seine Ausstattung (`fit`):
-  - **Halle:** Halle über zwei Geschosse, Treppe an der Wand, Wohnraum unter der Galerie, Küche mit Insel am Garten.
-  - **Gartenhalle:** Küche vorn am Straßenfenster, Essplatz in der Mitte, am Garten ein Wohnraum über zwei Geschosse mit Kamin, hohem Fenster und Galerie.
-  - **Stufenmöbel:** alle Räume eingeschossig, die Treppe steht quer im Haus und ist zugleich Schrank, davor Wohnen, dahinter die Wohnküche.
-  - **Wohnhalle:** Wohnraum über zwei Geschosse an der Straße mit Bücherwand bis unter die Decke, massive Treppe, Küche mit Insel.
+- **Zwanzig Häuser, zwanzig Grundrisse.** Jedes freie Haus hat seinen eigenen Innenaufbau (`plan` und `var` in den Projektdaten) und seine eigene Ausstattung (`fit`). Vier Grundtypen legen fest, wo die Treppe steht und wo das Haus zwei Geschosse hoch ist; jeder kommt in fünf Fassungen mit anderen Räumen:
+  - **Halle** (Halle über zwei Geschosse, Treppe an der Wand): mit Küche im Westen oder im Osten, mit dem Wohnraum am Garten und dem Esstisch an der Straße, mit einem Kamin nach zwei Seiten, mit einer Tafel für zwölf.
+  - **Gartenhalle** (Küche an der Straße, hoher Raum am Garten): mit Kamin im Westen oder im Osten, mit Tresen und rundem Tisch, als Lichthof mit Studio darüber, als Speisehalle mit dem Wohnraum in der Mitte.
+  - **Stufenmöbel** (Treppe quer im Haus, zugleich Schrank): mit langem Tisch oder Kochinsel, mit Bibliothek, mit dem Durchgang an der Ostwand, mit einem Arbeitszimmer an der Straße.
+  - **Wohnhalle** (Wohnraum über zwei Geschosse an der Straße, massive Treppe): mit Bücherwand oder hohem Kamin, als Halle über die ganze Hausbreite, mit der Tafel in der Halle und dem Wohnraum am Garten, mit einem Gartenzimmer hinter Glas.
 
   Boden (Dielen, Fischgrät, Würfelparkett, Terrazzo, Estrich, Stein), Einbauten, Arbeitsplatte, Stoffe, Teppich, Akzentwand, Beschläge, Treppe, Sofa, Tisch, Küche, Lampen und Garten wechseln von Haus zu Haus; keine zwei Häuser haben dieselbe Zusammenstellung.
 - **Exposé.** Zu jedem Haus ein Datenblatt: Zimmer, Wohnfläche, Grundstück, Kaufpreis, Räume mit Flächen, Ausstattung, Bau & Technik, Baufortschritt in sechs Phasen, eine überschlagene Finanzierung mit Reglern. Es lässt sich drucken (als PDF sichern) und als Link kopieren.
@@ -73,7 +73,7 @@ Die Farben der gebauten Häuser stehen in den Projektdaten und in `engine/interi
 - **Die Ansicht ist das Haus.** Das 3D-Modell wird frontal durch ein 2°-Objektiv gesehen und wirkt deshalb wie eine orthogonale Zeichnung.
 - **Die Schraffur wird berechnet.** Die Sonne startet nach der Zeichenkonvention, Licht von links oben unter 45°. Jedes Pixel, das die Shadow-Map in den Schatten legt, bekommt eine 45°-Schraffur, sodass gezeichnete und echte Schatten dieselben Formen haben.
 - **Bauformen.** `house()` in `engine/elevation.js` baut ein Haus aus Optionen: Wand (`wall`, `brick`, `wallTx`), Tür und Fenster (`doorColor`, `frame`), Obergeschoss (`first`: Erker, Steinrahmen, Fenster, Balkon), Dach (`roof`: Satteldach, Giebel zur Straße, Pultdach, Flachdach; dazu `dormer`, `terrace`, `roofColor`, `roofTx`: Zink, Tonziegel, Schiefer, begrünt) und Giebelwände, wo kein Nachbar steht.
-- **Räume.** `engine/interior.js` baut das Innere: vier Grundrisse, die Möbel als kleine Bausteine (Sofa, Tisch, Küche, Bücherwand, Treppe …), die Paletten der Ausstattung und für jeden Grundriss den Weg der Kamera, die Raumliste und den kleinen Lageplan.
+- **Räume.** `engine/interior.js` baut das Innere: vier Grundtypen in je fünf Fassungen, die Möbel als kleine Bausteine (Sofa, Tisch, Küche, Bücherwand, Kamin, Treppe …), die Paletten der Ausstattung und für jeden Grundriss den Weg der Kamera, die Raumliste und den kleinen Lageplan.
 - **Ein Material für jede Fläche.** `mat()` patcht das Standardmaterial: Papier und Schraffur auf der einen Seite des Scans, das echte Material auf der anderen. Muster (Ziegelverband, Fischgrät, Terrazzo, Kelim …) werden im Shader gerechnet, keine Bilddatei.
 - **Kamera-Keys sind Bildausschnitte** (Ziel, Bildhöhe, Objektiv). Der Abstand ergibt sich daraus, und das Objektiv wird im Log-Raum überblendet, sodass es sich ohne Sprung von 2° auf 55° öffnet. Im Haus werden die Keys vom Standpunkt der Kamera aus geschrieben (`h.key`); zwischen zwei Standpunkten geht die Kamera eine gerade Linie. Ein Haus mit der Tür rechts spiegelt sie selbst. Auf einem Hochkant-Bildschirm öffnet sich das Objektiv im Haus weiter.
 - **Nur three.js.** Keine weitere Bibliothek. Das Scrollen bleibt das der Seite, die Engine glättet nur den Wert, der die Kamera führt.
@@ -82,7 +82,7 @@ Die Farben der gebauten Häuser stehen in den Projektdaten und in `engine/interi
 
 `engine/elevation.js` (Bühne, Materialien, Fassade, Seitenablauf), `engine/interior.js` (Räume, Grundrisse, Ausstattung), `engine/quality.js` (Gerätestufen) und `engine/page.css` werden von den Häuserseiten gemeinsam genutzt. Jede Seite besteht aus einer `index.html` und einer `page.js`. `vendor/three/` enthält three.js 0.160.1 mit vier Zusatzmodulen, `vendor/fonts/` die Schriften.
 
-`?skip` überspringt das Intro. `?at=300` springt zu einer Scrollposition. `?nosmooth` folgt dem Scroll ohne Glättung. `?q=low|mid|high` erzwingt eine Gerätestufe, `?dpr=1` legt die Auflösung fest, `?debug` zeigt Position, Stufe und Auflösung. Zum Ausprobieren auf der Häuserseite: `?plan=A|B|C|D` und `?fit=1…20`.
+`?skip` überspringt das Intro. `?at=300` springt zu einer Scrollposition. `?nosmooth` folgt dem Scroll ohne Glättung. `?q=low|mid|high` erzwingt eine Gerätestufe, `?dpr=1` legt die Auflösung fest, `?debug` zeigt Position, Stufe und Auflösung. Zum Ausprobieren auf der Häuserseite: `?plan=A|B|C|D`, `?var=0…4` und `?fit=1…20`.
 
 ## Lokal starten
 
