@@ -36,11 +36,14 @@ Die Häuserseiten nutzen eine gemeinsame Engine (`engine/`), jede hat oben den W
 Die Seite ist darauf gebaut, auf einem Bürolaptop und einem Handy zu laufen und die Grafikkarte nie zu überfordern.
 
 - **Ein Licht für alles.** Sonne, Himmel und ein gleichmäßiges Raumlicht, in jedem Raum jedes Hauses dasselbe. Keine Lampe beleuchtet etwas. Die Zahl der Lichter ändert sich deshalb nie, und kein Shader wird je ein zweites Mal gebaut. (Vorher brachte jedes Haus drei Lampen mit: Mit jedem Haus wurden alle Shader neu gebaut, 130 statt 22 Programme, 15 Punktlichter pro Bildpunkt. Das hat schwächere Grafikkarten zum Absturz gebracht.)
+- **Der Himmel ist eine Formel.** Was eine Fläche vom Himmel sieht (sein Licht und sein Spiegelbild), rechnet der Shader aus, statt eine gefilterte Umgebungstextur abzutasten. Das Bild ist dasselbe, die Arbeit je Bildpunkt weniger als die Hälfte.
 - **Ein Shader je Materialart.** Was sich von Haus zu Haus unterscheidet (Farbe, Verband, Bretter, Webart), sind Uniforms. Alle Shader werden hinter dem Ladebild gebaut; im Betrieb wird nichts mehr kompiliert, auch nicht für Grundriss oder Bauablauf.
 - **Nur was zu sehen ist.** Räume gibt es nur in Häusern, die man betreten kann; gebaut werden sie, wenn der Browser Zeit hat, und gezeichnet wird nur das Haus, in dem die Kamera steht. Alles Unbewegte ist je Material zu einem Netz verschmolzen, die Schattenkarte wird nur neu gezeichnet, wenn sich Sonne oder Tür bewegt haben, ein Bild nur, wenn sich etwas geändert hat.
 - **Gerätestufen.** `engine/quality.js` wählt Auflösung, Schattenkarte und Schattenfilter nach Gerät (Handy, Laptop mit eingebauter Grafik, Desktop) und regelt die Auflösung nach, wenn Bilder zu lange dauern.
 - **Wenn doch etwas passiert.** Nimmt der Browser der Seite den WebGL-Kontext, sagt sie es und startet in der sparsamsten Stufe neu. Ohne WebGL erscheint ein Hinweis statt eines stehenden Ladebilds.
 - **Nichts von außen.** three.js und die Schriften liegen im Projekt (`vendor/`): kein CDN, kein Schriftendienst, keine Cookies, kein Tracking.
+
+Gemessen im selben Software-Renderer, gleiche Größe, gleiche Stufe, Zeile mit drei freien Häusern: ein Bild der Straße 797 → 241 ms, in der Halle 1659 → 458 ms, in der Küche 1177 → 290 ms; Shaderprogramme 119 → 22; Punktlichter 18 → 0. Auf echten Grafikkarten kommt die sparsamere Stufe für Laptops und Handys noch dazu.
 
 `window.__clear()` misst auf jeder Häuserseite den Abstand der Kamera zu jeder Fläche über den ganzen Weg: In allen zwanzig freien Häusern bleibt er über 55 cm.
 

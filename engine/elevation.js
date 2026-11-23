@@ -16,6 +16,8 @@
 // Built to run on a phone and on an office laptop, and never to stall the graphics card:
 // - One light for everything: the sun, the sky, and one even room light (uFill). No lamp lights anything, so the set of
 //   lights never changes and no shader is ever built twice.
+// - No environment map: what a surface sees of the sky is a formula (elevSky). Sampling a filtered environment texture
+//   was more than half of the work of every pixel.
 // - One shader per kind of material. What differs from house to house (colour, bond, boards, weave) are uniforms.
 //   Every shader is built behind the loader (warm()); nothing is compiled while the page is in use.
 // - Everything that does not move is merged into one mesh per material and one line object per pen (flush()), the
@@ -152,6 +154,15 @@ const GLSL_KINDS = /* glsl */`
   #endif
   // every second band of a period, with a soft edge
   float band(float t) { float f = abs(fract(t) - 0.5), a = max(fwidth(t), 1e-4); return smoothstep(0.25 - a, 0.25 + a, f); }
+  // the sky the houses stand under, seen in direction d: warm haze at the horizon, pale zenith, the ground below, a glow
+  // where the sun stands. rough 0: as in a mirror; rough 1: all of it run together (the light a matt surface gets)
+  vec3 elevSky(vec3 d, float rough) {
+    float h = d.y, w = mix(0.03, 1.0, rough);
+    vec3 sky = mix(vec3(0.87, 0.76, 0.58), vec3(0.74, 0.79, 0.82), pow(clamp(h, 0.0, 1.0), 0.65));
+    vec3 ground = mix(vec3(0.38, 0.35, 0.30), vec3(0.60, 0.55, 0.46), smoothstep(-0.8, 0.0, h));
+    float glow = pow(max(0.0, dot(d, vec3(-0.618, 0.486, 0.618))), mix(12.0, 1.5, rough));
+    return mix(ground, sky, smoothstep(-w, w, h)) + vec3(0.34, 0.26, 0.14) * glow * (1.0 - 0.7 * rough);
+  }
 `;
 
 // three's own light loop, with the sun's shadow taken from elevShadow instead of being sampled a second time
@@ -175,7 +186,8 @@ export function createStage(cfg = {}) {
   const phone = () => W / H < 0.8;
   const canvas = document.getElementById('gl');
   let renderer;
-  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false }); }
+  // (after the browser has taken the context away once, the picture is drawn without multisampling: a quarter of the memory)
+  try { renderer = new THREE.WebGLRenderer({ canvas, antialias: !safeMode && !Q.has('noaa'), powerPreference: 'high-performance', stencil: false }); }
   catch (e) { fail('Dieser Browser stellt kein WebGL bereit. Bitte einen aktuellen Browser verwenden oder die Hardwarebeschleunigung einschalten.', false); throw e; }
   // The browser may take the context away (memory, a driver that hangs, a tab long in the background). Say so, remember
   // it for this tab, and start again on the lowest tier. Never more than twice in a row on its own.
@@ -225,29 +237,10 @@ export function createStage(cfg = {}) {
     uFill: { value: cfg.fill ?? 0.95 },        // the one room light: the same in every room of every house
   };
 
-  /* ---------- environment and light ---------- */
-  {
-    const envScene = new THREE.Scene();
-    envScene.add(new THREE.Mesh(new THREE.SphereGeometry(12, 24, 12), new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      vertexShader: 'varying vec3 vP; void main() { vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `varying vec3 vP; void main() {
-        vec3 d = normalize(vP);
-        float h = d.y;
-        vec3 horizon = vec3(0.87, 0.76, 0.58);
-        vec3 zenith = vec3(0.74, 0.79, 0.82);
-        vec3 ground = mix(vec3(0.38, 0.35, 0.30), vec3(0.60, 0.55, 0.46), smoothstep(-0.8, 0.0, h));
-        vec3 sky = mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), 0.65));
-        float sunGlow = pow(max(0.0, dot(d, normalize(vec3(-0.7, 0.55, 0.7)))), 12.0);
-        sky += vec3(0.34, 0.26, 0.14) * sunGlow;
-        gl_FragColor = vec4(h > 0.0 ? sky : ground, 1.0);
-      }`,
-    })));
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    scene.environment = pmrem.fromScene(envScene, 0.015).texture;
-    pmrem.dispose();
-    envScene.children[0].geometry.dispose(); envScene.children[0].material.dispose();
-  }
+  /* ---------- light ---------- */
+  // No environment map. What a surface sees of the sky (its diffuse light from above and below, and what it mirrors)
+  // is a formula in the shader (elevSky): the same pale October sky as before, at a fraction of the cost. Sampling a
+  // filtered environment texture was more than half of the work of every pixel.
   const sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
   scene.add(sun, sun.target);
   const hemi = new THREE.HemisphereLight(0xdfe6ea, 0xb8a98c, 0.9); scene.add(hemi);
@@ -358,7 +351,7 @@ export function createStage(cfg = {}) {
     const K = KIND[kind];
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
-      sh.uniforms.uFx = { value: fx }; sh.uniforms.uTx = { value: tx };
+      sh.uniforms.uFx = { value: fx }; sh.uniforms.uTx = { value: tx }; sh.uniforms.uEnv = { value: m.envMapIntensity };
       sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
         vec4 wpp = vec4(transformed, 1.0);
         #ifdef USE_INSTANCING
@@ -366,7 +359,7 @@ export function createStage(cfg = {}) {
         #endif
         vWP = (modelMatrix * wpp).xyz;
         vWN = normalize(mat3(modelMatrix) * objectNormal);`);
-      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill;\nuniform vec4 uFx; uniform vec4 uTx;\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0;\n${GLSL_COMMON}${GLSL_KINDS}
+      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx;\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0;\n${GLSL_COMMON}${GLSL_KINDS}
       ` + sh.fragmentShader
           // the sun's shadow, read once per pixel and used twice: by the light of the real model and by the hatching.
           // The depth bias follows the slope of the surface to the sun, so a brick 60 mm proud keeps its small shadow.
@@ -604,6 +597,10 @@ export function createStage(cfg = {}) {
             #endif`)
           .replace('#include <aomap_fragment>', `#include <aomap_fragment>
             {
+              // the sky: its light on the surface, and its picture in it
+              reflectedLight.indirectDiffuse += elevSky(normalize(vWN), 1.0) * uEnv * material.diffuseColor;
+              reflectedLight.indirectSpecular += elevSky(inverseTransformDirection(reflect(-geometryViewDir, geometryNormal), viewMatrix), material.roughness) * uEnv
+                * EnvironmentBRDF(geometryNormal, geometryViewDir, material.specularColor, material.specularF90, material.roughness);
               // the one room light: the same amount on every surface of every room
               reflectedLight.indirectDiffuse += vec3(1.0, 0.965, 0.91) * (uFill * uFx.w) * material.diffuseColor * RECIPROCAL_PI;
               // porch & reveal recess gets deep sky occlusion around z = -0.08..-1.05
@@ -863,7 +860,10 @@ export function createStage(cfg = {}) {
     const EX = [0.5, 2.9], DX = [0.7, 2.7], pz = -1.2;        // the porch, and the glass door at the back of it
     const first = v.first || 'bay';
     const holes = [R4(EX[0], G0, EX[1], 3.0), R4(3.55, 1.0, 5.5, 3.0)];
-    const ff = first === 'frame' ? [[0.9, 3.95, 5.1, 6.0]] : [R4(0.75, 3.9, 3.25, 5.9), R4(4.05, 3.9, 5.35, 6.0)];
+    // upstairs every opening stands on the axis of the one below it: the window (or balcony door, or bay) over the
+    // porch is exactly as wide as the porch, the tall window sits over the middle of the street window
+    const UP = [EX[0], 3.9, EX[1], 5.9], SIDE = [3.875, 3.9, 5.175, 6.0];
+    const ff = first === 'frame' ? [[0.9, 3.95, 5.1, 6.0]] : [R4(...UP), R4(...SIDE)];
     holes.push(...ff);
     const brick = mat(v.wall || 'brick', { faint, color: v.brick, tx: v.wallTx });
     const DC = v.doorColor || 0x9a3f2a;
@@ -935,29 +935,31 @@ export function createStage(cfg = {}) {
       windowIn(g, 0.9, 3.95, 5.1, 6.0, 0.16, { ...W, panes: 3, transom: 5.4 });
     } else {
       if (first === 'bay') {
-        // a bay of zinc, 800 mm out over the porch, glazed across its front
-        add(bx(0.6, 3.72, 0, 3.4, 3.9, 0.8), zm, LW, O);
-        add(bx(0.6, 5.9, 0, 3.4, 6.08, 0.8), zm, LW, O);
-        add(bx(0.6, 3.9, 0, 0.75, 5.9, 0.8), zm, lw, O);
-        add(bx(3.25, 3.9, 0, 3.4, 5.9, 0.8), zm, lw, O);
-        windowIn(g, ...R4(0.75, 3.9, 3.25, 5.9), -0.74, { ...W, panes: 3 });
+        // a bay of zinc, 800 mm out over the porch and as wide as the porch with its cheeks, glazed across its front
+        const b0 = UP[0] - 0.15, b1 = UP[2] + 0.15;
+        add(bx(b0, 3.72, 0, b1, 3.9, 0.8), zm, LW, O);
+        add(bx(b0, 5.9, 0, b1, 6.08, 0.8), zm, LW, O);
+        add(bx(b0, 3.9, 0, UP[0], 5.9, 0.8), zm, lw, O);
+        add(bx(UP[2], 3.9, 0, b1, 5.9, 0.8), zm, lw, O);
+        windowIn(g, ...R4(...UP), -0.74, { ...W, panes: 3 });
       } else {
-        // a plain window over the porch; with 'balcony' a stone slab and a guard of steel bars in front of it
-        windowIn(g, ...R4(0.75, 3.9, 3.25, 5.9), 0.2, { ...W, sill: first !== 'balcony', panes: 2, transom: 5.35 });
+        // a window over the porch; with 'balcony' it is the balcony door: a stone slab and a guard of steel bars in front of it
+        windowIn(g, ...R4(...UP), 0.2, { ...W, sill: first !== 'balcony', panes: 2, transom: 5.35 });
         if (first === 'balcony') {
-          add(bx(0.45, 3.7, 0, 3.55, 3.86, 1.05), st, LW, O);
-          const rail = [bx(0.45, 4.84, 0.98, 3.55, 4.88, 1.04), bx(0.45, 4.84, 0, 0.49, 4.88, 1.04), bx(3.51, 4.84, 0, 3.55, 4.88, 1.04)];
-          for (let x = 0.47; x < 3.52; x += 0.118) rail.push(bx(x, 3.86, 1.0, x + 0.02, 4.84, 1.02));
-          for (let z = 0.14; z < 0.95; z += 0.2) rail.push(bx(0.46, 3.86, z, 0.48, 4.84, z + 0.02), bx(3.52, 3.86, z, 3.54, 4.84, z + 0.02));
+          const s0 = UP[0] - 0.3, s1 = UP[2] + 0.3;
+          add(bx(s0, 3.7, 0, s1, 3.86, 1.05), st, LW, O);
+          const rail = [bx(s0, 4.84, 0.98, s1, 4.88, 1.04), bx(s0, 4.84, 0, s0 + 0.04, 4.88, 1.04), bx(s1 - 0.04, 4.84, 0, s1, 4.88, 1.04)];
+          for (let x = s0 + 0.02; x < s1 - 0.03; x += 0.118) rail.push(bx(x, 3.86, 1.0, x + 0.02, 4.84, 1.02));
+          for (let z = 0.14; z < 0.95; z += 0.2) rail.push(bx(s0 + 0.01, 3.86, z, s0 + 0.03, 4.84, z + 0.02), bx(s1 - 0.03, 3.86, z, s1 - 0.01, 4.84, z + 0.02));
           add(mergeGeometries(rail), stm, faint ? 0 : 0.55, O);
         }
       }
       // beside it a tall window with a guard of steel bars
-      windowIn(g, ...R4(4.05, 3.9, 5.35, 6.0), 0.2, { ...W, sill: true, panes: 1, transom: 5.35 });
+      windowIn(g, ...R4(...SIDE), 0.2, { ...W, sill: true, panes: 1, transom: 5.35 });
       const bars = [];
-      for (let x = 4.07; x < 5.34; x += 0.115) bars.push(bx(x, 3.92, 0.03, x + 0.02, 4.86, 0.05));
-      bars.push(bx(4.03, 4.86, 0.02, 5.37, 4.9, 0.062));
-      if (!faint) bars.push(bx(4.03, 3.94, 0.026, 5.37, 3.965, 0.054));
+      for (let x = SIDE[0] + 0.02; x < SIDE[2] - 0.01; x += 0.115) bars.push(bx(x, 3.92, 0.03, x + 0.02, 4.86, 0.05));
+      bars.push(bx(SIDE[0] - 0.02, 4.86, 0.02, SIDE[2] + 0.02, 4.9, 0.062));
+      if (!faint) bars.push(bx(SIDE[0] - 0.02, 3.94, 0.026, SIDE[2] + 0.02, 3.965, 0.054));
       add(mergeGeometries(bars), stm, faint ? 0 : 0.55, O);
     }
 
@@ -1043,7 +1045,7 @@ export function createStage(cfg = {}) {
 
     if (v.relief) {
       const bricks = [];
-      const bay = doorL ? [0.45, 3.55] : [2.45, 5.55]; // no headers behind the bay
+      const bay = doorL ? [0.15, 3.25] : [2.75, 5.85]; // no headers behind the bay
       const inHole = (x, y) => holes.some(([a, b, c, d]) => x > a - 0.12 && x < c + 0.12 && y > b - 0.12 && y < d + 0.1) || y < G0 + 0.05 || y > PAR - 0.1 || (first !== 'frame' && y > 3.6 && y < 6.2 && x > bay[0] && x < bay[1]);
       for (let c = 0; c * 0.075 < PAR; c++) {
         const off = (c % 2) * 0.5;

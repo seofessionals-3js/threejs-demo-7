@@ -104,9 +104,9 @@ function house(b, cx, zf, f, st, v, i, look) {
     if (o.dormer) b.box(cx, par + 0.45, zf - f * 1.9, 3.0, 1.3, 2.4, ZINC, { top: roofC });
   }
   const first = o.first || 'bay';
-  if (first === 'bay') b.box(cx + side * -1.0, 3.7, zf + f * 0.4, 2.8, 2.35, 0.8, ZINC);
+  if (first === 'bay') b.box(cx + side * -1.0, 3.7, zf + f * 0.4, 2.7, 2.35, 0.8, ZINC);
   else if (first === 'frame') b.box(cx, 3.8, zf + f * 0.12, 4.5, 2.4, 0.3, STONE);
-  else if (first === 'balcony') b.box(cx + side * -1.0, 3.7, zf + f * 0.55, 3.1, 0.16, 1.1, STONE);
+  else if (first === 'balcony') b.box(cx + side * -1.0, 3.7, zf + f * 0.55, 3.0, 0.16, 1.1, STONE);
 }
 
 // the site plan of a project: its rows on the plot, a lane between them, every lot in the colour of its state
