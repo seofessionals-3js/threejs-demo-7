@@ -27,7 +27,7 @@ const HOUSES = SITE + 'haeuser/?at=310&id=';
 // the map costs the graphics card twice the memory, and that is what took the browser down on weaker machines.
 const hint = (href, as) => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = href; if (as) l.as = as; document.head.appendChild(l); };
 function warmHouses() {
-  for (const f of ['engine/elevation.js', 'engine/quality.js', 'engine/interior.js', 'haeuser/page.js', 'vendor/three/addons/lines/LineSegments2.js', 'vendor/three/addons/lines/LineSegmentsGeometry.js', 'vendor/three/addons/lines/LineMaterial.js', 'vendor/three/addons/utils/BufferGeometryUtils.js']) hint(SITE + f, 'script');
+  for (const f of ['engine/elevation.js', 'engine/quality.js', 'engine/interior.js', 'haeuser/page.js', 'dortmund/js/looks.js', 'vendor/three/addons/lines/LineSegments2.js', 'vendor/three/addons/lines/LineSegmentsGeometry.js', 'vendor/three/addons/lines/LineMaterial.js', 'vendor/three/addons/utils/BufferGeometryUtils.js']) hint(SITE + f, 'script');
   hint(SITE + 'engine/page.css', 'style');
   for (const f of ['ChakraPetch-600', 'IBMPlexMono-500']) hint(SITE + `vendor/fonts/${f}.woff2`, 'font');
 }
