@@ -234,6 +234,12 @@ html.in .topbar { opacity: 1; transform: none; }
 .pill.solid:hover::after, .topbar .pill:hover::after {
   color: var(--paper-hi);
 }
+/* the way back to the Dortmund map stands next to the call to action, drawn lighter */
+.topnav { display: flex; align-items: center; gap: 8px; }
+.topbar .pill.ghost { background: rgba(234, 223, 203, 0.9); color: var(--ink); }
+.topbar .pill.ghost::after { color: var(--accent-ink); }
+.topbar .pill.ghost:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.topbar .pill.ghost:hover::after { color: var(--accent-hi); }
 
 /* hero words: masked slide-up, then they leave as the drawing turns */
 .hero {
@@ -662,6 +668,13 @@ html.done .hint { opacity: calc(1 - var(--hero-out) * 3); }
   #beats { left: var(--gut); right: var(--gut); bottom: 104px; }
   .beat { width: calc(100vw - 2 * var(--gut)); padding: 11px 14px 13px; }
   .beat p { font-size: 17px; }
+}
+/* narrow phone: three things do not fit in one row. The way back to the map stands under the mark, out of the row,
+   and the headline moves down by that much */
+@media (max-aspect-ratio: 4/5) and (max-width: 560px) {
+  .topbar.has-nav .pill.ghost { position: absolute; left: 0; top: calc(100% + 6px); }
+  .topbar.has-nav ~ .hero { top: 88px; }
+  .topbar.has-nav ~ .hero.on-card { top: 86px; }
 }
 
 /* B: the title block sits top right, the plots take the bottom */

@@ -31,9 +31,12 @@
     <p class="soft">Plotte Vorderansicht 1:50 &nbsp;<span id="loadPct">0%</span></p>
   </div>
 
-  <header class="topbar">
+  <header class="topbar has-nav">
     <a class="mark" href="#">No. 7<small>Kreidegasse · A-201</small></a>
-    <a class="pill" href="#">Besichtigung buchen</a>
+    <nav class="topnav" aria-label="Wohnungsfinder">
+      <a class="pill ghost" href="/threejs-demos/dortmund/">Zur Karte</a>
+      <a class="pill" href="#">Besichtigung buchen</a>
+    </nav>
   </header>
 
   <section class="hero" aria-label="No. 7 Kreidegasse, Vorderansicht">
@@ -55,7 +58,5 @@
   <main class="track" id="track"></main>
 
   <script type="module" src="page.js"></script>
-<!-- three.js Portfolio: when this demo has played to its end, the next one starts by itself -->
-<script src="/threejs-demos/portfolio.js" defer></script>
 </body>
 </html>

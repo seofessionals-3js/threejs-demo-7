@@ -1,17 +1,17 @@
 # Wohnungsfinder
 
-In der Übersicht und in der durchlaufenden Schau ist das die Nummer 1; das Repository heißt weiter `threejs-demo-7`, damit alle Adressen gültig bleiben.
+Der Wohnungsfinder gehört zur [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/): Die Karte zeigt die Projekte, dieses Repository ihre Häuser. Er ist keine der three.js Demos und steht weder in deren Übersicht noch in deren durchlaufender Schau. Das Repository heißt weiter `threejs-demo-7`, damit alle Adressen gültig bleiben; seine Startadresse führt zur Karte, und jede Seite hat oben den Weg „Zur Karte“.
 
 
 Die Vorderansicht eines Stadthauses, in Trois Crayons auf Tonpapier gezeichnet: schwarze Kreide für Umriss und 45°-Schraffur in jedem Schatten, weiße Kreide für alles, was die Sonne trifft. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan in Rötel das Papier in weißen Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Garten.
 
 Das Haus dieser Fassung ist **No. 7 Kreidegasse**: sechs Meter breit, zwei Geschosse, weißer Backstein unter einem Dach aus Zink. Der Eingang liegt 1,20 m zurück, darüber kragt ein Erker 800 mm aus. Die Tür ist eine Glastür mit zwei Flügeln in oxidroten Stahlrahmen, 2,00 m breit. Dahinter liegt eine Halle über beide Geschosse. 
 
-[**Live ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/a-one-door/) · [**Startprompt**](PROMPT.md) · [**Alle Demos**](https://seofessionals-3js.github.io/threejs-demos/)
+[**Zur Dortmund-Karte**](https://seofessionals-3js.github.io/threejs-demos/dortmund/) · [**Ein Haus ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/a-one-door/) · [**Startprompt**](PROMPT.md)
 
-Drei Varianten mit einer Engine:
+Vier Seiten mit einer Engine:
 
-- [`a-one-door/`](a-one-door/): ein Stadthaus, durch die Glastür hinein (die Hauptdemo)
+- [`a-one-door/`](a-one-door/): ein Stadthaus, durch die Glastür hinein
 - [`b-the-row/`](b-the-row/): eine Straße mit sechs Stadthäusern und Hausnummern, Haus 04 reservieren
 - [`c-the-face/`](c-the-face/): ein Ziegeldetail 1:20, schwarze Binder in weißer Wand, die Sonne streift über das Relief
 - [`haeuser/`](haeuser/): die Häuser eines Projekts der [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/). Die Seite liest das Projekt aus den Daten der Karte: seine Architektur, seine Zeilen und für jedes Haus, ob es frei (grün) oder verkauft (rot) ist. Sechs Projekte, sechs Bauformen: Stadthäuser mit Zinkerker, weiße Kuben mit Dachterrasse, Klinker-Giebelhäuser, 24 Doppelhaushälften mit Garagen in vier Zeilen, Holzhäuser mit Pultdach, Reihenhäuser mit Gaube unter Schiefer. Jedes Haus lässt sich anklicken, am Schild über dem Dach, an den Tasten oben oder an der Fassade, und jedes lässt sich betreten. `?id=…` nennt das Projekt, `?zeile=2` die Zeile, `?haus=14` ein Haus. Unter „Werkzeuge" lassen sich der Sonnenstand von 6 bis 20 Uhr einstellen, das Haus als Grundriss von oben ansehen (Erdgeschoss oder Obergeschoss, das Haus wird in Geschosshöhe geschnitten) und Boden und Einbauten umfärben. Im Haus dreht seitliches Ziehen den Blick, ohne den Standpunkt zu verlassen. Mit `at=310` kommt man ohne Vorspann bei der Reihe an; die Räume der übrigen Häuser werden erst gebaut, wenn das Bild steht.
@@ -45,7 +45,7 @@ Das Blatt ist ein Trois Crayons: schwarze Kreide, weiße Kreide und ein einziges
 
 ## Dateien
 
-`engine/elevation.js` und `engine/page.css` werden gemeinsam genutzt. Jede Variante besteht aus einer `index.html` und einer `page.js` mit ihren Kamera-Keys und Texten. Etwa 100 KB für die Hauptdemo.
+`engine/elevation.js` und `engine/page.css` werden gemeinsam genutzt. Jede Variante besteht aus einer `index.html` und einer `page.js` mit ihren Kamera-Keys und Texten. Etwa 100 KB für die Seite mit einem Haus.
 
 `?skip` überspringt das Intro. `?at=300` springt zu einer Scrollposition. `?nosmooth` folgt dem Scroll ohne Glättung.
 
@@ -57,7 +57,7 @@ Die Seiten nutzen JavaScript-Module und brauchen deshalb einen lokalen Server. E
 python -m http.server 8000
 ```
 
-Dann http://localhost:8000/ öffnen. Am besten auf einem Laptop mit aktuellem Browser.
+Dann http://localhost:8000/a-one-door/ öffnen. Die Startadresse, die Links „Zur Karte“ und die Seite `haeuser/` brauchen die Dortmund-Karte: dafür dieses Repository und [threejs-demos](https://github.com/seofessionals-3js/threejs-demos) nebeneinander in einen Ordner klonen, den Server in diesem Ordner starten und http://localhost:8000/threejs-demos/dortmund/ öffnen. Am besten auf einem Laptop mit aktuellem Browser.
 
 ## Herkunft und Lizenz
 
