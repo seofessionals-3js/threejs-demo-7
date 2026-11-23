@@ -614,54 +614,60 @@ export function createStage(cfg = {}) {
             }`)
           .replace('#include <dithering_fragment>', `#include <dithering_fragment>
             {
-              vec3 N = normalize(vWN);
-              float ndl = dot(N, uSun);
-              float lit = elevShadow * smoothstep(-0.02, 0.06, ndl);
-              float shade = 1.0 - lit;
-              vec2 q = planeUV(vWP, N);
-              vec3 col = uPaper;
-              float hw = hatchWipe(vWP) * step(0.001, uHatchIn);
-              // paper tooth: chalk catches the grain of the sheet, so every mark is a little soft and broken
-              float tooth = 0.55 + 0.45 * vnoise(gl_FragCoord.xy * 0.85) * (0.6 + 0.4 * vnoise(gl_FragCoord.xy * 0.23));
-              #if KIND == 3
-                col = mix(col, uChalk, 0.10 * hw);
-              #endif
-              #if KIND == 7
-                shade = 0.0; lit = 0.0;
-              #endif
-              // sunlit faces are heightened in white chalk, so the light reads lighter than the paper
-              col = mix(col, uChalk, lit * hw * mix(0.92, 0.22, uFx.x) * tooth);
-              // depth cue: what sits back gets a little darker, so the relief reads before the lens moves
-              col -= uDepthCue * 0.05 * smoothstep(0.0, -1.1, vWP.z) * mix(1.0, 0.4, uFx.x);
-              float hatchK = mix(0.96, 0.2, uFx.x);
-              float hl = lineAt(q.x + q.y, uHatch, uLinePx * 1.5);
-              float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
-              hl = mix(hl, 0.32, dense);
-              hl *= 0.62 + 0.38 * tooth;
-              col = mix(col, uInk, hl * shade * hatchK * hw);
-              float det = detailWipe(vWP) * mix(1.0, 0.3, uFx.x);
-              #if KIND == 1
-                if (abs(N.y) < 0.7) {
-                  vec2 bs = brickSize();
-                  float c4 = lineAt(q.y, bs.y * 4.0, uLinePx * 0.7) * lineFade(q.y, bs.y * 4.0, 5.0);
-                  float c1 = lineAt(q.y, bs.y, uLinePx * 0.6) * lineFade(q.y, bs.y, 7.0);
-                  float c2 = lineAt(q.x + brickOff(floor(q.y / bs.y)) * bs.x, bs.x, uLinePx * 0.6) * lineFade(q.y, bs.y, 9.0);
-                  col = mix(col, uInk, max(max(c4 * 0.17, c1 * 0.15), c2 * 0.12) * det);
-                }
-              #elif KIND == 4
-                col = mix(col, uInk, (uTx.x < 0.5 ? lineAt(q.x, 0.43, uLinePx * 0.7) * lineFade(q.x, 0.43, 5.0) : lineAt(q.y, 0.36, uLinePx * 0.7) * lineFade(q.y, 0.36, 5.0)) * 0.3 * det);
-              #elif KIND == 5 || KIND == 11
-                float pc = (uTx.x > 0.5 && uTx.x < 1.5) ? q.y : q.x, pp = (KIND == 5 && uTx.y > 0.0) ? uTx.y : 0.095;
-                col = mix(col, uInk, lineAt(pc, pp, uLinePx * 0.6) * 0.25 * lineFade(pc, pp, 5.0) * det);
-              #elif KIND == 6
-                vec2 g6 = vec2(lineAt(q.x, 0.6, uLinePx * 0.6), lineAt(q.y, 0.6, uLinePx * 0.6));
-                col = mix(col, uInk, max(g6.x, g6.y) * 0.12 * lineFade(q.x, 0.6, 6.0) * det);
-              #endif
-              gl_FragColor.rgb = mix(col, gl_FragColor.rgb, rv);
+              // the drawing: only worked out where some of the pixel is still paper. Once the scan has passed, none of this runs
+              if (rv < 0.999) {
+                vec3 N = normalize(vWN);
+                float ndl = dot(N, uSun);
+                float lit = elevShadow * smoothstep(-0.02, 0.06, ndl);
+                float shade = 1.0 - lit;
+                vec2 q = planeUV(vWP, N);
+                vec3 col = uPaper;
+                float hw = hatchWipe(vWP) * step(0.001, uHatchIn);
+                // paper tooth: chalk catches the grain of the sheet, so every mark is a little soft and broken
+                float tooth = 0.55 + 0.45 * vnoise(gl_FragCoord.xy * 0.85) * (0.6 + 0.4 * vnoise(gl_FragCoord.xy * 0.23));
+                #if KIND == 3
+                  col = mix(col, uChalk, 0.10 * hw);
+                #endif
+                #if KIND == 7
+                  shade = 0.0; lit = 0.0;
+                #endif
+                // sunlit faces are heightened in white chalk, so the light reads lighter than the paper
+                col = mix(col, uChalk, lit * hw * mix(0.92, 0.22, uFx.x) * tooth);
+                // depth cue: what sits back gets a little darker, so the relief reads before the lens moves
+                col -= uDepthCue * 0.05 * smoothstep(0.0, -1.1, vWP.z) * mix(1.0, 0.4, uFx.x);
+                float hatchK = mix(0.96, 0.2, uFx.x);
+                float hl = lineAt(q.x + q.y, uHatch, uLinePx * 1.5);
+                float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
+                hl = mix(hl, 0.32, dense);
+                hl *= 0.62 + 0.38 * tooth;
+                col = mix(col, uInk, hl * shade * hatchK * hw);
+                float det = detailWipe(vWP) * mix(1.0, 0.3, uFx.x);
+                #if KIND == 1
+                  if (abs(N.y) < 0.7) {
+                    vec2 bs = brickSize();
+                    float c4 = lineAt(q.y, bs.y * 4.0, uLinePx * 0.7) * lineFade(q.y, bs.y * 4.0, 5.0);
+                    float c1 = lineAt(q.y, bs.y, uLinePx * 0.6) * lineFade(q.y, bs.y, 7.0);
+                    float c2 = lineAt(q.x + brickOff(floor(q.y / bs.y)) * bs.x, bs.x, uLinePx * 0.6) * lineFade(q.y, bs.y, 9.0);
+                    col = mix(col, uInk, max(max(c4 * 0.17, c1 * 0.15), c2 * 0.12) * det);
+                  }
+                #elif KIND == 4
+                  col = mix(col, uInk, (uTx.x < 0.5 ? lineAt(q.x, 0.43, uLinePx * 0.7) * lineFade(q.x, 0.43, 5.0) : lineAt(q.y, 0.36, uLinePx * 0.7) * lineFade(q.y, 0.36, 5.0)) * 0.3 * det);
+                #elif KIND == 5 || KIND == 11
+                  float pc = (uTx.x > 0.5 && uTx.x < 1.5) ? q.y : q.x, pp = (KIND == 5 && uTx.y > 0.0) ? uTx.y : 0.095;
+                  col = mix(col, uInk, lineAt(pc, pp, uLinePx * 0.6) * 0.25 * lineFade(pc, pp, 5.0) * det);
+                #elif KIND == 6
+                  vec2 g6 = vec2(lineAt(q.x, 0.6, uLinePx * 0.6), lineAt(q.y, 0.6, uLinePx * 0.6));
+                  col = mix(col, uInk, max(g6.x, g6.y) * 0.12 * lineFade(q.x, 0.6, 6.0) * det);
+                #endif
+                gl_FragColor.rgb = mix(col, gl_FragColor.rgb, rv);
+              }
+              // the edge of the scan, in Rötel: only while it is on the sheet
+              float fb = 0.0;
               #if KIND != 7
-                float fb = frontBand(vWP);
-                vec3 scanCol = mix(uAccent, uAccentHi, smoothstep(0.42, 0.92, fb));
-                gl_FragColor.rgb = mix(gl_FragColor.rgb, scanCol, clamp(fb * 0.85, 0.0, 0.94));
+                if (uSweep.z > -35.0 && uSweep.z < 35.0 && uReal < 1.0) {
+                  fb = frontBand(vWP);
+                  gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(uAccent, uAccentHi, smoothstep(0.42, 0.92, fb)), clamp(fb * 0.85, 0.0, 0.94));
+                }
               #endif
               #if CLEAR == 1
                 gl_FragColor.a = mix(1.0, max(gl_FragColor.a, fb), rv);

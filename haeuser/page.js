@@ -6,6 +6,7 @@
 //
 //   ?id=emscher-gaerten   the project      ?zeile=2   the row (1...)      ?haus=14   a house, by its number
 import { createStage, run, THREE, Q, span, ease, smooth, lerp, CONVENTION, PLANS, fitFor, FLOORS, WOODS, STONES } from '../engine/elevation.js';
+window.__boot = true;                                      // the modules have arrived (see the note for old browsers in the page)
 import { lookFor } from '../dortmund/js/looks.js';
 
 const mark = (n) => performance.mark('wf:' + n);            // where the start-up time goes (see performance.getEntriesByType('mark'))
@@ -149,9 +150,10 @@ function schedule(i) {
   let eg = pl.rooms.eg.map((r) => [r[0], ar(r)]), og = pl.rooms.og.map((r) => [r[0], ar(r)]);
   const sum = [...eg, ...og].reduce((a, r) => a + r[1], 0), rest = h.area - sum;
   const count = [...eg, ...og].filter((r) => /^(Wohnen|Schlafen|Kind|Arbeiten|Galerie)/.test(r[0])).length, need = h.rooms - count;
-  let dg = [];
-  if (rest >= 6) dg = [[(BASE.roof === 'none' ? 'Dachstudio an der Terrasse' : BASE.roof === 'mono' ? 'Empore unter dem Pultdach' : need >= 2 ? 'Zwei Zimmer' : need === 1 ? 'Studio' : 'Dachraum, ausgebaut'), rest]];
-  else { const f = h.area / sum; eg = eg.map(([n, a]) => [n, a * f]); og = og.map(([n, a]) => [n, a * f]); }
+  // what the two storeys do not hold lies under the roof, up to 28 m²; beyond that the rooms are a little larger than drawn
+  const dgA = rest >= 6 ? Math.min(rest, 28) : 0, f = (h.area - dgA) / sum;
+  eg = eg.map(([n, a]) => [n, a * f]); og = og.map(([n, a]) => [n, a * f]);
+  const dg = dgA ? [[(BASE.roof === 'none' ? 'Dachstudio an der Terrasse' : BASE.roof === 'mono' ? 'Empore unter dem Pultdach' : need >= 2 ? 'Zwei Zimmer' : need === 1 ? 'Studio' : 'Dachraum, ausgebaut'), dgA]] : [];
   return { eg, og, dg };
 }
 
@@ -233,8 +235,9 @@ $('beats').addEventListener('click', (e) => {
 // mode: '' the walk, 'eg' / 'og' a plan (the house cut at the height of a storey, seen from above), 'bau' the row as it is built
 let sunHour = null, mode = '', modeP = 0, lookY = 0, lookP = 0, lookAtP = 0, bauStep = 4;
 const D2R = Math.PI / 180, CUT = { eg: 2.92, og: 6.02 };
-const TOP = Math.max(...houses.map((H) => H.PAR)) + (BASE.roof === 'none' ? 1.2 : 3.6);
-const BAU = [['Bodenplatte', 0.34], ['Rohbau Erdgeschoss', 3.14], ['Rohbau Obergeschoss', 6.24], ['Dach', TOP - 1.6], ['Schlüsselfertig', Infinity]];
+const EAVES = Math.max(...houses.map((H) => H.PAR));
+// five states of the site: the slab, the shell of each storey, the roof going on (cut half way up), the finished row
+const BAU = [['Bodenplatte', 0.34], ['Rohbau Erdgeschoss', 3.14], ['Rohbau Obergeschoss', 6.24], [BASE.roof === 'none' ? 'Dachterrasse' : 'Dachstuhl', EAVES + (BASE.roof === 'none' ? 0.3 : 1.05)], ['Schlüsselfertig', Infinity]];
 const BAU_NOW = [0, 0, 2, 3, 4, 4][(PR.build || {}).phase ?? 5];              // where the site stands today, as a step of the slider
 const BAU_KEY = [{ p: 0, t: [MID, 2.6, -5.2], fh: 16, minW: LEN + 12, fov: 22, yaw: 30, pitch: 31, phone: { minW: LEN + 5, yaw: 24 } }];
 const inWalk = (p) => !mode && p > P.entry + 4;

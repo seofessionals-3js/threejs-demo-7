@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#dfd2ba" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232a2522'/%3E%3Cpath d='M6 26V14l10-8 10 8v12h-7v-7h-6v7z' fill='%23dfd2ba'/%3E%3Crect x='14' y='20' width='4' height='6' fill='%23a5432b'/%3E%3C/svg%3E">
   <title>Wohnungsfinder · Die Häuser</title>
   <meta name="description" content="Die Häuser eines Neubauprojekts in Dortmund: Jedes zeigt, ob es frei oder verkauft ist. Freie Häuser lassen sich betreten, mit Grundriss, Ausstattung, Baufortschritt und Exposé." />
   <link rel="preload" href="../vendor/fonts/ChakraPetch-600.woff2" as="font" type="font/woff2" crossorigin />
@@ -261,5 +262,15 @@
   <div id="print"></div>
 
   <script type="module" src="page.js"></script>
+<script>
+  // a browser without import maps cannot load the page: say so instead of leaving the loader standing
+  setTimeout(function () {
+    if (window.__boot || (window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))) return;
+    var l = document.getElementById('loader'), p = document.createElement('p');
+    p.style.cssText = 'max-width:520px;margin:14px auto 0;font:500 13px/1.5 sans-serif;letter-spacing:0;text-transform:none';
+    p.textContent = 'Diese Seite braucht einen aktuellen Browser: Chrome, Edge, Firefox oder Safari ab Version 16.4.';
+    if (l) (l.querySelector('.ld') || l).appendChild(p);
+  }, 4000);
+</script>
 </body>
 </html>

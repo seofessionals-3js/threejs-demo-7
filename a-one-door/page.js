@@ -4,6 +4,7 @@
 // and the lens walks through the two-storey hall, past the sitting room, through kitchen and dining,
 // and out into the walled garden.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
+window.__boot = true;                                      // the modules have arrived (see the note for old browsers in the page)
 
 const S = createStage({ hatch: 0.13, hatchPhone: 0.17, drawSpan: [0, 9.6], wipe: [-9, 8], soft: 1.1 });
 

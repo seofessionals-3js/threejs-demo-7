@@ -5,6 +5,7 @@
 // The panel lists the projects, every free house (with a filter) and what the builder does.
 import * as THREE from 'three';
 import { loadPack } from './data.js';
+window.__boot = true;                                      // the modules have arrived (see the note for old browsers in the page)
 import { low, mid, governor, visible, isTouch, safeMode, enterSafeMode } from './quality.js';
 import { projectGeometry, projectMaterial } from './models.js';
 
@@ -89,7 +90,8 @@ const I18N = {
       ['Handover with warranty', 'Acceptance with a record, five years of warranty, one contact afterwards too.']],
     phasesTitle: 'Six steps to a finished house', svcNote: 'Sample content of a portfolio demo.' },
 };
-let lang = (Q.get('lang') || localStorage.getItem('wf-lang') || 'de') === 'en' ? 'en' : 'de';
+const stored = (() => { try { return localStorage.getItem('wf-lang'); } catch (e) { return null; } })();     // a browser that blocks storage must not stop the map
+let lang = (Q.get('lang') || stored || 'de') === 'en' ? 'en' : 'de';
 const T = (k) => I18N[lang][k] ?? k;
 const pf = (p, k) => (lang === 'en' && p.en && p.en[k]) || p[k];
 const freeOf = (p) => (lang === 'en' ? `${p.free} of ${p.total}` : `${p.free} von ${p.total}`);
@@ -102,7 +104,9 @@ const phaseHtml = (p) => `<ol class="phases">${T('phases').map((n, k) => `<li cl
 
 // ------------------------------------------------------------------------------------------------ renderer
 const canvas = $('gl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false }); }
+catch (e) { $('ldText').textContent = lang === 'en' ? 'This browser provides no WebGL. Please use a current browser.' : 'Dieser Browser stellt kein WebGL bereit. Bitte einen aktuellen Browser verwenden.'; throw e; }
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.setClearColor(COL.bg);
 const scene = new THREE.Scene();
@@ -334,10 +338,12 @@ const sMat = flatMat(COL.small, 7);
 const NEAR_DIST = low ? 2500 : 4300;                             // closer than this, full detail is shown
 const NEAR_R = low ? 1150 : mid ? 2000 : 2700;
 const TILE_KEEP = low ? 30 : mid ? 60 : 110;
-const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+// without a worker (a very old browser) the overview stays: no building rises, but nothing breaks
+let worker = null;
+try { worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }); } catch (e) { console.warn(e); }
 let inFlight = 0, reqId = 0;
 const DATA = new URL('../data/', import.meta.url).href;
-worker.onmessage = (e) => {
+const onTile = (e) => {
   inFlight--;
   const d = e.data, t = tiles.get(d.tx + '_' + d.tz);
   if (!t) return;
@@ -363,7 +369,9 @@ worker.onmessage = (e) => {
   tileGroup.add(g); invalidate(); pump();
 };
 const queue = [];
+if (worker) { worker.onmessage = onTile; worker.onerror = (e) => { console.warn('tile worker', e.message); }; }
 function pump() {
+  if (!worker) { queue.length = 0; return; }
   while (inFlight < 2 && queue.length) {
     const t = queue.shift();
     if (!t.want || t.state !== 'queued') { if (t.state === 'queued') t.state = 'idle'; continue; }
