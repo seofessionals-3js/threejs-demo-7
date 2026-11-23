@@ -1,20 +1,26 @@
-# Wohnungsfinder
+# Wohnungsfinder Dortmund
 
-Der Wohnungsfinder gehört zur [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/): Die Karte zeigt die Projekte, dieses Repository ihre Häuser. Er ist keine der three.js Demos und steht weder in deren Übersicht noch in deren durchlaufender Schau. Das Repository heißt weiter `threejs-demo-7`, damit alle Adressen gültig bleiben; seine Startadresse führt zur Karte, und jede Seite hat oben den Weg „Zur Karte“.
+Ein Wohnungsfinder in three.js, in zwei Teilen, die zusammengehören: die **Karte** von ganz Dortmund mit sechs erfundenen Neubauprojekten, und die **Häuser** dieser Projekte, jedes anklickbar und begehbar. Die Karte zeigt, wo ein Projekt liegt und was frei ist; „Entdecken“ führt zu seinen Häusern, und von jeder Häuserseite führt „Zur Karte“ zurück.
 
+[**Live ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/) · [**Die Karte im Einzelnen**](dortmund/README.md) · [**Startprompt**](PROMPT.md)
 
-Die Vorderansicht eines Stadthauses, in Trois Crayons auf Tonpapier gezeichnet: schwarze Kreide für Umriss und 45°-Schraffur in jedem Schatten, weiße Kreide für alles, was die Sonne trifft. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan in Rötel das Papier in weißen Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Garten.
+Das ist ein eigenes Projekt. Mit den three.js Demos und ihrer Übersicht hat es nichts zu tun; das Repository heißt nur noch `threejs-demo-7`, damit seine Adressen gültig bleiben. Alle Seiten sprechen einander relativ an, das Projekt läuft also unter jedem Namen und jeder Adresse.
 
-Das Haus dieser Fassung ist **No. 7 Kreidegasse**: sechs Meter breit, zwei Geschosse, weißer Backstein unter einem Dach aus Zink. Der Eingang liegt 1,20 m zurück, darüber kragt ein Erker 800 mm aus. Die Tür ist eine Glastür mit zwei Flügeln in oxidroten Stahlrahmen, 2,00 m breit. Dahinter liegt eine Halle über beide Geschosse. 
+## Die Seiten
 
-[**Zur Dortmund-Karte**](https://seofessionals-3js.github.io/threejs-demos/dortmund/) · [**Ein Haus ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/a-one-door/) · [**Startprompt**](PROMPT.md)
-
-Vier Seiten mit einer Engine:
-
+- [`dortmund/`](dortmund/): die Karte, die Startseite. 26 × 23 km, jede Straße und rund 379.000 Gebäude aus OpenStreetMap, darauf die sechs Projekte. Dazu `dortmund/objekt.html`, ein Projekt in seiner Nachbarschaft mit Datenblatt. Aufbau, Daten und Lizenzen stehen in [`dortmund/README.md`](dortmund/README.md).
+- [`haeuser/`](haeuser/): die Häuser eines Projekts der Karte. Die Seite liest das Projekt aus den Daten der Karte (`dortmund/js/projects.json`): seine Architektur, seine Zeilen und für jedes Haus, ob es frei (grün) oder verkauft (rot) ist. Sechs Projekte, sechs Bauformen: Stadthäuser mit Zinkerker, weiße Kuben mit Dachterrasse, Klinker-Giebelhäuser, 24 Doppelhaushälften mit Garagen in vier Zeilen, Holzhäuser mit Pultdach, Reihenhäuser mit Gaube unter Schiefer. Jedes Haus lässt sich anklicken, am Schild über dem Dach, an den Tasten oben oder an der Fassade, und jedes lässt sich betreten. `?id=…` nennt das Projekt, `?zeile=2` die Zeile, `?haus=14` ein Haus. Unter „Werkzeuge" lassen sich der Sonnenstand von 6 bis 20 Uhr einstellen, das Haus als Grundriss von oben ansehen (Erdgeschoss oder Obergeschoss, das Haus wird in Geschosshöhe geschnitten) und Boden und Einbauten umfärben. Im Haus dreht seitliches Ziehen den Blick, ohne den Standpunkt zu verlassen. Mit `at=310` kommt man ohne Vorspann bei der Reihe an; die Räume der übrigen Häuser werden erst gebaut, wenn das Bild steht.
 - [`a-one-door/`](a-one-door/): ein Stadthaus, durch die Glastür hinein
 - [`b-the-row/`](b-the-row/): eine Straße mit sechs Stadthäusern und Hausnummern, Haus 04 reservieren
 - [`c-the-face/`](c-the-face/): ein Ziegeldetail 1:20, schwarze Binder in weißer Wand, die Sonne streift über das Relief
-- [`haeuser/`](haeuser/): die Häuser eines Projekts der [Dortmund-Karte](https://seofessionals-3js.github.io/threejs-demos/dortmund/). Die Seite liest das Projekt aus den Daten der Karte: seine Architektur, seine Zeilen und für jedes Haus, ob es frei (grün) oder verkauft (rot) ist. Sechs Projekte, sechs Bauformen: Stadthäuser mit Zinkerker, weiße Kuben mit Dachterrasse, Klinker-Giebelhäuser, 24 Doppelhaushälften mit Garagen in vier Zeilen, Holzhäuser mit Pultdach, Reihenhäuser mit Gaube unter Schiefer. Jedes Haus lässt sich anklicken, am Schild über dem Dach, an den Tasten oben oder an der Fassade, und jedes lässt sich betreten. `?id=…` nennt das Projekt, `?zeile=2` die Zeile, `?haus=14` ein Haus. Unter „Werkzeuge" lassen sich der Sonnenstand von 6 bis 20 Uhr einstellen, das Haus als Grundriss von oben ansehen (Erdgeschoss oder Obergeschoss, das Haus wird in Geschosshöhe geschnitten) und Boden und Einbauten umfärben. Im Haus dreht seitliches Ziehen den Blick, ohne den Standpunkt zu verlassen. Mit `at=310` kommt man ohne Vorspann bei der Reihe an; die Räume der übrigen Häuser werden erst gebaut, wenn das Bild steht.
+
+Die Häuserseiten nutzen eine gemeinsame Engine (`engine/`), jede hat oben den Weg „Zur Karte“.
+
+## Die Häuser: eine Zeichnung, die zum Haus wird
+
+Die Vorderansicht eines Stadthauses, in Trois Crayons auf Tonpapier gezeichnet: schwarze Kreide für Umriss und 45°-Schraffur in jedem Schatten, weiße Kreide für alles, was die Sonne trifft. Beim Scrollen gewinnt die Fassade Tiefe, dann verwandelt ein Scan in Rötel das Papier in weißen Backstein, und kein einziger Schatten bewegt sich, weil die Schraffur die ganze Zeit der echte Schatten war. Die Sonne wandert, die Tür öffnet sich, und Sie gehen durch das Haus bis in den Garten.
+
+Das Haus der Seite `a-one-door/` ist **No. 7 Kreidegasse**: sechs Meter breit, zwei Geschosse, weißer Backstein unter einem Dach aus Zink. Der Eingang liegt 1,20 m zurück, darüber kragt ein Erker 800 mm aus. Die Tür ist eine Glastür mit zwei Flügeln in oxidroten Stahlrahmen, 2,00 m breit. Dahinter liegt eine Halle über beide Geschosse.
 
 ## Farben
 
@@ -45,7 +51,7 @@ Das Blatt ist ein Trois Crayons: schwarze Kreide, weiße Kreide und ein einziges
 
 ## Dateien
 
-`engine/elevation.js` und `engine/page.css` werden gemeinsam genutzt. Jede Variante besteht aus einer `index.html` und einer `page.js` mit ihren Kamera-Keys und Texten. Etwa 100 KB für die Seite mit einem Haus.
+`engine/elevation.js` und `engine/page.css` werden von den Häuserseiten gemeinsam genutzt. Jede von ihnen besteht aus einer `index.html` und einer `page.js` mit ihren Kamera-Keys und Texten. Etwa 100 KB für die Seite mit einem Haus.
 
 `?skip` überspringt das Intro. `?at=300` springt zu einer Scrollposition. `?nosmooth` folgt dem Scroll ohne Glättung.
 
@@ -57,10 +63,10 @@ Die Seiten nutzen JavaScript-Module und brauchen deshalb einen lokalen Server. E
 python -m http.server 8000
 ```
 
-Dann http://localhost:8000/a-one-door/ öffnen. Die Startadresse, die Links „Zur Karte“ und die Seite `haeuser/` brauchen die Dortmund-Karte: dafür dieses Repository und [threejs-demos](https://github.com/seofessionals-3js/threejs-demos) nebeneinander in einen Ordner klonen, den Server in diesem Ordner starten und http://localhost:8000/threejs-demos/dortmund/ öffnen. Am besten auf einem Laptop mit aktuellem Browser.
+Dann http://localhost:8000/ öffnen: Die Startadresse führt zur Karte. Am besten auf einem Laptop mit aktuellem Browser.
 
 ## Herkunft und Lizenz
 
 Basiert auf „Sunlit Elevation“ aus [flat-to-3d](https://github.com/Sam1983Aing/flat-to-3d) von Samnang Aing, veröffentlicht unter der MIT-Lizenz, und ins Deutsche übersetzt. Haus, Grundriss, Einrichtung und Farbwelt dieser Fassung sind neu. Die Lizenz liegt unverändert in [LICENSE](LICENSE).
 
-Alle Büros, Häuser, Adressen und Kontaktdaten in der Demo sind erfunden. three.js (MIT) wird von einem CDN geladen, die Schriften Chakra Petch und IBM Plex Mono von Google Fonts (SIL Open Font License).
+Alle Büros, Häuser, Projekte, Adressen, Preise und Kontaktdaten sind erfunden. three.js (MIT) wird von einem CDN geladen, die Schriften Chakra Petch und IBM Plex Mono von Google Fonts (SIL Open Font License). Die Kartendaten stammen von OpenStreetMap (Open Database License), die Schrift der Karte ist Manrope (SIL Open Font License); Näheres in [`dortmund/README.md`](dortmund/README.md).

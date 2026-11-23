@@ -1,5 +1,5 @@
 // The houses of one project of the Dortmund map. The project comes from the map's own data
-// (/threejs-demos/dortmund/js/projects.json): its architecture, its rows, every house with its state.
+// (../dortmund/js/projects.json): its architecture, its rows, every house with its state.
 // One row is on the sheet at a time. Every house can be picked, from its tag above the roof, from the keys at
 // the top or by a click on its facade, and every house can be walked into. Free is green, sold is red.
 //
@@ -11,7 +11,7 @@ mark('module');
 const FALLBACK = { id: '', name: 'Kreidegasse', district: 'Musterreihe', type: 'Stadthäuser', arch: 'Fünf Häuser aus Ziegel, zwei Geschosse, jedes unter einem Dach aus Zink.',
   style: { variants: [{ par: 7.0, first: 'frame', brick: '0xe0dbcf' }, { par: 6.7, first: 'bay', setback: -0.3 }] },
   rows: [{ name: 'Zeile', houses: ['Verkauft', 'Frei', 'Verkauft', 'Verkauft', 'Frei'].map((s, i) => ({ no: '0' + (i + 1), status: s, rooms: 4 + (i % 2), area: 112 + i * 4, price: s === 'Frei' ? '498.000 €' : '' })) }] };
-const list = await fetch('/threejs-demos/dortmund/js/projects.json').then((r) => r.json()).catch(() => []);
+const list = await fetch(new URL('../dortmund/js/projects.json', import.meta.url)).then((r) => r.json()).catch(() => []);
 mark('data');
 const PR = list.find((x) => x.id === Q.get('id')) || list[0] || FALLBACK;
 const hex = (o) => Object.fromEntries(Object.entries(o || {}).map(([k, v]) => [k, typeof v === 'string' && v.startsWith('0x') ? parseInt(v, 16) : v]));
@@ -90,7 +90,7 @@ const here = (extra) => `?${PR.id ? 'id=' + encodeURIComponent(PR.id) + '&' : ''
 for (const id of ['markName', 'kickName', 'tbName', 'ldName']) $(id).textContent = PR.name;
 $('markSub').textContent = `${PR.type} · ${PR.district}${PR.rows.length > 1 ? ' · ' + ROW.name : ''}`;
 document.title = `${PR.name} · Die Häuser · Wohnungsfinder`;
-if (PR.id) $('backLink').href = `/threejs-demos/dortmund/?p=${encodeURIComponent(PR.id)}`;
+if (PR.id) $('backLink').href = `../dortmund/?p=${encodeURIComponent(PR.id)}`;
 $('h1a').textContent = `${WORD[N] || N} Haustüren.`;
 $('h1b').innerHTML = FREE.length ? `${WORD[FREE.length] || FREE.length} noch <em>frei.</em>` : 'Alle <em>verkauft.</em>';
 if (PR.rows.length > 1) {
