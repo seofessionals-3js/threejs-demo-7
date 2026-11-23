@@ -243,8 +243,9 @@ export function buildInterior(K, c) {
   const A = (x0, y0, z0, x1, y1, z1, m, lw = 0.5, o) => G(B(x0, y0, z0, x1, y1, z1), m, lw, o);
   const cyl = (r0, r1, h, seg, x, y, z) => new THREE.CylinderGeometry(r0, r1, h, seg).translate(X(x), y, z);
 
-  // ---- materials. `in`: how much of the one room light a surface gets (1 inside, less in the garden)
-  const inn = (kind, o = {}) => mat(kind, { ...o, in: 1 }), out = (kind, o = {}) => mat(kind, { ...o, in: 0.5 });
+  // ---- materials. `in`: how much of the one room light a surface gets (1 inside; a little in the garden, which has the
+  // sun: with more, a white garden wall in the sun is as bright as the sky behind it)
+  const inn = (kind, o = {}) => mat(kind, { ...o, in: 1 }), out = (kind, o = {}) => mat(kind, { ...o, in: 0.3 });
   const own = { color: v.brick, tx: v.wallTx };
   const M = {
     floor: inn(fit.floor[0], fit.floor[1]), up: inn(fit.up[0], fit.up[1]),

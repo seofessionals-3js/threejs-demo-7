@@ -96,9 +96,14 @@ function keysFor(i) {
   if (i < 0) return street;
   // into the house: every plan has its own way through its rooms (PLANS[...].tour), written from where the lens stands
   const H = houses[i], T = H.info.tour, k = (p, s) => H.key(p, s[0], s[1], s[2], s[3], s[4]);
+  // Through the door looking ahead. Its two leaves stand open into the hall, their edges 2.2 m behind the facade: a lens
+  // that turns to the room while it is still between them has a door leaf across the picture (on an upright screen,
+  // across half of it). So there is a station just before the edges, and the turn belongs to the last step.
+  const h = T.hall, door = [[lerp(1.78, h[0][0], 0.5), lerp(1.72, h[0][1], 0.6), -1.75], h[1] * 0.25, lerp(-1, h[2], 0.5), lerp(54, h[3], 0.6), lerp(2.65, h[4], 0.6)];
   return [...street,
     { p: P.approach, t: [xOf(i) + 3, 3.6, -0.3], fh: 9.6, fov: 28, yaw: 0, pitch: -4, phone: { minW: 7.6 } },
-    H.key(P.entry, [1.78, 1.72, 1.55], 2, -1, 54, 2.65),
+    H.key(P.entry, [1.78, 1.72, 1.55], 2, -1, 54, 2.65, { ease: (u) => u * u }),                 // (no halt at the station in between)
+    H.key(lerp(P.entry, P.hall, 0.66), door[0], door[1], door[2], door[3], door[4], { ease: (u) => u * (2 - u) }),
     k(P.hall, T.hall), k(P.turn, T.turn), k(P.rear, T.rear), k(P.glass, T.glass), k(P.garden, T.garden)];
 }
 

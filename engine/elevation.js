@@ -17,7 +17,10 @@
 // - One light for everything: the sun, the sky, and one even room light (uFill). No lamp lights anything, so the set of
 //   lights never changes and no shader is ever built twice.
 // - No environment map: what a surface sees of the sky is a formula (elevSky). Sampling a filtered environment texture
-//   was more than half of the work of every pixel.
+//   was more than half of the work of every pixel. The light a face gets from the sky depends on its direction only and
+//   is worked out per corner (vSky); only what shines looks the sky up per pixel (ELEV_SHINY).
+// - No built-in whose result is undefined for some input: no smoothstep, no pow (see GLSL_MATH). Phone chips answer such
+//   an input with NaN, and a NaN is a black pixel.
 // - One shader per kind of material. What differs from house to house (colour, bond, boards, weave) are uniforms.
 //   Every shader is built behind the loader (warm()); nothing is compiled while the page is in use.
 // - Everything that does not move is merged into one mesh per material and one line object per pen (flush()), the
@@ -54,33 +57,55 @@ export function fail(text, reload = true) {
   document.documentElement.classList.remove('locked');
 }
 
+// Written out instead of the built-ins, because their corner cases are where graphics drivers differ: smoothstep is
+// undefined when the first edge is the larger one, and pow at a base of 0 (or below) comes back as NaN on some phone
+// chips (seen on a Mali-G72: every face turned away from the sun was black). sstep takes its edges in either order
+// (and two edges that meet are a step, not a division by zero); elevPow never sees a base of 0. No shader of this
+// engine calls smoothstep or pow.
+const GLSL_MATH = /* glsl */`
+  float sstep(float a, float b, float x) { float d = b - a, t = clamp((x - a) / (abs(d) > 1e-9 ? d : 1e-9), 0.0, 1.0); return t * t * (3.0 - 2.0 * t); }
+  float elevPow(float x, float y) { return exp2(y * log2(max(x, 1e-5))); }
+`;
+// The sky the houses stand under, seen in direction d: warm haze at the horizon, pale zenith, the ground below, a glow
+// where the sun stands. rough 0: as in a mirror; rough 1: all of it run together (the light a matt surface gets).
+const GLSL_SKY = /* glsl */`
+  vec3 elevSky(vec3 d, float rough) {
+    float h = d.y, w = mix(0.03, 1.0, rough);
+    vec3 sky = mix(vec3(0.87, 0.76, 0.58), vec3(0.74, 0.79, 0.82), elevPow(clamp(h, 0.0, 1.0), 0.65));
+    vec3 ground = mix(vec3(0.38, 0.35, 0.30), vec3(0.60, 0.55, 0.46), sstep(-0.8, 0.0, h));
+    float glow = elevPow(max(0.0, dot(d, vec3(-0.618, 0.486, 0.618))), mix(12.0, 1.5, rough));
+    return mix(ground, sky, sstep(-w, w, h)) + vec3(0.34, 0.26, 0.14) * glow * (1.0 - 0.7 * rough);
+  }
+`;
 const GLSL_COMMON = /* glsl */`
   uniform vec3 uSun; uniform vec4 uSweep; uniform float uReal;
   uniform vec3 uPaper; uniform vec3 uInk; uniform vec3 uChalk; uniform vec3 uAccent; uniform vec3 uAccentHi; uniform float uHatch; uniform float uLinePx;
   uniform float uDraw; uniform vec2 uDrawSpan; uniform vec2 uDrawDir; uniform float uHatchIn; uniform vec2 uWipe; uniform float uDetailIn; uniform float uDepthCue;
   uniform float uLive; uniform vec2 uCut;
+  ${GLSL_MATH}
   float sweepS(vec3 p) { return dot(p.xy, uSweep.xy); }
   float revealAt(vec3 p) {
     float s = sweepS(p);
-    return clamp(uReal + 1.0 - smoothstep(uSweep.z - uSweep.w, uSweep.z + uSweep.w, s), 0.0, 1.0);
+    return clamp(uReal + 1.0 - sstep(uSweep.z - uSweep.w, uSweep.z + uSweep.w, s), 0.0, 1.0);
   }
   float lineAt(float c, float period, float px) {
     float t = c / period, fw = max(fwidth(t), 1e-5);
     float d = abs(fract(t) - 0.5);
     float hw = 0.5 * px * fw;
-    return 1.0 - smoothstep(hw, hw + fw, 0.5 - d);
+    return 1.0 - sstep(hw, hw + fw, 0.5 - d);
   }
   float lineFade(float c, float period, float minPx) {
     float px = period / max(fwidth(c), 1e-5);
-    return smoothstep(minPx, minPx * 1.8, px);
+    return sstep(minPx, minPx * 1.8, px);
   }
   float frontBand(vec3 p) {
     float bandOn = step(-35.0, uSweep.z) * (1.0 - step(35.0, uSweep.z)) * (1.0 - uReal);
     float sd = sweepS(p) - uSweep.z;
     float w = max(uSweep.w, 0.45);
-    float laser = exp(-pow(sd / (w * 0.11), 2.0));
-    float halo = exp(-pow(sd / (w * 0.55), 2.0)) * 0.34;
-    float gridEnv = exp(-pow(sd / (w * 1.08), 2.0));
+    float s1 = sd / (w * 0.11), s2 = sd / (w * 0.55), s3 = sd / (w * 1.08);
+    float laser = exp(-s1 * s1);
+    float halo = exp(-s2 * s2) * 0.34;
+    float gridEnv = exp(-s3 * s3);
     float gx = lineAt(p.x, 0.5, uLinePx * 0.85);
     float gy = lineAt(p.y, 0.5, uLinePx * 0.85);
     float gz = lineAt(p.z, 0.25, uLinePx * 0.8);
@@ -153,16 +178,7 @@ const GLSL_KINDS = /* glsl */`
     }
   #endif
   // every second band of a period, with a soft edge
-  float band(float t) { float f = abs(fract(t) - 0.5), a = max(fwidth(t), 1e-4); return smoothstep(0.25 - a, 0.25 + a, f); }
-  // the sky the houses stand under, seen in direction d: warm haze at the horizon, pale zenith, the ground below, a glow
-  // where the sun stands. rough 0: as in a mirror; rough 1: all of it run together (the light a matt surface gets)
-  vec3 elevSky(vec3 d, float rough) {
-    float h = d.y, w = mix(0.03, 1.0, rough);
-    vec3 sky = mix(vec3(0.87, 0.76, 0.58), vec3(0.74, 0.79, 0.82), pow(clamp(h, 0.0, 1.0), 0.65));
-    vec3 ground = mix(vec3(0.38, 0.35, 0.30), vec3(0.60, 0.55, 0.46), smoothstep(-0.8, 0.0, h));
-    float glow = pow(max(0.0, dot(d, vec3(-0.618, 0.486, 0.618))), mix(12.0, 1.5, rough));
-    return mix(ground, sky, smoothstep(-w, w, h)) + vec3(0.34, 0.26, 0.14) * glow * (1.0 - 0.7 * rough);
-  }
+  float band(float t) { float f = abs(fract(t) - 0.5), a = max(fwidth(t), 1e-4); return sstep(0.25 - a, 0.25 + a, f); }
 `;
 
 // three's own light loop, with the sun's shadow taken from elevShadow instead of being sampled a second time
@@ -234,6 +250,7 @@ export function createStage(cfg = {}) {
     uShTexel: { value: 0.012 },                // one texel of the shadow map, in metres
     uShRange: { value: 200 },                  // depth of the shadow camera, in metres
     uCut: { value: new THREE.Vector2(1e4, 0) },// nothing is drawn above this height (a plan, a building site). y: trees and people too
+    uHemiSky: { value: new THREE.Color() }, uHemiGround: { value: new THREE.Color() },   // hemi, as the shader takes it (set in render())
     uFill: { value: cfg.fill ?? 0.95 },        // the one room light: the same in every room of every house
   };
 
@@ -243,7 +260,9 @@ export function createStage(cfg = {}) {
   // filtered environment texture was more than half of the work of every pixel.
   const sun = new THREE.DirectionalLight(0xfff1dc, 3.2);
   scene.add(sun, sun.target);
-  const hemi = new THREE.HemisphereLight(0xdfe6ea, 0xb8a98c, 0.9); scene.add(hemi);
+  // (the pale light from above and the warm one from below. Not a light of the scene: it is one line next to the sky
+  // in the shader (uHemiSky, uHemiGround) instead of a second light loop. The pages still set hemi.intensity.)
+  const hemi = new THREE.HemisphereLight(0xdfe6ea, 0xb8a98c, 0.9);
   // The shadow map: its camera is fitted to the box of everything that casts (sunAim.box, measured in flush()): in
   // light space a caster and its shadow share x and y, so nothing else needs to be inside, and a small map still
   // gives the hatching a sharp edge.
@@ -349,17 +368,21 @@ export function createStage(cfg = {}) {
     const tx = new THREE.Vector4(...[0, 1, 2, 3].map((i) => (o.tx && o.tx[i]) || 0));
     Object.assign(m.userData, { drawOnly: !!o.drawOnly, sky: kind === 'sky', noCut: !!o.noCut, kind });
     const K = KIND[kind];
+    const shiny = m.roughness < 0.7 || m.metalness > 0.02 ? 1 : 0;        // does it mirror the sky? (see ELEV_SHINY in the shader)
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
       sh.uniforms.uFx = { value: fx }; sh.uniforms.uTx = { value: tx }; sh.uniforms.uEnv = { value: m.envMapIntensity };
-      sh.vertexShader = 'varying vec3 vWP; varying vec3 vWN;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
+      // (what a face gets from the sky, and how the room light leans on it, depend on its direction only: worked out
+      // per corner here, not per pixel there)
+      sh.vertexShader = `varying vec3 vWP; varying vec3 vWN; varying vec4 vSky;\n${GLSL_MATH}${GLSL_SKY}` + sh.vertexShader.replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
         vec4 wpp = vec4(transformed, 1.0);
         #ifdef USE_INSTANCING
           wpp = instanceMatrix * wpp;
         #endif
         vWP = (modelMatrix * wpp).xyz;
-        vWN = normalize(mat3(modelMatrix) * objectNormal);`);
-      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\nvarying vec3 vWP; varying vec3 vWN; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx;\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0;\n${GLSL_COMMON}${GLSL_KINDS}
+        vWN = normalize(mat3(modelMatrix) * objectNormal);
+        vSky = vec4(elevSky(vWN, 1.0), 0.87 + 0.13 * dot(vWN, vec3(0.45, 0.65, 0.61)));`);
+      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\n#define ELEV_SHINY ${shiny}\nvarying vec3 vWP; varying vec3 vWN; varying vec4 vSky; uniform vec3 uHemiSky; uniform vec3 uHemiGround; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx;\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0;\n${GLSL_COMMON}${GLSL_KINDS}${GLSL_SKY}
       ` + sh.fragmentShader
           // the sun's shadow, read once per pixel and used twice: by the light of the real model and by the hatching.
           // The depth bias follows the slope of the surface to the sun, so a brick 60 mm proud keeps its small shadow.
@@ -368,7 +391,7 @@ export function createStage(cfg = {}) {
               #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
                 if ( ! receiveShadow ) return 1.0;
                 float ndl = clamp(dot(normalize(vWN), uSun), 0.08, 1.0);
-                float bias = - uShTexel * (0.6 + 1.3 * min(sqrt(1.0 - ndl * ndl) / ndl, 6.0)) / uShRange;
+                float bias = - uShTexel * (0.6 + 1.3 * min(sqrt(max(0.0, 1.0 - ndl * ndl)) / ndl, 6.0)) / uShRange;
                 #if ELEV_TAPS == 4
                   vec4 sc = vDirectionalShadowCoord[ 0 ];
                   sc.xyz /= sc.w; sc.z += bias;
@@ -388,6 +411,7 @@ export function createStage(cfg = {}) {
               #endif
             }`)
           .replace('void main() {', `void main() {
+            elevH = 0.0; elevRough = -1.0; elevNear = 0.0;
             #if KIND != 7
               if (vWP.y > uCut.x && ((uFx.z < 0.5 && uFx.x < 0.5) || uCut.y > 0.5)) discard;   // trees and faint neighbours stay whole on a building site
             #endif
@@ -411,20 +435,20 @@ export function createStage(cfg = {}) {
             {
               vec2 q = planeUV(vWP, vWN);
               float fw = max(fwidth(q.x), fwidth(q.y));
-              elevNear = smoothstep(0.025, 0.004, fw);        // 1 close up, 0 far away: fine detail and relief only where they can be seen
+              elevNear = sstep(0.025, 0.004, fw);        // 1 close up, 0 far away: fine detail and relief only where they can be seen
               #if KIND == 1
                 vec2 bs = brickSize(); vec4 b = brickAt(q);
-                float fwb = fw * 1.15;
-                float brickVis = smoothstep(bs.y * 0.6, bs.y * 0.2, fwb);
-                float jointVis = smoothstep(0.013, 0.004, fwb);
-                float joint = max(1.0 - smoothstep(0.0095 - fwb, 0.0095 + fwb, b.z), 1.0 - smoothstep(0.0095 - fwb, 0.0095 + fwb, b.w));
+                float fwb = max(fw * 1.15, 1e-5);
+                float brickVis = sstep(bs.y * 0.6, bs.y * 0.2, fwb);
+                float jointVis = sstep(0.013, 0.004, fwb);
+                float joint = max(1.0 - sstep(0.0095 - fwb, 0.0095 + fwb, b.z), 1.0 - sstep(0.0095 - fwb, 0.0095 + fwb, b.w));
                 float jt = floor(uTx.w + 0.001), vary = 1.0 + 2.0 * fract(uTx.w + 0.001);
                 float h = hash12(b.xy), h2 = hash12(b.xy + 17.3), h4 = hash12(b.xy + 83.9);
-                vec3 base = diffuseColor.rgb * (0.95 + 0.09 * (vnoise(q * 0.65) - 0.5)) * (0.96 + 0.04 * smoothstep(0.0, 2.5, q.y));
-                float kilnDark = smoothstep(0.80, 0.98, h4) * 0.22;
+                vec3 base = diffuseColor.rgb * (0.95 + 0.09 * (vnoise(q * 0.65) - 0.5)) * (0.96 + 0.04 * sstep(0.0, 2.5, q.y));
+                float kilnDark = sstep(0.80, 0.98, h4) * 0.22;
                 vec3 bc = base * max(0.35, 1.0 + vary * (0.22 * h - 0.13 - kilnDark)) * (1.0 + 0.04 * (h2 - 0.5));
                 bc *= 0.92 + 0.16 * vnoise(vec2(q.x * 55.0, q.y * 140.0) + b.xy * 3.1) * jointVis;
-                bc *= 1.0 - (1.0 - smoothstep(0.009, 0.015, b.w)) * step(0.009, b.w) * 0.14 * jointVis;
+                bc *= 1.0 - (1.0 - sstep(0.009, 0.015, b.w)) * step(0.009, b.w) * 0.14 * jointVis;
                 vec3 mortar = (jt < 0.5 ? vec3(0.693, 0.651, 0.571) : jt < 1.5 ? vec3(0.075, 0.072, 0.07) : base * 0.74) * (0.94 + 0.12 * vnoise(q * 180.0));
                 vec3 far = mix(base, mortar, 0.13), mid = mix(bc, mortar, 0.13), nearC = mix(bc, mortar * 0.92, joint);
                 diffuseColor.rgb = mix(mix(far, mid, brickVis), nearC, jointVis);
@@ -433,27 +457,27 @@ export function createStage(cfg = {}) {
                   if (elevNear > 0.0) {
                     float e = min(min(b.z, bs.x - b.z + 0.011), min(b.w, bs.y - b.w + 0.011)) - 0.0055;
                     float grain = (vnoise(q * 380.0) - 0.5) * 0.0007 + (vnoise(q * 95.0 + b.xy * 7.0) - 0.5) * 0.0010 + (hash12(b.xy + 9.2) - 0.5) * 0.0014;
-                    elevH = mix(-0.0085, grain, smoothstep(0.0035, 0.0095, e));
+                    elevH = mix(-0.0085, grain, sstep(0.0035, 0.0095, e));
                   }
                 #endif
               #elif KIND == 4
-                float vis4 = smoothstep(0.12, 0.03, fw);
+                float vis4 = sstep(0.12, 0.03, fw);
                 if (uTx.x < 0.5) {              // standing seams of zinc
                   float fwz = max(fwidth(q.x) * 1.4, 0.005);
                   float sx = fract(q.x / 0.43 + 0.5) - 0.5;
-                  float seamDark = 1.0 - smoothstep(0.0, fwz, abs(sx) * 0.43);
-                  float seamHi = 1.0 - smoothstep(0.0, fwz * 1.4, abs(sx * 0.43 - 0.007));
-                  float welt = 1.0 - smoothstep(0.0, max(fwidth(q.y) * 1.4, 0.005), abs(fract(q.y / 1.45 + 0.3) - 0.5) * 1.45);
+                  float seamDark = 1.0 - sstep(0.0, fwz, abs(sx) * 0.43);
+                  float seamHi = 1.0 - sstep(0.0, fwz * 1.4, abs(sx * 0.43 - 0.007));
+                  float welt = 1.0 - sstep(0.0, max(fwidth(q.y) * 1.4, 0.005), abs(fract(q.y / 1.45 + 0.3) - 0.5) * 1.45);
                   float patina = 0.94 + 0.10 * vnoise(vec2(q.x * 18.0, q.y * 2.2)) + 0.04 * (vnoise(q * 4.0) - 0.5);
                   diffuseColor.rgb *= patina * (1.0 - 0.42 * seamDark - 0.18 * welt) + 0.10 * seamHi;
                   elevRough = 0.42 + 0.14 * vnoise(vec2(q.x * 20.0, q.y * 3.0));
                   #if ELEV_LOW == 0
-                    elevH = smoothstep(0.014, 0.003, abs(sx) * 0.43) * 0.008;
+                    elevH = sstep(0.014, 0.003, abs(sx) * 0.43) * 0.008;
                   #endif
                 } else if (uTx.x < 1.5) {       // clay pantiles: courses across the slope, a wave along the course
                   float crs = floor(q.y / 0.36), u = q.x / 0.30;
                   float wave = 0.5 + 0.5 * cos(fract(u) * 6.2832);
-                  float lap = smoothstep(0.0, 0.07, fract(q.y / 0.36) * 0.36);
+                  float lap = sstep(0.0, 0.07, fract(q.y / 0.36) * 0.36);
                   float tone = 0.86 + 0.22 * hash12(vec2(floor(u), crs));
                   diffuseColor.rgb *= mix(0.92, tone * (0.78 + 0.26 * wave) * (0.62 + 0.38 * lap), vis4) * (0.95 + 0.08 * vnoise(q * 30.0));
                   elevRough = 0.9;
@@ -463,14 +487,14 @@ export function createStage(cfg = {}) {
                 } else if (uTx.x < 2.5) {       // slate: small rectangles, every second course shifted by half
                   float crs = floor(q.y / 0.2), u = q.x / 0.25 + mod(crs, 2.0) * 0.5;
                   vec2 f = vec2(fract(u) * 0.25, fract(q.y / 0.2) * 0.2);
-                  float edge = 1.0 - smoothstep(0.0, max(fw * 1.3, 0.004), min(f.x, min(0.25 - f.x, f.y)));
+                  float edge = 1.0 - sstep(0.0, max(fw * 1.3, 0.004), min(f.x, min(0.25 - f.x, f.y)));
                   float tone = 0.84 + 0.26 * hash12(vec2(floor(u), crs));
                   diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.45 * edge), vis4) * (0.95 + 0.08 * vnoise(q * 40.0));
                   elevRough = 0.7;
                 } else {                        // a planted roof
                   float n1 = vnoise(q * 3.0), n2 = vnoise(q * 14.0);
                   diffuseColor.rgb *= 0.70 + 0.35 * n1 + 0.22 * (n2 - 0.5) + 0.12 * (vnoise(q * 60.0) - 0.5);
-                  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.25, 0.9, 0.7), smoothstep(0.62, 0.8, n2) * 0.5);
+                  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.25, 0.9, 0.7), sstep(0.62, 0.8, n2) * 0.5);
                   elevRough = 0.95;
                 }
               #elif KIND == 5
@@ -481,7 +505,7 @@ export function createStage(cfg = {}) {
                 float grain = vnoise(vec2(qw.x * 95.0, qw.y * 4.5 + board * 3.7));
                 diffuseColor.rgb *= (0.85 + 0.25 * hash12(vec2(board, 3.0))) * (0.90 + 0.14 * grain + 0.06 * vnoise(vec2(qw.x * 260.0, qw.y * 16.0)));
                 float gap = uTx.x > 2.5 ? pitch * 0.2 : 0.0, de = abs(fract(qw.x / pitch + 0.5) - 0.5) * pitch;
-                float groove = (uTx.x > 1.5 && uTx.x < 2.5) ? 0.0 : 1.0 - smoothstep(gap, gap + max(fwidth(qw.x) * 1.2, 0.0025), de);
+                float groove = (uTx.x > 1.5 && uTx.x < 2.5) ? 0.0 : 1.0 - sstep(gap, gap + max(fwidth(qw.x) * 1.2, 0.0025), de);
                 diffuseColor.rgb *= 1.0 - (uTx.x > 2.5 ? 0.7 : 0.48) * groove;
                 elevRough = 0.44 + 0.16 * vnoise(vec2(qw.x * 80.0, qw.y * 6.0));
                 #if ELEV_LOW == 0
@@ -493,7 +517,7 @@ export function createStage(cfg = {}) {
                 float grain = vnoise(vec2(lc.x * 85.0, lc.y * 3.8 + bh * 9.0));
                 float cath = vnoise(vec2(lc.x * 28.0 + sin(lc.y * 2.2) * 0.6, lc.y * 2.5));
                 diffuseColor.rgb *= (0.88 + 0.20 * bh) * (0.91 + 0.12 * grain + 0.07 * cath);
-                float gv = 1.0 - smoothstep(0.0, max(fw * 1.2, 0.002), fb.z);
+                float gv = 1.0 - sstep(0.0, max(fw * 1.2, 0.002), fb.z);
                 diffuseColor.rgb *= 1.0 - 0.38 * gv;
                 elevRough = 0.44 + 0.16 * grain;
                 #if ELEV_LOW == 0
@@ -505,7 +529,7 @@ export function createStage(cfg = {}) {
                 float rowP = floor(q.y / fs.y);
                 vec2 pq = vec2(q.x + mod(rowP, 2.0) * fs.x * 0.5, q.y);
                 vec2 g6 = abs(fract(pq / fs + 0.5) - 0.5) * fs;
-                float j = 1.0 - smoothstep(0.0, max(fw * 1.2, 0.005), min(g6.x, g6.y));
+                float j = 1.0 - sstep(0.0, max(fw * 1.2, 0.005), min(g6.x, g6.y));
                 vec3 flagCol = diffuseColor.rgb * (0.88 + 0.18 * hash12(floor(pq / fs))) * (0.95 + 0.09 * vnoise(q * 22.0));
                 diffuseColor.rgb = mix(flagCol, vec3(0.45, 0.42, 0.37), j * 0.55);
                 #if ELEV_LOW == 0
@@ -514,43 +538,50 @@ export function createStage(cfg = {}) {
               #elif KIND == 7
                 // late October: pale zenith #dfe6ea over a warm haze #f0e2c8 at the horizon (linear values, the sky is unlit)
                 float k = clamp((vWP.y + 4.0) / 40.0, 0.0, 1.0);
-                diffuseColor.rgb = mix(vec3(0.871, 0.760, 0.578), vec3(0.738, 0.791, 0.823), pow(k, 0.55));
+                diffuseColor.rgb = mix(vec3(0.871, 0.760, 0.578), vec3(0.738, 0.791, 0.823), elevPow(k, 0.55));
               #elif KIND == 2
-                float blockJ = 1.0 - smoothstep(0.0, max(fwidth(q.x) * 1.3, 0.003), abs(fract(q.x / 0.9 + 0.5) - 0.5) * 0.9);
+                float blockJ = 1.0 - sstep(0.0, max(fwidth(q.x) * 1.3, 0.003), abs(fract(q.x / 0.9 + 0.5) - 0.5) * 0.9);
                 diffuseColor.rgb *= (0.95 + 0.06 * vnoise(vec2(q.x * 4.0, q.y * 26.0)) + 0.04 * (vnoise(q * 75.0) - 0.5)) * (1.0 - 0.18 * blockJ);
                 #if ELEV_LOW == 0
                   elevH = (vnoise(q * 140.0) - 0.5) * 0.0007 - blockJ * 0.003;
                 #endif
               #elif KIND == 12
                 // render. uTx: 0 smooth, 1 scratched, 2 combed, 3 limewash in clouds, 4 concrete cast against boards
-                if (uTx.x < 0.5) { diffuseColor.rgb *= 0.97 + vnoise(q * 1.8) * 0.04 + vnoise(q * 9.5) * 0.025; elevH = (vnoise(q * 32.0) - 0.5) * 0.0004; }
-                else if (uTx.x < 1.5) { float n = vnoise(q * 85.0); diffuseColor.rgb *= 0.93 + 0.09 * n * elevNear + 0.05 * vnoise(q * 2.2); elevH = (n - 0.5) * 0.0024; }
-                else if (uTx.x < 2.5) { float cmb = sin(q.y * 380.0 + vnoise(q * vec2(3.0, 40.0)) * 3.0); diffuseColor.rgb *= 0.96 + 0.035 * cmb * elevNear + 0.05 * vnoise(q * 1.5); elevH = cmb * 0.0006; }
-                else if (uTx.x < 3.5) { diffuseColor.rgb *= 0.86 + 0.16 * vnoise(q * 0.8) + 0.08 * vnoise(q * 3.1); elevH = (vnoise(q * 22.0) - 0.5) * 0.0006; }
+                // (H: the relief. A phone does not model it, so it does not work it out either)
+                #if ELEV_LOW == 0
+                  #define H(x) elevH = x;
+                #else
+                  #define H(x)
+                #endif
+                if (uTx.x < 0.5) { diffuseColor.rgb *= 0.97 + vnoise(q * 1.8) * 0.04 + vnoise(q * 9.5) * 0.025; H((vnoise(q * 32.0) - 0.5) * 0.0004) }
+                else if (uTx.x < 1.5) { float n = vnoise(q * 85.0); diffuseColor.rgb *= 0.93 + 0.09 * n * elevNear + 0.05 * vnoise(q * 2.2); H((n - 0.5) * 0.0024) }
+                else if (uTx.x < 2.5) { float cmb = sin(q.y * 380.0 + vnoise(q * vec2(3.0, 40.0)) * 3.0); diffuseColor.rgb *= 0.96 + 0.035 * cmb * elevNear + 0.05 * vnoise(q * 1.5); H(cmb * 0.0006) }
+                else if (uTx.x < 3.5) { diffuseColor.rgb *= 0.86 + 0.16 * vnoise(q * 0.8) + 0.08 * vnoise(q * 3.1); H((vnoise(q * 22.0) - 0.5) * 0.0006) }
                 else {
-                  float jb = 1.0 - smoothstep(0.0, max(fwidth(q.y) * 1.3, 0.003), abs(fract(q.y / 0.18 + 0.5) - 0.5) * 0.18);
+                  float jb = 1.0 - sstep(0.0, max(fwidth(q.y) * 1.3, 0.003), abs(fract(q.y / 0.18 + 0.5) - 0.5) * 0.18);
                   diffuseColor.rgb *= (0.90 + 0.10 * hash12(vec2(floor(q.y / 0.18), 2.0))) * (0.94 + 0.08 * vnoise(vec2(q.x * 3.0, q.y * 50.0))) * (1.0 - 0.22 * jb);
-                  elevH = -jb * 0.002;
+                  H(-jb * 0.002)
                 }
+                #undef H
               #elif KIND == 13
                 // stone indoors. uTx: 0 travertine, 1 marble, 2 terrazzo, 3 screed, 4 granite; then the size of a slab if it is laid as slabs
                 if (uTx.x < 0.5) diffuseColor.rgb *= 0.93 + 0.10 * vnoise(vec2(q.x * 3.5 + sin(q.y * 4.0) * 0.25, q.y * 22.0)) + 0.05 * (vnoise(q * 85.0) - 0.5);
                 else if (uTx.x < 1.5) {
                   float wv = vnoise(q * 1.3) * 2.2 + vnoise(q * 4.1) * 0.6;
-                  float v1 = (1.0 - smoothstep(0.0, 0.07, abs(fract(q.x * 0.9 + q.y * 0.35 + wv) - 0.5))) * (0.4 + 0.6 * vnoise(q * 9.0));
-                  float v2 = 1.0 - smoothstep(0.0, 0.03, abs(fract(q.x * 0.4 - q.y * 1.1 + wv * 1.7) - 0.5));
+                  float v1 = (1.0 - sstep(0.0, 0.07, abs(fract(q.x * 0.9 + q.y * 0.35 + wv) - 0.5))) * (0.4 + 0.6 * vnoise(q * 9.0));
+                  float v2 = 1.0 - sstep(0.0, 0.03, abs(fract(q.x * 0.4 - q.y * 1.1 + wv * 1.7) - 0.5));
                   float lum = dot(diffuseColor.rgb, vec3(0.3, 0.6, 0.1));
                   diffuseColor.rgb = mix(diffuseColor.rgb, lum < 0.15 ? vec3(0.62, 0.60, 0.57) : diffuseColor.rgb * 0.45, clamp(0.6 * v1 + 0.35 * v2, 0.0, 1.0) * (lum < 0.15 ? 0.6 : 1.0));   // pale veins in a dark stone, dark ones in a pale stone
                 } else if (uTx.x < 2.5) {
                   vec2 cq = q * 55.0, ic = floor(cq);
                   float hs = hash12(ic), dd = length(fract(cq) - 0.5 - 0.3 * (vec2(hash12(ic + 3.1), hash12(ic + 7.7)) - 0.5));
                   vec3 chip = mix(mix(vec3(0.55, 0.33, 0.24), vec3(0.20, 0.22, 0.24), step(0.72, hs)), vec3(0.86, 0.80, 0.66), step(0.88, hs));
-                  diffuseColor.rgb = mix(diffuseColor.rgb * (0.95 + 0.05 * vnoise(q * 6.0)), chip, (1.0 - smoothstep(0.18, 0.30, dd)) * step(0.45, hs) * 0.8 * smoothstep(0.03, 0.008, fw));
+                  diffuseColor.rgb = mix(diffuseColor.rgb * (0.95 + 0.05 * vnoise(q * 6.0)), chip, (1.0 - sstep(0.18, 0.30, dd)) * step(0.45, hs) * 0.8 * sstep(0.03, 0.008, fw));
                 } else if (uTx.x < 3.5) diffuseColor.rgb *= 0.90 + 0.14 * vnoise(q * 0.9) + 0.07 * vnoise(q * 4.3) + 0.03 * (vnoise(q * 40.0) - 0.5);
                 else diffuseColor.rgb *= 0.86 + 0.26 * vnoise(q * 220.0) * vnoise(q * 90.0) * elevNear + 0.06 * vnoise(q * 3.0);
                 if (uTx.y > 0.0) {
                   vec2 sl = vec2(uTx.y, uTx.z > 0.0 ? uTx.z : uTx.y), gs = abs(fract(q / sl + 0.5) - 0.5) * sl;
-                  diffuseColor.rgb *= 1.0 - 0.35 * (1.0 - smoothstep(0.0, max(fw * 1.2, 0.003), min(gs.x, gs.y)));
+                  diffuseColor.rgb *= 1.0 - 0.35 * (1.0 - sstep(0.0, max(fw * 1.2, 0.003), min(gs.x, gs.y)));
                 }
               #elif KIND == 14
                 // cloth. uTx: 0 linen, 1 stripes, 2 check, 3 boucle, 4 kilim, 5 cord, 6 herringbone; the period; -; how much darker the second tone is
@@ -558,11 +589,11 @@ export function createStage(cfg = {}) {
                 if (uTx.x < 0.5) pat = 0.0;
                 else if (uTx.x < 1.5) pat = band(q.x / pr);
                 else if (uTx.x < 2.5) pat = 0.5 * (band(q.x / pr) + band(q.y / pr));
-                else if (uTx.x < 3.5) pat = smoothstep(0.35, 0.7, vnoise(q * 110.0)) * 0.6 * elevNear;
-                else if (uTx.x < 4.5) { vec2 dq = abs(fract(q / pr) - 0.5); float dm = dq.x + dq.y, aa = max(fw / pr, 1e-3) * 1.5; pat = smoothstep(0.24 - aa, 0.24 + aa, dm) * (1.0 - smoothstep(0.37 - aa, 0.37 + aa, dm)) + 1.0 - smoothstep(0.1 - aa, 0.1 + aa, dm); }
-                else if (uTx.x < 5.5) pat = (0.5 + 0.5 * sin(q.x / pr * 6.2832)) * smoothstep(pr, pr * 0.25, fw);
+                else if (uTx.x < 3.5) pat = sstep(0.35, 0.7, vnoise(q * 110.0)) * 0.6 * elevNear;
+                else if (uTx.x < 4.5) { vec2 dq = abs(fract(q / pr) - 0.5); float dm = dq.x + dq.y, aa = max(fw / pr, 1e-3) * 1.5; pat = sstep(0.24 - aa, 0.24 + aa, dm) * (1.0 - sstep(0.37 - aa, 0.37 + aa, dm)) + 1.0 - sstep(0.1 - aa, 0.1 + aa, dm); }
+                else if (uTx.x < 5.5) pat = (0.5 + 0.5 * sin(q.x / pr * 6.2832)) * sstep(pr, pr * 0.25, fw);
                 else pat = band((q.x + (mod(floor(q.y / pr), 2.0) < 0.5 ? 1.0 : -1.0) * q.y) / (pr * 0.5));
-                pat = mix(0.4, pat, smoothstep(pr * 0.7, pr * 0.2, fw));
+                pat = mix(0.4, pat, sstep(pr * 0.7, pr * 0.2, fw));
                 float weave = (vnoise(vec2(q.x * 120.0, q.y * 18.0)) - 0.5) * 0.07 + (vnoise(vec2(q.x * 18.0, q.y * 120.0)) - 0.5) * 0.07;
                 diffuseColor.rgb *= (0.98 + weave * elevNear) * (1.0 - k2 * pat);
                 #if ELEV_LOW == 0
@@ -570,11 +601,11 @@ export function createStage(cfg = {}) {
                 #endif
               #elif KIND == 3
                 float k = fract((vWP.y - 0.45) / 3.0);
-                vec3 skyRefl = mix(vec3(0.20, 0.22, 0.23), vec3(0.50, 0.56, 0.60), smoothstep(0.22, 0.92, k));
-                float warmZone = smoothstep(0.05, 0.45, k) * (1.0 - smoothstep(0.55, 0.92, k));
+                vec3 skyRefl = mix(vec3(0.20, 0.22, 0.23), vec3(0.50, 0.56, 0.60), sstep(0.22, 0.92, k));
+                float warmZone = sstep(0.05, 0.45, k) * (1.0 - sstep(0.55, 0.92, k));
                 float roomVar = 0.6 + 0.4 * sin(vWP.x * 1.7 + floor((vWP.y - 0.45) / 3.0) * 2.3);
                 diffuseColor.rgb = skyRefl + vec3(0.30, 0.25, 0.17) * warmZone * roomVar * mix(0.75, 0.25, uFx.x);
-                diffuseColor.rgb += 0.05 * smoothstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
+                diffuseColor.rgb += 0.05 * sstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
               #elif KIND == 9
                 diffuseColor.rgb *= 0.94 + 0.10 * vnoise(q * 45.0);
               #endif
@@ -585,27 +616,37 @@ export function createStage(cfg = {}) {
             #if ELEV_LOW == 0 && (KIND == 1 || KIND == 2 || KIND == 4 || KIND == 5 || KIND == 6 || KIND == 11 || KIND == 12 || KIND == 14)
             {
               float hb = elevH * uBump * elevNear;
+              vec3 vp = -vViewPosition;
+              vec3 dpx = dFdx(vp), dpy = dFdy(vp);
+              vec2 dh = vec2(dFdx(hb), dFdy(hb));              // (derivatives are taken outside the branch: inside one they are undefined)
               if (elevNear > 0.0) {
-                vec3 vp = -vViewPosition;
-                vec3 dpx = dFdx(vp), dpy = dFdy(vp);
                 vec3 r1 = cross(dpy, normal), r2 = cross(normal, dpx);
                 float det = dot(dpx, r1);
-                vec3 grad = sign(det) * (dFdx(hb) * r1 + dFdy(hb) * r2);
-                normal = normalize(abs(det) * normal - grad);
+                vec3 nb = abs(det) * normal - sign(det) * (dh.x * r1 + dh.y * r2);
+                float nl = dot(nb, nb);
+                if (nl > 0.0) normal = nb * inversesqrt(nl);
               }
             }
             #endif`)
           .replace('#include <aomap_fragment>', `#include <aomap_fragment>
             {
-              // the sky: its light on the surface, and its picture in it
-              reflectedLight.indirectDiffuse += elevSky(normalize(vWN), 1.0) * uEnv * material.diffuseColor;
-              reflectedLight.indirectSpecular += elevSky(inverseTransformDirection(reflect(-geometryViewDir, geometryNormal), viewMatrix), material.roughness) * uEnv
-                * EnvironmentBRDF(geometryNormal, geometryViewDir, material.specularColor, material.specularF90, material.roughness);
-              // the one room light: the same amount on every surface of every room
-              reflectedLight.indirectDiffuse += vec3(1.0, 0.965, 0.91) * (uFill * uFx.w) * material.diffuseColor * RECIPROCAL_PI;
+              // the sky and the ground: their light on the surface (the sky worked out per corner, vSky) ...
+              reflectedLight.indirectDiffuse += (vSky.rgb * uEnv + mix(uHemiGround, uHemiSky, 0.5 + 0.5 * dot(geometryNormal, viewMatrix[1].xyz)) * RECIPROCAL_PI) * material.diffuseColor;   // (viewMatrix[1]: up, as the lens sees it)
+              // ... and the picture of the sky in it. What shines (glass, metal, lacquer, a sealed floor) looks the sky up in
+              // the direction it mirrors. A matt surface (a plastered wall, brick, cloth, a lawn) mirrors a fortieth of
+              // it at most, as a blur: there the light it already has from the sky stands in for the picture.
+              #if ELEV_SHINY == 1
+                vec3 skyR = elevSky(inverseTransformDirection(reflect(-geometryViewDir, geometryNormal), viewMatrix), material.roughness);
+              #else
+                vec3 skyR = vSky.rgb;
+              #endif
+              reflectedLight.indirectSpecular += skyR * uEnv * EnvironmentBRDF(geometryNormal, geometryViewDir, material.specularColor, material.specularF90, material.roughness);
+              // the one room light: the same in every room of every house. It leans a little (an eighth more from above
+              // and from the street, an eighth less from below), so a white cupboard keeps its edges against a white wall
+              reflectedLight.indirectDiffuse += vec3(1.0, 0.965, 0.91) * (uFill * uFx.w * vSky.a) * material.diffuseColor * RECIPROCAL_PI;
               // porch & reveal recess gets deep sky occlusion around z = -0.08..-1.05
-              float porchAo = smoothstep(-0.08, -0.95, vWP.z) * (1.0 - smoothstep(-1.15, -2.1, vWP.z)) * (1.0 - min(1.0, uFx.w * 2.0));
-              float roomCornerAo = smoothstep(0.38, 0.0, abs(vWP.y - 0.45)) * 0.16 * step(-12.0, vWP.z) * step(vWP.z, -1.05);
+              float porchAo = sstep(-0.08, -0.95, vWP.z) * (1.0 - sstep(-1.15, -2.1, vWP.z)) * (1.0 - min(1.0, uFx.w * 2.0));
+              float roomCornerAo = sstep(0.38, 0.0, abs(vWP.y - 0.45)) * 0.16 * step(-12.0, vWP.z) * step(vWP.z, -1.05);
               float ao = 1.0 - 0.52 * porchAo - roomCornerAo;
               reflectedLight.indirectDiffuse *= ao; reflectedLight.indirectSpecular *= ao;
             }`)
@@ -615,7 +656,7 @@ export function createStage(cfg = {}) {
               if (rv < 0.999) {
                 vec3 N = normalize(vWN);
                 float ndl = dot(N, uSun);
-                float lit = elevShadow * smoothstep(-0.02, 0.06, ndl);
+                float lit = elevShadow * sstep(-0.02, 0.06, ndl);
                 float shade = 1.0 - lit;
                 vec2 q = planeUV(vWP, N);
                 vec3 col = uPaper;
@@ -631,7 +672,7 @@ export function createStage(cfg = {}) {
                 // sunlit faces are heightened in white chalk, so the light reads lighter than the paper
                 col = mix(col, uChalk, lit * hw * mix(0.92, 0.22, uFx.x) * tooth);
                 // depth cue: what sits back gets a little darker, so the relief reads before the lens moves
-                col -= uDepthCue * 0.05 * smoothstep(0.0, -1.1, vWP.z) * mix(1.0, 0.4, uFx.x);
+                col -= uDepthCue * 0.05 * sstep(0.0, -1.1, vWP.z) * mix(1.0, 0.4, uFx.x);
                 float hatchK = mix(0.96, 0.2, uFx.x);
                 float hl = lineAt(q.x + q.y, uHatch, uLinePx * 1.5);
                 float dense = 1.0 - lineFade(q.x + q.y, uHatch, 3.5);
@@ -663,7 +704,7 @@ export function createStage(cfg = {}) {
               #if KIND != 7
                 if (uSweep.z > -35.0 && uSweep.z < 35.0 && uReal < 1.0) {
                   fb = frontBand(vWP);
-                  gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(uAccent, uAccentHi, smoothstep(0.42, 0.92, fb)), clamp(fb * 0.85, 0.0, 0.94));
+                  gl_FragColor.rgb = mix(gl_FragColor.rgb, mix(uAccent, uAccentHi, sstep(0.42, 0.92, fb)), clamp(fb * 0.85, 0.0, 0.94));
                 }
               #endif
               #if CLEAR == 1
@@ -671,7 +712,7 @@ export function createStage(cfg = {}) {
               #endif
             }`);
     };
-    m.customProgramCacheKey = () => `elev-${tier}-${K}-${clear}`;
+    m.customProgramCacheKey = () => `elev-${tier}-${K}-${clear}-${shiny}`;
     return (MATS[key] = m);
   }
 
@@ -1119,7 +1160,7 @@ export function createStage(cfg = {}) {
   // a tree. o.parent: it stands in a garden (in the coordinates of that house, smaller, and not on the drawing), o.leaves: three colours
   function tree(x, z, h = 7.5, r = 2.3, o = {}) {
     const grey = new THREE.Color(0x8a7a66), LEAVES = (o.leaves || [0xa8452f, 0xc9622a, 0xd98b2f]).map((c) => new THREE.Color(c).lerp(grey, 0.42).getHex());   // late October: mostly russet, some orange, a few ochre
-    const R = mulberry(Math.round(x * 100) + 7), P = o.parent ? { parent: o.parent } : {}, k = { realOnly: true, noCut: true, ...(o.parent ? { in: 0.5 } : {}) };
+    const R = mulberry(Math.round(x * 100) + 7), P = o.parent ? { parent: o.parent } : {}, k = { realOnly: true, noCut: true, ...(o.parent ? { in: 0.3 } : {}) };
     add(new THREE.CylinderGeometry(0.1, 0.17, h * 0.62, 8).translate(x, h * 0.31, z), mat('wood', { ...k, color: 0x4a3524 }), 0, P);
     const blobs = [[], [], []], n = o.parent ? 46 : 70;
     for (let i = 0; i < n; i++) {
@@ -1246,6 +1287,7 @@ export function createStage(cfg = {}) {
   function render() {
     if (lost) return;
     flush(); phase();
+    U.uHemiSky.value.copy(hemi.color).multiplyScalar(hemi.intensity); U.uHemiGround.value.copy(hemi.groundColor).multiplyScalar(hemi.intensity);
     placePins();
     if (shadowDirty) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
     renderer.render(scene, camera);
