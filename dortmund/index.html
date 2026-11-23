@@ -5,14 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1f2023">
 <title>Wohnungsfinder Dortmund · Karte</title>
-<meta name="description" content="Dortmund als interaktive 3D-Karte: sechs Neubauprojekte, jedes Gebäude der Stadt, live in three.js.">
+<meta name="description" content="Sechs Neubauprojekte in Dortmund auf einer interaktiven 3D-Karte: freie Häuser, Preise, Baufortschritt und Rundgang durch jedes freie Haus.">
 <link rel="preload" href="fonts/Manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/map.css">
-<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js">
-<link rel="preload" href="data/base.bin.gz" as="fetch" crossorigin>
+<!-- three.js is part of the site (../vendor/three): no CDN, nothing is loaded from anywhere else -->
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" } }
+{ "imports": { "three": "../vendor/three/three.module.min.js" } }
 </script>
+<link rel="modulepreload" href="../vendor/three/three.module.min.js">
+<link rel="preload" href="data/base.bin.gz" as="fetch" crossorigin>
+<link rel="preload" href="js/projects.json" as="fetch" crossorigin>
 </head>
 <body>
 <canvas id="gl" aria-label="3D-Karte von Dortmund"></canvas>
@@ -34,9 +36,24 @@
 </header>
 
 <aside id="menu" class="panel" hidden>
-  <div class="panel-head"><h2 data-i18n="projects">Projekte</h2><button class="x" id="menuClose" aria-label="Schließen">✕</button></div>
-  <p class="panel-sub" data-i18n="projectsSub">Sechs Neubauprojekte in Dortmund. Wählen Sie eines, die Karte fliegt hin.</p>
-  <ul id="projectList"></ul>
+  <div class="panel-head">
+    <div class="tabs" role="tablist"><button role="tab" data-tab="projects" aria-selected="true" data-i18n="projects">Projekte</button><button role="tab" data-tab="houses" aria-selected="false" data-i18n="freeHouses">Freie Häuser</button><button role="tab" data-tab="service" aria-selected="false" data-i18n="service">Leistungen</button></div>
+    <button class="x" id="menuClose" aria-label="Schließen">✕</button>
+  </div>
+  <section data-pane="projects">
+    <p class="panel-sub" data-i18n="projectsSub">Sechs Neubauprojekte in Dortmund. Wählen Sie eines, die Karte fliegt hin.</p>
+    <ul id="projectList"></ul>
+  </section>
+  <section data-pane="houses" hidden>
+    <p class="panel-sub" data-i18n="housesSub">Alle freien Häuser der sechs Projekte. Ein Klick führt hinein.</p>
+    <div class="filters">
+      <div class="seg" id="fRooms" role="group" aria-label="Zimmer"></div>
+      <label><span><span data-i18n="fMax">Kaufpreis bis</span> <b id="fMaxV"></b></span><input type="range" id="fMax" step="5000"></label>
+    </div>
+    <ul id="houseList"></ul>
+  </section>
+  <section data-pane="service" hidden><div id="serviceBody" class="service"></div></section>
+  <button class="cta" id="menuAsk" data-i18n="contact" style="margin-top:12px">Anfrage</button>
   <p class="panel-foot" data-i18n="invented">Alle Projekte, Preise und Daten sind erfunden.</p>
 </aside>
 
@@ -49,7 +66,9 @@
     <div><dt data-i18n="price">Kaufpreis</dt><dd id="popPrice"></dd></div>
     <div><dt data-i18n="size">Wohnfläche</dt><dd id="popSize"></dd></div>
     <div><dt data-i18n="ready">Fertigstellung</dt><dd id="popReady"></dd></div>
+    <div><dt data-i18n="progress">Baufortschritt</dt><dd id="popBuild"></dd></div>
   </dl>
+  <div class="pbar" aria-hidden="true"><i id="popBar"></i></div>
   <a class="cta" id="popLink" href="#"><span data-i18n="discover">Entdecken</span> →</a>
   <a class="sub" id="popSite" href="#" data-i18n="site">Lage in 3D</a>
 </div>
@@ -57,9 +76,27 @@
 <div id="contact" class="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="contactTitle">
     <button class="x" id="contactClose" aria-label="Schließen">✕</button>
-    <h2 id="contactTitle" data-i18n="contactTitle">Rückruf anfordern</h2>
-    <p data-i18n="contactText">Das ist eine Demo: Hier stünde das Kontaktformular des Maklers. Es wird nichts gesendet.</p>
-    <button class="cta" id="contactOk" data-i18n="contactCta">Verstanden</button>
+    <h2 id="contactTitle" data-i18n="contactTitle">Anfrage</h2>
+    <p data-i18n="contactText">Besichtigung, Rückruf oder Unterlagen: Wir melden uns innerhalb eines Werktags.</p>
+    <form id="contactForm" novalidate>
+      <label class="full"><span data-i18n="cKind">Anliegen</span><select id="cKind"></select></label>
+      <label class="full"><span data-i18n="cProject">Projekt</span><select id="cProject"></select></label>
+      <label><span data-i18n="cName">Name</span> *<input id="cName" name="name" autocomplete="name" required></label>
+      <label><span data-i18n="cTel">Telefon</span><input name="tel" type="tel" autocomplete="tel"></label>
+      <label class="full"><span data-i18n="cMail">E-Mail</span> *<input name="email" type="email" autocomplete="email" required></label>
+      <label class="full"><span data-i18n="cMsg">Nachricht</span><textarea name="msg" rows="3"></textarea></label>
+      <label class="full check"><input type="checkbox" required> <span><span data-i18n="cOk">Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage verwendet werden.</span> *</span></label>
+      <button class="cta" type="submit" data-i18n="cSend">Anfrage senden</button>
+    </form>
+    <div id="contactDone" hidden></div>
+  </div>
+</div>
+
+<div id="about" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <button class="x" id="aboutClose" aria-label="Schließen">✕</button>
+    <h2 id="aboutTitle" data-i18n="aboutTitle">Über diese Seite</h2>
+    <div id="aboutBody"></div>
   </div>
 </div>
 
@@ -69,7 +106,7 @@
   <button id="zoomOut" aria-label="Weiter weg">−</button>
   <button id="north" aria-label="Nach Norden ausrichten" title="Nach Norden"><i></i></button>
 </div>
-<footer class="credit"><span data-i18n="invented">Alle Projekte, Preise und Daten sind erfunden.</span> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap-Mitwirkende</a></footer>
+<footer class="credit"><span class="legend"><i class="f"></i><span data-i18n="legendFree">frei</span><i class="s"></i><span data-i18n="legendSold">verkauft</span></span> · <button type="button" class="link" id="aboutBtn" data-i18n="about">Über diese Seite</button> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap-Mitwirkende</a></footer>
 
 <div id="loader"><div class="ld"><b>WOHNUNGSFINDER</b><span>DORTMUND</span><div class="bar"><i id="ldBar"></i></div><em id="ldText">Lädt</em></div></div>
 <p class="sr" id="live" aria-live="polite"></p>

@@ -8,11 +8,13 @@
 <meta name="description" content="Ein Neubauprojekt des Wohnungsfinders Dortmund in seiner echten Nachbarschaft, als drehbares 3D-Modell mit Datenblatt.">
 <link rel="preload" href="fonts/Manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="css/map.css">
-<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js">
-<link rel="preload" href="data/base.bin.gz" as="fetch" crossorigin>
+<!-- three.js is part of the site (../vendor/three): no CDN, nothing is loaded from anywhere else -->
 <script type="importmap">
-{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" } }
+{ "imports": { "three": "../vendor/three/three.module.min.js" } }
 </script>
+<link rel="modulepreload" href="../vendor/three/three.module.min.js">
+<link rel="preload" href="data/base.bin.gz" as="fetch" crossorigin>
+<link rel="preload" href="js/projects.json" as="fetch" crossorigin>
 </head>
 <body data-page="objekt">
 <canvas id="gl" aria-label="3D-Modell des Projekts in seiner Nachbarschaft"></canvas>
@@ -41,6 +43,9 @@
     <h2 data-i18n="arch">Architektur</h2><p id="oArch"></p>
     <h2 data-i18n="mix">Wohnungsmix</h2><p id="oMix"></p>
     <h2 data-i18n="features">Besonderheiten</h2><ul id="oFeatures"></ul>
+    <h2 data-i18n="progress">Baufortschritt</h2><div id="oBuild"></div>
+    <h2 data-i18n="tech">Bau &amp; Technik</h2><dl class="facts" id="oSpec"></dl><ul id="oExtras"></ul>
+    <h2 data-i18n="houses">Häuser</h2><ul id="oHouses" class="hlist"></ul>
     <button class="cta" id="callBtn" data-i18n="call">Rückruf anfordern</button>
     <p class="note" data-i18n="invented">Alle Projekte, Preise und Daten sind erfunden.</p>
   </div>
@@ -56,14 +61,32 @@
 <div id="contact" class="modal" hidden>
   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="contactTitle">
     <button class="x" id="contactClose" aria-label="Schließen">✕</button>
-    <h2 id="contactTitle" data-i18n="contactTitle">Rückruf anfordern</h2>
-    <p data-i18n="contactText">Das ist eine Demo: Hier stünde das Kontaktformular des Maklers. Es wird nichts gesendet.</p>
-    <button class="cta" id="contactOk" data-i18n="contactCta">Verstanden</button>
+    <h2 id="contactTitle" data-i18n="contactTitle">Anfrage</h2>
+    <p data-i18n="contactText">Besichtigung, Rückruf oder Unterlagen: Wir melden uns innerhalb eines Werktags.</p>
+    <form id="contactForm" novalidate>
+      <label class="full"><span data-i18n="cKind">Anliegen</span><select id="cKind"></select></label>
+      <label class="full"><span data-i18n="cProject">Projekt</span><select id="cProject"></select></label>
+      <label><span data-i18n="cName">Name</span> *<input id="cName" name="name" autocomplete="name" required></label>
+      <label><span data-i18n="cTel">Telefon</span><input name="tel" type="tel" autocomplete="tel"></label>
+      <label class="full"><span data-i18n="cMail">E-Mail</span> *<input name="email" type="email" autocomplete="email" required></label>
+      <label class="full"><span data-i18n="cMsg">Nachricht</span><textarea name="msg" rows="3"></textarea></label>
+      <label class="full check"><input type="checkbox" required> <span><span data-i18n="cOk">Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage verwendet werden.</span> *</span></label>
+      <button class="cta" type="submit" data-i18n="cSend">Anfrage senden</button>
+    </form>
+    <div id="contactDone" hidden></div>
+  </div>
+</div>
+
+<div id="about" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="aboutTitle">
+    <button class="x" id="aboutClose" aria-label="Schließen">✕</button>
+    <h2 id="aboutTitle" data-i18n="aboutTitle">Über diese Seite</h2>
+    <div id="aboutBody"></div>
   </div>
 </div>
 
 <div class="hint" id="hint"><i class="ico"></i><span data-i18n="hintObj">Ziehen zum Drehen</span></div>
-<footer class="credit"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap-Mitwirkende</a></footer>
+<footer class="credit"><button type="button" class="link" id="aboutBtn" data-i18n="about">Über diese Seite</button> · <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap-Mitwirkende</a></footer>
 <div id="loader"><div class="ld"><b>WOHNUNGSFINDER</b><span>DORTMUND</span><div class="bar"><i id="ldBar"></i></div><em id="ldText">Lädt</em></div></div>
 <p class="sr" id="live" aria-live="polite"></p>
 <script type="module" src="js/main.js"></script>

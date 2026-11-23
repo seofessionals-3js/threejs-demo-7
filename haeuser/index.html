@@ -5,42 +5,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#dfd2ba" />
   <title>Wohnungsfinder · Die Häuser</title>
-  <meta name="description" content="Die Häuser eines Projekts der Dortmund-Karte: Jedes lässt sich anklicken und betreten, jedes zeigt, ob es frei oder verkauft ist." />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />   <!-- the fonts must not hold back the first picture -->
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <!-- the import map stands before every module and preload: a cached module would otherwise be resolved without it -->
+  <meta name="description" content="Die Häuser eines Neubauprojekts in Dortmund: Jedes zeigt, ob es frei oder verkauft ist. Freie Häuser lassen sich betreten, mit Grundriss, Ausstattung, Baufortschritt und Exposé." />
+  <link rel="preload" href="../vendor/fonts/ChakraPetch-600.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="../vendor/fonts/IBMPlexMono-500.woff2" as="font" type="font/woff2" crossorigin />
+  <!-- three.js and the fonts are part of the site: no CDN and no font service, nothing is loaded from anywhere else.
+       The import map stands before every module and preload: a cached module would otherwise be resolved without it -->
   <script type="importmap">
     { "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+      "three": "../vendor/three/three.module.min.js",
+      "three/addons/": "../vendor/three/addons/"
     } }
   </script>
-  <link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js" />
+  <link rel="modulepreload" href="../vendor/three/three.module.min.js" />
   <link rel="modulepreload" href="../engine/elevation.js" />
   <link rel="modulepreload" href="../engine/quality.js" />
+  <link rel="modulepreload" href="../engine/interior.js" />
+  <link rel="modulepreload" href="../dortmund/js/looks.js" />
+  <link rel="preload" href="../dortmund/js/projects.json" as="fetch" crossorigin />
   <link rel="stylesheet" href="../engine/page.css" />
   <style>
     /* the two states of a house: free in green, sold in red */
     :root { --frei: #1f7a45; --verkauft: #b3261e; }
+    button.pill { appearance: none; cursor: pointer; }
     .pins > .plot { pointer-events: auto; cursor: pointer; appearance: none; font: inherit; color: var(--ink); border-radius: 0; -webkit-tap-highlight-color: transparent; }
     .plot { padding-bottom: 0; overflow: hidden; }
     .plot span { font-weight: 700; font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: #fff; border-top: 0; margin: 5px -6px 0; padding: 4px 0 3px; }
     .plot.frei span { background: var(--frei); } .plot.verkauft span { background: var(--verkauft); }
     .plot:hover { background: var(--paper-hi, #eadfcb); box-shadow: 0 0 0 1px var(--ink); }
     .plot.on span { color: #fff; }
-    .plot.on.frei { border-color: var(--frei); } .plot.on.verkauft { border-color: var(--verkauft); }
-    .plot:focus-visible, .chooser button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    .plot.on.frei { border-color: var(--frei); }
+    .plot.look { box-shadow: 0 0 0 2px var(--verkauft); }
+    .plot:focus-visible, .chooser button:focus-visible, .tool:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
-    /* the row as five small keys: always there, also inside a house */
+    /* the row as small keys: always there, also inside a house */
     .chooser { position: fixed; z-index: 6; left: 50%; top: 66px; transform: translateX(-50%); display: flex; gap: 4px; opacity: 0; transition: opacity .6s; }
     html.done .chooser { opacity: 1; }
     .chooser button { appearance: none; border: 1px solid var(--ink); background: rgba(234, 223, 203, .94); color: var(--ink); padding: 5px 9px 4px; min-width: 58px; cursor: pointer; text-align: center; font: 600 15px/1 var(--font-display); -webkit-tap-highlight-color: transparent; }
     .chooser button small { display: block; margin-top: 3px; font: 600 8.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
     .chooser .frei small { color: var(--frei); } .chooser .verkauft small { color: var(--verkauft); }
+    .chooser .verkauft { color: var(--soft); background: rgba(223, 210, 186, .9); }
     .chooser button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-    .chooser button[aria-pressed="true"].frei small { color: #7fd6a0; } .chooser button[aria-pressed="true"].verkauft small { color: #ff9c94; }
+    .chooser button[aria-pressed="true"].frei small { color: #7fd6a0; }
+    .chooser button.look { box-shadow: inset 0 0 0 2px var(--verkauft); }
     /* a project with several rows: one row is shown at a time */
     .rows { position: fixed; z-index: 6; left: 50%; top: 112px; transform: translateX(-50%); display: flex; gap: 4px; opacity: 0; transition: opacity .6s; }
     html.done .rows { opacity: 1; }
@@ -48,32 +54,121 @@
     .rows a[aria-current="true"] { background: var(--ink); color: var(--paper); }
     .rows a small { font: inherit; opacity: .75; }
     .st { font-weight: 700; } .st.frei { color: var(--frei); } .st.verkauft { color: var(--verkauft); }
-    .beat .go { appearance: none; border: 1px solid var(--frei); background: none; color: var(--frei); font: 600 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; padding: 6px 10px; margin: 8px 6px 0 0; cursor: pointer; pointer-events: auto; }
-    .beat .go:hover { background: var(--frei); color: #fff; }
-    .pill.sold { border-color: var(--verkauft); color: var(--verkauft); pointer-events: none; }
-    /* the tools: sun, storeys, materials. One small button, one small sheet */
-    .kit-btn { position: fixed; z-index: 7; right: var(--gut, 28px); top: 66px; appearance: none; border: 1px solid var(--ink); background: rgba(234, 223, 203, .94); color: var(--ink); height: 37px; padding: 0 12px; cursor: pointer; font: 600 10px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; opacity: 0; transition: opacity .6s; -webkit-tap-highlight-color: transparent; }
-    html.done .kit-btn { opacity: 1; }
-    .kit-btn[aria-expanded="true"] { background: var(--ink); color: var(--paper); }
-    .kit { position: fixed; z-index: 7; right: var(--gut, 28px); top: 110px; width: 252px; background: rgba(234, 223, 203, .97); border: 1px solid var(--ink); padding: 12px 14px 14px; font: 500 11px/1.3 var(--font-mono); color: var(--ink); }
-    .kit h3 { margin: 12px 0 6px; font: 600 9.5px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--soft); display: flex; justify-content: space-between; }
-    .kit h3:first-child { margin-top: 0; }
-    .kit h3 b { color: var(--ink); font-weight: 600; }
-    .kit input[type=range] { width: 100%; margin: 2px 0 0; accent-color: var(--accent); height: 22px; }
-    .kit .seg { display: flex; gap: 3px; flex-wrap: wrap; }
-    .kit .seg button { flex: 1 1 auto; appearance: none; border: 1px solid var(--ink); background: none; color: var(--ink); padding: 7px 6px 6px; cursor: pointer; font: 600 9.5px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-    .kit .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-    .kit .sw { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border: 1px solid rgba(42, 37, 34, .5); vertical-align: -1px; }
-    .kit p { margin: 10px 0 0; font-size: 9.5px; color: var(--soft); letter-spacing: .02em; }
+    .beat .pill { margin-right: 6px; }
+    /* a sold house was picked */
+    .note { position: fixed; z-index: 8; left: 50%; top: 156px; transform: translateX(-50%); max-width: min(560px, calc(100vw - 24px)); background: var(--ink); color: var(--paper); padding: 10px 40px 10px 14px; font: 500 11px/1.6 var(--font-mono); letter-spacing: .04em; border-left: 3px solid var(--verkauft); box-shadow: 0 6px 18px rgba(42, 37, 34, .25); }
+    .note b { font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+    .note button { appearance: none; border: 1px solid #7fd6a0; background: none; color: #7fd6a0; font: 600 10.5px/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; padding: 5px 8px; margin: 2px 2px 2px 4px; cursor: pointer; }
+    .note button:hover { background: #7fd6a0; color: var(--ink); }
+    .note .x { position: absolute; right: 6px; top: 6px; border: 0; color: var(--paper); padding: 6px; margin: 0; font-size: 12px; }
+    .note .x:hover { background: none; color: #fff; }
+
+    /* two small buttons, two small sheets: the tools, and the data sheet of the house */
+    .toolbar { position: fixed; z-index: 7; right: var(--gut, 28px); top: 66px; display: flex; gap: 4px; opacity: 0; transition: opacity .6s; }
+    html.done .toolbar { opacity: 1; }
+    .tool { appearance: none; border: 1px solid var(--ink); background: rgba(234, 223, 203, .94); color: var(--ink); height: 37px; padding: 0 12px; cursor: pointer; font: 600 10px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; -webkit-tap-highlight-color: transparent; }
+    .tool[aria-expanded="true"] { background: var(--ink); color: var(--paper); }
+    .tool.strong { background: var(--ink); color: var(--paper); }
+    .panel { position: fixed; z-index: 7; right: var(--gut, 28px); top: 110px; width: 264px; max-height: calc(100vh - 138px); max-height: calc(100dvh - 138px); overflow: auto; overscroll-behavior: contain; background: rgba(234, 223, 203, .97); border: 1px solid var(--ink); padding: 12px 14px 14px; font: 500 11px/1.35 var(--font-mono); color: var(--ink); box-shadow: 0 8px 24px rgba(42, 37, 34, .18); }
+    .panel.wide { width: 348px; }
+    .panel .x { position: sticky; float: right; top: 0; margin: -4px -6px 0 0; appearance: none; border: 0; background: none; color: var(--ink); font: 600 13px/1 var(--font-mono); padding: 6px; cursor: pointer; z-index: 1; }
+    .panel h3 { margin: 14px 0 6px; font: 600 9.5px/1.2 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent-ink); display: flex; justify-content: space-between; gap: 8px; }
+    .panel h3:first-of-type { margin-top: 0; }
+    .panel h3 b { color: var(--ink); font-weight: 600; }
+    .panel h4 { margin: 10px 0 2px; font: 600 9px/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--soft); }
+    .panel input[type=range] { width: 100%; margin: 2px 0 0; accent-color: var(--accent); height: 22px; }
+    .panel .seg { display: flex; gap: 3px; flex-wrap: wrap; }
+    .panel .seg button { flex: 1 1 auto; appearance: none; border: 1px solid var(--ink); background: none; color: var(--ink); padding: 7px 6px 6px; cursor: pointer; font: 600 9.5px/1.15 var(--font-mono); letter-spacing: .05em; text-transform: uppercase; text-align: left; }
+    .panel .seg.one button { flex-basis: 100%; }
+    .panel .seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+    .panel .sw { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border: 1px solid rgba(42, 37, 34, .5); vertical-align: -1px; }
+    .panel p { margin: 8px 0 0; font-size: 9.5px; color: var(--soft); letter-spacing: .02em; }
+    .panel p.lead { font-size: 11px; color: var(--ink); margin: 0 0 6px; }
+    .panel p.hintline { font-size: 9px; }
+    /* the data sheet */
+    .sh-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-right: 22px; }
+    .sh-head .no { font: 700 26px/1 var(--font-display); background: var(--ink); color: var(--paper); padding: 6px 8px 5px; }
+    .sh-head h2 { margin: 0; font: 700 17px/1.1 var(--font-display); letter-spacing: .04em; text-transform: uppercase; }
+    .sh-head p { margin: 2px 0 0; font-size: 9.5px; letter-spacing: .04em; color: var(--soft); }
+    .sh-head .st { margin-left: auto; font: 700 9.5px/1 var(--font-mono); letter-spacing: .1em; text-transform: uppercase; padding: 5px 7px; color: #fff; }
+    .sh-head .st.frei { background: var(--frei); } .sh-head .st.verkauft { background: var(--verkauft); }
+    .panel dl { margin: 0; border: 1px solid rgba(42, 37, 34, .22); background: rgba(42, 37, 34, .035); }
+    .panel dl div { display: flex; justify-content: space-between; gap: 12px; padding: 5px 9px; }
+    .panel dl div + div { border-top: 1px solid rgba(42, 37, 34, .14); }
+    .panel dt { color: var(--soft); white-space: nowrap; } .panel dd { margin: 0; font-weight: 600; text-align: right; }
+    .panel dd b { color: var(--accent-ink); }
+    .ticks { margin: 8px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 10px; }
+    .ticks li::before { content: '+ '; color: var(--accent-ink); font-weight: 600; }
+    .prog { height: 8px; border: 1px solid var(--ink); margin: 2px 0 6px; } .prog i { display: block; height: 100%; background: var(--accent); }
+    .phases { margin: 0; padding: 0; list-style: none; counter-reset: ph; font-size: 10px; }
+    .phases li { counter-increment: ph; padding: 3px 0 3px 22px; position: relative; color: var(--soft); }
+    .phases li::before { content: counter(ph); position: absolute; left: 0; top: 2px; width: 15px; height: 15px; border: 1px solid var(--soft); font-size: 8.5px; display: grid; place-items: center; }
+    .phases li.done { color: var(--ink); } .phases li.done::before { background: var(--ink); color: var(--paper); border-color: var(--ink); content: '✓'; }
+    .phases li.now { color: var(--accent-ink); font-weight: 600; } .phases li.now::before { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .calc label { display: block; margin-top: 4px; font-size: 10px; } .calc label b { float: right; }
+    #cOut { margin-top: 6px; }
+    .acts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+    .acts .pill { padding: 7px 10px; font-size: 9.5px; }
+    /* the names of the rooms, in the plan */
+    #rooms3d { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+    .room { position: absolute; left: 0; top: 0; background: rgba(234, 223, 203, .92); border: 1px solid var(--ink); padding: 3px 6px; font: 500 9px/1.25 var(--font-mono); letter-spacing: .06em; text-align: center; white-space: nowrap; }
+    .room b { display: block; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; }
     html.plan #beats, html.plan .hint, html.plan .pins { display: none; }
     html, body, .track { touch-action: pan-y; }      /* a finger moved sideways looks around, up and down it scrolls */
     .curtain { position: fixed; inset: 0; z-index: 5; background: var(--paper); opacity: 0; pointer-events: none; transition: opacity .28s ease; }
     .curtain.on { opacity: 1; }
+    .tb.tb-top { top: 112px; }
+    /* the enquiry */
+    .modal { position: fixed; inset: 0; z-index: 20; background: rgba(42, 37, 34, .55); display: grid; place-items: center; padding: 16px; overflow: auto; }
+    .modal-card { position: relative; width: min(460px, 100%); background: var(--paper-hi); border: 1.5px solid var(--ink); border-left: 4px solid var(--accent); padding: 20px 22px 20px; font: 500 11px/1.4 var(--font-mono); color: var(--ink); }
+    .modal-card .x { position: absolute; right: 8px; top: 8px; appearance: none; border: 0; background: none; font: 600 14px/1 var(--font-mono); color: var(--ink); padding: 8px; cursor: pointer; }
+    .modal-card h2 { margin: 0 0 2px; font: 700 20px/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+    .modal-card h3 { margin: 0 0 8px; font: 700 18px/1.15 var(--font-display); text-transform: uppercase; }
+    .modal-card p { margin: 0 0 12px; color: var(--soft); }
+    .modal-card form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-card label { display: block; font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+    .modal-card label.full { grid-column: 1 / -1; }
+    .modal-card input:not([type=checkbox]), .modal-card select, .modal-card textarea { display: block; width: 100%; margin-top: 4px; border: 1px solid var(--ink); background: #f6efe2; color: var(--ink); font: 500 13px/1.3 var(--font-mono); padding: 8px 9px; border-radius: 0; }
+    .modal-card textarea { resize: vertical; min-height: 64px; }
+    .modal-card label.check { display: flex; gap: 8px; align-items: flex-start; text-transform: none; letter-spacing: .02em; font-size: 10px; line-height: 1.45; }
+    .modal-card label.bad { color: var(--verkauft); } .modal-card label.bad input, .modal-card label.bad select { border-color: var(--verkauft); box-shadow: 0 0 0 1px var(--verkauft); }
+    .modal-card .pill { justify-self: start; }
+    #print { display: none; }
+    [hidden] { display: none !important; }
     @media (max-width: 700px) {
+      #askBtn { display: none; }
       .plot { width: 62px; margin-left: -31px; padding: 4px 3px 0; } .plot b { font-size: 15px; } .plot span { font-size: 7.5px; letter-spacing: .02em; margin: 4px -3px 0; }
-      .kit-btn { top: 14px; right: auto; left: 50%; transform: translateX(-50%); height: 26px; padding: 0 9px; font-size: 9px; } .kit { top: 46px; right: 8px; left: 8px; width: auto; }
       .rows { top: 100px; } .rows a { padding: 6px 9px 5px; font-size: 9.5px; letter-spacing: .06em; } .rows a small { display: none; }
       .chooser { top: 58px; gap: 3px; } .chooser button { min-width: 50px; padding: 5px 4px 4px; font-size: 13px; } .chooser button small { font-size: 7.5px; letter-spacing: .02em; }
+      .note { top: 142px; width: calc(100vw - 24px); }
+      /* the two buttons stand at the bottom left, next to the little plan; the sheets come up from the bottom */
+      .toolbar { top: auto; right: auto; left: var(--gut); bottom: 16px; flex-direction: column; gap: 3px; }
+      .tool { height: 30px; padding: 0 10px; font-size: 9px; letter-spacing: .08em; }
+      .panel, .panel.wide { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; max-height: 62vh; max-height: 62dvh; z-index: 9; }
+      .modal-card form { grid-template-columns: 1fr; }
+      .room { font-size: 8px; padding: 2px 4px; }
+    }
+    @media (max-height: 480px) { .toolbar { top: 14px; bottom: auto; left: 50%; right: auto; transform: translateX(-50%); flex-direction: row; } .tool { height: 26px; } .panel, .panel.wide { top: 46px; bottom: 8px; max-height: none; left: auto; right: 8px; width: 320px; } .note { top: 96px; } }
+    /* the data sheet on paper */
+    @media print {
+      @page { margin: 14mm; }
+      html, body { background: #fff !important; overflow: visible !important; height: auto !important; }
+      body > *:not(#print) { display: none !important; }
+      #print { display: block; color: #1d1a18; font: 500 9.5pt/1.4 var(--font-mono); }
+      #print header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5pt solid #1d1a18; padding-bottom: 4pt; margin-bottom: 8pt; font-size: 9pt; letter-spacing: .08em; }
+      #print header b { font: 700 13pt/1 var(--font-display); letter-spacing: .14em; }
+      #print img { display: block; width: 100%; max-height: 82mm; object-fit: cover; margin-bottom: 8pt; border: .5pt solid #1d1a18; }
+      #print .cols { columns: 2; column-gap: 9mm; }
+      #print .sh-head { display: flex; gap: 8pt; align-items: center; margin-bottom: 6pt; }
+      #print .sh-head .no { font: 700 20pt/1 var(--font-display); border: 1.5pt solid #1d1a18; padding: 3pt 5pt; background: none; color: #1d1a18; }
+      #print .sh-head h2 { margin: 0; font: 700 14pt/1 var(--font-display); text-transform: uppercase; } #print .sh-head p { margin: 2pt 0 0; font-size: 8pt; }
+      #print .sh-head .st { margin-left: auto; font-weight: 700; text-transform: uppercase; }
+      #print h3 { margin: 9pt 0 3pt; font: 600 8pt/1 var(--font-mono); letter-spacing: .14em; text-transform: uppercase; break-after: avoid; }
+      #print h4 { margin: 5pt 0 1pt; font: 600 7.5pt/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: #555; break-after: avoid; }
+      #print dl { margin: 0; border: .5pt solid #777; break-inside: avoid; } #print dl div { display: flex; justify-content: space-between; gap: 8pt; padding: 2pt 5pt; } #print dl div + div { border-top: .5pt solid #bbb; }
+      #print dd { margin: 0; font-weight: 600; text-align: right; } #print p { margin: 3pt 0; } #print .hintline { font-size: 7.5pt; color: #555; }
+      #print .ticks, #print .phases { margin: 4pt 0 0; padding-left: 12pt; font-size: 8.5pt; } #print .phases li.now { font-weight: 700; }
+      #print .prog { height: 5pt; border: .5pt solid #1d1a18; margin: 2pt 0 4pt; } #print .prog i { display: block; height: 100%; background: #1d1a18; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
   </style>
 </head>
@@ -88,30 +183,49 @@
 
   <header class="topbar">
     <a class="mark" id="mark" href="#"><span id="markName">Kreidegasse</span><small id="markSub">Fünf Stadthäuser · A-210</small></a>
-    <a class="pill" id="backLink" href="../dortmund/">Zur Karte</a>
+    <nav class="topnav" aria-label="Wohnungsfinder">
+      <a class="pill ghost" id="backLink" href="../dortmund/">Zur Karte</a>
+      <button class="pill" id="askBtn" type="button">Anfrage</button>
+    </nav>
   </header>
 
-  <section class="hero" aria-label="Straßenansicht der fünf Häuser">
+  <section class="hero" aria-label="Straßenansicht der Häuser">
     <p class="kicker mono"><span id="kickName">Kreidegasse</span> <span class="soft">&nbsp;·&nbsp; Straßenansicht 1:100</span></p>
     <h1><span class="mask"><span id="h1a">Fünf Haustüren.</span></span><span class="mask"><span id="h1b">Zwei noch <em>frei.</em></span></span></h1>
   </section>
 
   <div class="pins" id="pins"></div>
+  <div id="rooms3d" aria-hidden="true"></div>
   <nav class="chooser" id="chooser" aria-label="Haus wählen"></nav>
   <nav class="rows" id="rows" aria-label="Zeile wählen" hidden></nav>
+  <div class="note" id="note" role="status" hidden></div>
 
-  <button class="kit-btn" id="kitBtn" aria-expanded="false" aria-controls="kit">Werkzeuge</button>
-  <div class="kit" id="kit" hidden>
+  <div class="toolbar">
+    <button class="tool strong" id="sheetBtn" type="button" aria-expanded="false" aria-controls="sheet">Exposé</button>
+    <button class="tool" id="kitBtn" type="button" aria-expanded="false" aria-controls="kit">Werkzeuge</button>
+  </div>
+  <div class="panel" id="kit" hidden>
+    <button class="x" type="button" aria-label="Schließen">✕</button>
     <h3>Sonne <b id="sunLabel">nach Zeichnung</b></h3>
     <input type="range" id="sun" min="6" max="20" step="0.25" value="14" aria-label="Uhrzeit für den Sonnenstand" />
-    <h3>Geschoss</h3>
-    <div class="seg" id="floors"><button data-f="" aria-pressed="true">Rundgang</button><button data-f="eg">Grundriss EG</button><button data-f="og">Grundriss OG</button></div>
-    <h3>Boden</h3>
-    <div class="seg" id="mFloor"></div>
+    <h3>Ansicht</h3>
+    <div class="seg" id="floors"><button type="button" data-f="" aria-pressed="true">Rundgang</button><button type="button" data-f="eg">Grundriss EG</button><button type="button" data-f="og">Grundriss OG</button><button type="button" data-f="bau">Bauablauf</button></div>
+    <div id="bauBox" hidden>
+      <h3>Bauablauf <b id="bauLabel">Schlüsselfertig</b></h3>
+      <input type="range" id="bau" min="0" max="4" step="1" value="4" aria-label="Stand des Baus" />
+    </div>
+    <h3>Bemusterung · Boden</h3>
+    <div class="seg one" id="mFloor"></div>
     <h3>Einbauten</h3>
-    <div class="seg" id="mWood"></div>
-    <p>Im Haus: seitlich ziehen zum Umsehen.</p>
+    <div class="seg one" id="mWood"></div>
+    <h3>Arbeitsplatte</h3>
+    <div class="seg one" id="mStone"></div>
+    <p>Im Haus: seitlich ziehen zum Umsehen. Die Bemusterung gilt für das gewählte Haus.</p>
   </div>
+  <aside class="panel wide" id="sheet" aria-label="Exposé des Hauses" hidden>
+    <button class="x" type="button" aria-label="Schließen">✕</button>
+    <div id="sheetBody"></div>
+  </aside>
 
   <div class="tb tb-top" aria-hidden="true">
     <div><span>Projekt</span><b id="tbName" style="font-weight:inherit">Kreidegasse</b></div>
@@ -125,6 +239,26 @@
   <div class="curtain" id="curtain" aria-hidden="true"></div>
   <main class="track" id="track"></main>
   <p id="live" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+
+  <div class="modal" id="ask" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="askTitle">
+      <button class="x" type="button" data-close aria-label="Schließen">✕</button>
+      <h2 id="askTitle">Anfrage</h2>
+      <p>Besichtigung, Rückruf oder Unterlagen: Wir melden uns innerhalb eines Werktags.</p>
+      <form id="askForm" novalidate>
+        <label class="full">Anliegen<select id="askKind"><option>Besichtigung auf der Baustelle</option><option>Rückruf</option><option>Exposé und Baubeschreibung per E-Mail</option><option>Beratung zur Finanzierung</option></select></label>
+        <label class="full">Haus<select id="askHouse"></select></label>
+        <label>Name *<input id="askName" name="name" autocomplete="name" required /></label>
+        <label>Telefon<input name="tel" type="tel" autocomplete="tel" /></label>
+        <label class="full">E-Mail *<input name="email" type="email" autocomplete="email" required /></label>
+        <label class="full">Nachricht<textarea name="msg" rows="3"></textarea></label>
+        <label class="full check"><input type="checkbox" required /> <span>Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage verwendet werden. *</span></label>
+        <button class="pill solid" type="submit">Anfrage senden</button>
+      </form>
+      <div id="askDone" hidden></div>
+    </div>
+  </div>
+  <div id="print"></div>
 
   <script type="module" src="page.js"></script>
 </body>

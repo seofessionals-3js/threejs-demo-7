@@ -44,7 +44,89 @@
      "first": "bay",
      "setback": -0.3
     }
-   ]
+   ],
+   "looks": {
+    "walls": [
+     {
+      "brick": "0xefebe2",
+      "tx": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "name": "Ziegel weiß, Läuferverband"
+     },
+     {
+      "brick": "0xb7b2a8",
+      "tx": [
+       0,
+       0.25,
+       0.0625,
+       0.3
+      ],
+      "name": "Ziegel grau, Dünnformat"
+     },
+     {
+      "brick": "0xdcc9a4",
+      "tx": [
+       2,
+       0.25,
+       0.083,
+       0.2
+      ],
+      "name": "Ziegel sand, Drittelverband"
+     },
+     {
+      "brick": "0x8f8a83",
+      "tx": [
+       3,
+       0.3,
+       0.052,
+       1.25
+      ],
+      "name": "Ziegel anthrazitgrau, Langformat, dunkle Fuge"
+     },
+     {
+      "brick": "0xcfc4b2",
+      "tx": [
+       1,
+       0.225,
+       0.075,
+       2.1
+      ],
+      "name": "Ziegel greige, Stapelverband"
+     }
+    ],
+    "doors": [
+     "0x9a3f2a",
+     "0x6e2a22",
+     "0xb5533a",
+     "0x7c2f22",
+     "0xa3482c"
+    ],
+    "frames": [
+     "0x2f2c2a",
+     "0x3b3f42",
+     "0x5a4632",
+     "0x2f2c2a",
+     "0x6b6e70"
+    ],
+    "roofs": [
+     {
+      "roofColor": "0x7a858d"
+     },
+     {
+      "roofColor": "0x6f7a80"
+     },
+     {
+      "roofColor": "0x8a939a"
+     },
+     {
+      "roofColor": "0x747f84"
+     }
+    ]
+   }
   },
   "rows": [
    {
@@ -61,7 +143,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 146,
-      "price": "625.000 €"
+      "price": "625.000 €",
+      "plan": "A",
+      "fit": 1
      },
      {
       "no": "03",
@@ -80,7 +164,9 @@
       "status": "Frei",
       "rooms": 4,
       "area": 146,
-      "price": "643.000 €"
+      "price": "643.000 €",
+      "plan": "C",
+      "fit": 2
      }
     ]
    }
@@ -91,7 +177,39 @@
   "size": "138 bis 152 m²",
   "price": "ab 625.000 €",
   "mix": "4 bis 5 Zimmer mit Garten",
-  "rot": -172.8
+  "rot": -172.8,
+  "build": {
+   "phase": 4,
+   "pct": 92,
+   "note": "Innenausbau: Böden und Einbauten",
+   "next": "Übergaben ab Dezember 2026",
+   "en": {
+    "note": "Fit-out: floors and joinery",
+    "next": "Handovers from December 2026"
+   }
+  },
+  "spec": {
+   "bauweise": "Massivbau, zweischalig mit Verblendziegel",
+   "energie": "Effizienzhaus 40 · Klasse A+",
+   "heizung": "Sole-Wärmepumpe, Fußbodenheizung",
+   "extras": [
+    "Photovoltaik 6 kWp",
+    "Dreifachverglasung",
+    "Lüftung mit Wärmerückgewinnung",
+    "Wallbox vorbereitet"
+   ],
+   "en": {
+    "bauweise": "Solid construction, cavity wall with facing brick",
+    "energie": "Efficiency House 40 · class A+",
+    "heizung": "Ground-source heat pump, underfloor heating",
+    "extras": [
+     "Photovoltaics 6 kWp",
+     "Triple glazing",
+     "Ventilation with heat recovery",
+     "Prepared for a wallbox"
+    ]
+   }
+  }
  },
  {
   "id": "seehoefe",
@@ -145,7 +263,85 @@
      "first": "balcony",
      "setback": -0.6
     }
-   ]
+   ],
+   "looks": {
+    "walls": [
+     {
+      "brick": "0xf5f2ec",
+      "tx": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "name": "Putz weiß, geglättet"
+     },
+     {
+      "brick": "0xefe4cf",
+      "tx": [
+       1,
+       0,
+       0,
+       0
+      ],
+      "name": "Kratzputz, creme"
+     },
+     {
+      "brick": "0xd9d6cf",
+      "tx": [
+       2,
+       0,
+       0,
+       0
+      ],
+      "name": "Kammputz, hellgrau"
+     },
+     {
+      "brick": "0xe3e6dc",
+      "tx": [
+       3,
+       0,
+       0,
+       0
+      ],
+      "name": "Kalkputz, wolkig, salbeiweiß"
+     },
+     {
+      "brick": "0xc4c1ba",
+      "tx": [
+       4,
+       0,
+       0,
+       0
+      ],
+      "name": "Sichtbeton, brettgeschalt"
+     },
+     {
+      "brick": "0xeadfc8",
+      "tx": [
+       1,
+       0,
+       0,
+       0
+      ],
+      "name": "Kratzputz, sandweiß"
+     }
+    ],
+    "doors": [
+     "0x3a3d40",
+     "0x23262a",
+     "0x5a4a3a",
+     "0x34383d",
+     "0x4f5357",
+     "0x2b3036"
+    ],
+    "frames": [
+     "0x2f2c2a",
+     "0x45484b",
+     "0x6b6e70",
+     "0x5a4a3a"
+    ]
+   }
   },
   "rows": [
    {
@@ -168,7 +364,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 156,
-      "price": "728.000 €"
+      "price": "728.000 €",
+      "plan": "B",
+      "fit": 3
      },
      {
       "no": "04",
@@ -181,7 +379,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 142,
-      "price": "709.000 €"
+      "price": "709.000 €",
+      "plan": "D",
+      "fit": 4
      },
      {
       "no": "06",
@@ -198,7 +398,39 @@
   "size": "142 bis 156 m²",
   "price": "ab 709.000 €",
   "mix": "4 bis 5 Zimmer mit Garten",
-  "rot": 0.6
+  "rot": 0.6,
+  "build": {
+   "phase": 2,
+   "pct": 41,
+   "note": "Rohbau, Obergeschoss in Arbeit",
+   "next": "Richtfest im Februar 2027",
+   "en": {
+    "note": "Shell, upper floor under way",
+    "next": "Topping-out in February 2027"
+   }
+  },
+  "spec": {
+   "bauweise": "Massivbau, Kalksandstein mit Wärmedämmputz",
+   "energie": "Effizienzhaus 40 · Klasse A+",
+   "heizung": "Luft-Wasser-Wärmepumpe, Fußbodenheizung",
+   "extras": [
+    "Dachterrasse mit Holzdeck",
+    "Photovoltaik 7 kWp",
+    "Dreifachverglasung",
+    "Lüftung mit Wärmerückgewinnung"
+   ],
+   "en": {
+    "bauweise": "Solid construction, sand-lime brick with insulating render",
+    "energie": "Efficiency House 40 · class A+",
+    "heizung": "Air-source heat pump, underfloor heating",
+    "extras": [
+     "Roof terrace with timber deck",
+     "Photovoltaics 7 kWp",
+     "Triple glazing",
+     "Ventilation with heat recovery"
+    ]
+   }
+  }
  },
  {
   "id": "speicherzeile",
@@ -252,7 +484,106 @@
      "par": 6.9,
      "first": "bay"
     }
-   ]
+   ],
+   "looks": {
+    "walls": [
+     {
+      "brick": "0x8f4d3b",
+      "tx": [
+       0,
+       0,
+       0,
+       0.3
+      ],
+      "name": "Klinker dunkelrot"
+     },
+     {
+      "brick": "0x6b3a31",
+      "tx": [
+       0,
+       0,
+       0,
+       1.2
+      ],
+      "name": "Klinker braunrot, dunkle Fuge"
+     },
+     {
+      "brick": "0xa85a3c",
+      "tx": [
+       0,
+       0,
+       0,
+       0.6
+      ],
+      "name": "Klinker ziegelrot, bunt"
+     },
+     {
+      "brick": "0x5e3530",
+      "tx": [
+       0,
+       0,
+       0,
+       0.5
+      ],
+      "name": "Klinker ochsenblut"
+     },
+     {
+      "brick": "0x84503f",
+      "tx": [
+       0,
+       0,
+       0,
+       2.4
+      ],
+      "name": "Klinker rotbraun, Fuge im Ton"
+     },
+     {
+      "brick": "0x9a4336",
+      "tx": [
+       0,
+       0,
+       0,
+       1.5
+      ],
+      "name": "Klinker rot, dunkle Fuge, bunt"
+     }
+    ],
+    "headers": [
+     "0x4f2a22",
+     "0x2f201d",
+     "0x5a3026",
+     "0x241c1b",
+     "0x46281f",
+     "0x3a2420"
+    ],
+    "doors": [
+     "0x26282a",
+     "0x1f2224",
+     "0x2d2a28",
+     "0x30343a",
+     "0x232323",
+     "0x2a2f2c"
+    ],
+    "frames": [
+     "0x2f2c2a",
+     "0x26282a",
+     "0x3a3632"
+    ],
+    "roofs": [
+     {
+      "roofColor": "0x3f4448"
+     },
+     {
+      "roofColor": "0x35393d"
+     },
+     {
+      "roofColor": "0x474c50"
+     },
+     {
+      "roofColor": "0x3a3f46"
+     }
+    ]
+   }
   },
   "rows": [
    {
@@ -263,7 +594,9 @@
       "status": "Frei",
       "rooms": 4,
       "area": 126,
-      "price": "479.000 €"
+      "price": "479.000 €",
+      "plan": "C",
+      "fit": 5
      },
      {
       "no": "02",
@@ -282,7 +615,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 134,
-      "price": "515.000 €"
+      "price": "515.000 €",
+      "plan": "B",
+      "fit": 6
      },
      {
       "no": "05",
@@ -305,7 +640,39 @@
   "size": "126 bis 134 m²",
   "price": "ab 479.000 €",
   "mix": "4 bis 5 Zimmer mit Garten",
-  "rot": -172.6
+  "rot": -172.6,
+  "build": {
+   "phase": 4,
+   "pct": 74,
+   "note": "Estrich und Haustechnik",
+   "next": "Malerarbeiten ab Januar 2027",
+   "en": {
+    "note": "Screed and building services",
+    "next": "Painting from January 2027"
+   }
+  },
+  "spec": {
+   "bauweise": "Massivbau, zweischalig mit Klinker im Rautenverband",
+   "energie": "Effizienzhaus 55 · Klasse A",
+   "heizung": "Fernwärme, Fußbodenheizung",
+   "extras": [
+    "Dreifachverglasung",
+    "Schallschutz erhöht (Hafenlage)",
+    "Fahrradraum im Hof",
+    "Wallbox vorbereitet"
+   ],
+   "en": {
+    "bauweise": "Solid construction, cavity wall with diaper-bond clinker",
+    "energie": "Efficiency House 55 · class A",
+    "heizung": "District heating, underfloor heating",
+    "extras": [
+     "Triple glazing",
+     "Enhanced sound insulation (harbour)",
+     "Bicycle store in the yard",
+     "Prepared for a wallbox"
+    ]
+   }
+  }
  },
  {
   "id": "emscher-gaerten",
@@ -359,7 +726,105 @@
     {
      "first": "balcony"
     }
-   ]
+   ],
+   "looks": {
+    "tints": [
+     "0xf1ebdd",
+     "0xecdcae",
+     "0xf6f2ea",
+     "0xe2d2b4",
+     "0xead9cc",
+     "0xdfe0d0"
+    ],
+    "textures": [
+     {
+      "tx": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "name": "Putz, geglättet"
+     },
+     {
+      "tx": [
+       1,
+       0,
+       0,
+       0
+      ],
+      "name": "Kratzputz"
+     },
+     {
+      "tx": [
+       2,
+       0,
+       0,
+       0
+      ],
+      "name": "Kammputz"
+     },
+     {
+      "tx": [
+       3,
+       0,
+       0,
+       0
+      ],
+      "name": "Kalkputz, wolkig"
+     }
+    ],
+    "doors": [
+     "0x355e4b",
+     "0x2e5242",
+     "0x3f6b55",
+     "0x4a6a4f",
+     "0x2a4a3e"
+    ],
+    "frames": [
+     "0x2f2c2a",
+     "0x5a4632",
+     "0xe6e2d8"
+    ],
+    "roofs": [
+     {
+      "roofColor": "0xa9573d",
+      "roofTx": [
+       1,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x9c4d36",
+      "roofTx": [
+       1,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0xb06045",
+      "roofTx": [
+       1,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x94503c",
+      "roofTx": [
+       1,
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
   },
   "rows": [
    {
@@ -382,7 +847,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 128,
-      "price": "555.000 €"
+      "price": "555.000 €",
+      "plan": "D",
+      "fit": 7
      },
      {
       "no": "04",
@@ -401,7 +868,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 128,
-      "price": "564.000 €"
+      "price": "564.000 €",
+      "plan": "A",
+      "fit": 8
      }
     ]
    },
@@ -419,7 +888,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 128,
-      "price": "555.000 €"
+      "price": "555.000 €",
+      "plan": "B",
+      "fit": 9
      },
      {
       "no": "09",
@@ -438,14 +909,18 @@
       "status": "Frei",
       "rooms": 5,
       "area": 128,
-      "price": "564.000 €"
+      "price": "564.000 €",
+      "plan": "C",
+      "fit": 10
      },
      {
       "no": "12",
       "status": "Frei",
       "rooms": 5,
       "area": 128,
-      "price": "567.000 €"
+      "price": "567.000 €",
+      "plan": "A",
+      "fit": 11
      }
     ]
    },
@@ -457,7 +932,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 134,
-      "price": "569.000 €"
+      "price": "569.000 €",
+      "plan": "D",
+      "fit": 12
      },
      {
       "no": "14",
@@ -476,7 +953,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 134,
-      "price": "578.000 €"
+      "price": "578.000 €",
+      "plan": "B",
+      "fit": 13
      },
      {
       "no": "17",
@@ -518,14 +997,18 @@
       "status": "Frei",
       "rooms": 5,
       "area": 134,
-      "price": "581.000 €"
+      "price": "581.000 €",
+      "plan": "C",
+      "fit": 14
      },
      {
       "no": "23",
       "status": "Frei",
       "rooms": 5,
       "area": 134,
-      "price": "584.000 €"
+      "price": "584.000 €",
+      "plan": "A",
+      "fit": 15
      },
      {
       "no": "24",
@@ -542,7 +1025,39 @@
   "size": "128 bis 134 m²",
   "price": "ab 555.000 €",
   "mix": "5 Zimmer mit Garten",
-  "rot": -162.4
+  "rot": -162.4,
+  "build": {
+   "phase": 3,
+   "pct": 58,
+   "note": "Zeile A und B gedeckt",
+   "next": "Fenster in Zeile C und D",
+   "en": {
+    "note": "Rows A and B roofed",
+    "next": "Windows in rows C and D"
+   }
+  },
+  "spec": {
+   "bauweise": "Massivbau, Porenbeton mit Mineralputz",
+   "energie": "Effizienzhaus 40 · Klasse A+",
+   "heizung": "Luft-Wasser-Wärmepumpe, Fußbodenheizung",
+   "extras": [
+    "Garage mit Stromanschluss",
+    "Photovoltaik 6 kWp",
+    "Dreifachverglasung",
+    "Regenwasserzisterne"
+   ],
+   "en": {
+    "bauweise": "Solid construction, aerated concrete with mineral render",
+    "energie": "Efficiency House 40 · class A+",
+    "heizung": "Air-source heat pump, underfloor heating",
+    "extras": [
+     "Garage with power supply",
+     "Photovoltaics 6 kWp",
+     "Triple glazing",
+     "Rainwater cistern"
+    ]
+   }
+  }
  },
  {
   "id": "buschei-holzhaeuser",
@@ -595,7 +1110,132 @@
      "setback": -0.4
     }
    ],
-   "open": true
+   "open": true,
+   "looks": {
+    "walls": [
+     {
+      "brick": "0xb98a5b",
+      "tx": [
+       0,
+       0.095,
+       0,
+       0
+      ],
+      "name": "Lärche, senkrechte Schalung"
+     },
+     {
+      "brick": "0xa9835c",
+      "tx": [
+       1,
+       0.14,
+       0,
+       0
+      ],
+      "name": "Lärche, liegende Schalung"
+     },
+     {
+      "brick": "0x9c9488",
+      "tx": [
+       0,
+       0.12,
+       0,
+       0
+      ],
+      "name": "Lärche, vorvergraut"
+     },
+     {
+      "brick": "0xc49a66",
+      "tx": [
+       3,
+       0.06,
+       0,
+       0
+      ],
+      "name": "Lärche, Lamellen"
+     },
+     {
+      "brick": "0x8a6a48",
+      "tx": [
+       1,
+       0.19,
+       0,
+       0
+      ],
+      "name": "Lärche, dunkel geölt, liegend"
+     },
+     {
+      "brick": "0xb08f6a",
+      "tx": [
+       0,
+       0.19,
+       0,
+       0
+      ],
+      "name": "Lärche, breite Bretter"
+     },
+     {
+      "brick": "0x7d766e",
+      "tx": [
+       3,
+       0.05,
+       0,
+       0
+      ],
+      "name": "Lärche, Lamellen grau"
+     },
+     {
+      "brick": "0xc8a27a",
+      "tx": [
+       1,
+       0.095,
+       0,
+       0
+      ],
+      "name": "Lärche hell, schmale Stülpschalung"
+     }
+    ],
+    "doors": [
+     "0x33424d",
+     "0x2c3a45",
+     "0x3d4d58",
+     "0x46525a",
+     "0x28343c"
+    ],
+    "frames": [
+     "0x2f2c2a",
+     "0x3a3f42",
+     "0x4a3a2c"
+    ],
+    "roofs": [
+     {
+      "roofColor": "0x66735f",
+      "roofTx": [
+       3,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x70785a",
+      "roofTx": [
+       3,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x5e6e5c",
+      "roofTx": [
+       3,
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
   },
   "rows": [
    {
@@ -612,7 +1252,9 @@
       "status": "Frei",
       "rooms": 4,
       "area": 128,
-      "price": "502.000 €"
+      "price": "502.000 €",
+      "plan": "B",
+      "fit": 16
      },
      {
       "no": "03",
@@ -625,7 +1267,9 @@
       "status": "Frei",
       "rooms": 4,
       "area": 128,
-      "price": "510.000 €"
+      "price": "510.000 €",
+      "plan": "D",
+      "fit": 17
      }
     ]
    },
@@ -637,7 +1281,9 @@
       "status": "Frei",
       "rooms": 5,
       "area": 136,
-      "price": "524.000 €"
+      "price": "524.000 €",
+      "plan": "A",
+      "fit": 18
      },
      {
       "no": "06",
@@ -666,7 +1312,39 @@
   "size": "128 bis 136 m²",
   "price": "ab 502.000 €",
   "mix": "4 bis 5 Zimmer mit Garten",
-  "rot": -143.2
+  "rot": -143.2,
+  "build": {
+   "phase": 1,
+   "pct": 18,
+   "note": "Bodenplatten gegossen",
+   "next": "Holzrahmen ab Januar 2027",
+   "en": {
+    "note": "Floor slabs cast",
+    "next": "Timber frames from January 2027"
+   }
+  },
+  "spec": {
+   "bauweise": "Holzrahmenbau, Lärchenschalung, Zellulosedämmung",
+   "energie": "Effizienzhaus 40 QNG · Klasse A+",
+   "heizung": "Luft-Wasser-Wärmepumpe, Fußbodenheizung",
+   "extras": [
+    "Gründach",
+    "Photovoltaik 8 kWp",
+    "Dreifachverglasung",
+    "Lehmputz in den Wohnräumen"
+   ],
+   "en": {
+    "bauweise": "Timber frame, larch cladding, cellulose insulation",
+    "energie": "Efficiency House 40 QNG · class A+",
+    "heizung": "Air-source heat pump, underfloor heating",
+    "extras": [
+     "Planted roof",
+     "Photovoltaics 8 kWp",
+     "Triple glazing",
+     "Clay plaster in the living rooms"
+    ]
+   }
+  }
  },
  {
   "id": "kronenhoefe",
@@ -717,7 +1395,121 @@
      "first": "bay",
      "setback": -0.3
     }
-   ]
+   ],
+   "looks": {
+    "walls": [
+     {
+      "brick": "0xdcc596",
+      "tx": [
+       0,
+       0,
+       0,
+       0
+      ],
+      "name": "Ziegel sand, Läuferverband"
+     },
+     {
+      "brick": "0xc9a86a",
+      "tx": [
+       2,
+       0.25,
+       0.083,
+       0.3
+      ],
+      "name": "Ziegel ocker, Drittelverband"
+     },
+     {
+      "brick": "0xe6d5ae",
+      "tx": [
+       0,
+       0.25,
+       0.0625,
+       0.2
+      ],
+      "name": "Ziegel hell, Dünnformat"
+     },
+     {
+      "brick": "0xb89a6c",
+      "tx": [
+       3,
+       0.3,
+       0.052,
+       1.2
+      ],
+      "name": "Ziegel gelb, Langformat, dunkle Fuge"
+     },
+     {
+      "brick": "0xd4bb8c",
+      "tx": [
+       1,
+       0.225,
+       0.075,
+       2.2
+      ],
+      "name": "Ziegel sand, Stapelverband"
+     },
+     {
+      "brick": "0xc0a47a",
+      "tx": [
+       0,
+       0.25,
+       0.083,
+       0.6
+      ],
+      "name": "Ziegel lehmfarben, bunt"
+     }
+    ],
+    "doors": [
+     "0x1f3a5f",
+     "0x1a3050",
+     "0x27456b",
+     "0x223a55",
+     "0x162a47"
+    ],
+    "frames": [
+     "0x2f2c2a",
+     "0x3b3f42",
+     "0x4a3a2c"
+    ],
+    "roofs": [
+     {
+      "roofColor": "0x474c55",
+      "roofTx": [
+       2,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x3f444c",
+      "roofTx": [
+       2,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x50545c",
+      "roofTx": [
+       2,
+       0,
+       0,
+       0
+      ]
+     },
+     {
+      "roofColor": "0x434750",
+      "roofTx": [
+       2,
+       0,
+       0,
+       0
+      ]
+     }
+    ]
+   }
   },
   "rows": [
    {
@@ -746,7 +1538,9 @@
       "status": "Frei",
       "rooms": 4,
       "area": 134,
-      "price": "533.000 €"
+      "price": "533.000 €",
+      "plan": "D",
+      "fit": 19
      },
      {
       "no": "05",
@@ -759,7 +1553,9 @@
       "status": "Frei",
       "rooms": 4,
       "area": 134,
-      "price": "543.000 €"
+      "price": "543.000 €",
+      "plan": "C",
+      "fit": 20
      }
     ]
    }
@@ -770,6 +1566,38 @@
   "size": "134 bis 142 m²",
   "price": "ab 533.000 €",
   "mix": "4 bis 5 Zimmer mit Garten",
-  "rot": -2.9
+  "rot": -2.9,
+  "build": {
+   "phase": 0,
+   "pct": 8,
+   "note": "Baugenehmigung erteilt",
+   "next": "Baubeginn im Frühjahr 2027",
+   "en": {
+    "note": "Building permit granted",
+    "next": "Start on site in spring 2027"
+   }
+  },
+  "spec": {
+   "bauweise": "Massivbau, zweischalig mit Verblendziegel",
+   "energie": "Effizienzhaus 40 · Klasse A+",
+   "heizung": "Sole-Wärmepumpe, Fußbodenheizung",
+   "extras": [
+    "Schieferdach mit Zinkgaube",
+    "Photovoltaik 6 kWp",
+    "Dreifachverglasung",
+    "Wallbox vorbereitet"
+   ],
+   "en": {
+    "bauweise": "Solid construction, cavity wall with facing brick",
+    "energie": "Efficiency House 40 · class A+",
+    "heizung": "Ground-source heat pump, underfloor heating",
+    "extras": [
+     "Slate roof with zinc dormer",
+     "Photovoltaics 6 kWp",
+     "Triple glazing",
+     "Prepared for a wallbox"
+    ]
+   }
+  }
  }
 ]

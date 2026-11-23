@@ -1,6 +1,13 @@
 /* The Elevation: the sheet and its chrome, shared by a-one-door, b-the-row, c-the-face.
    Trois crayons on buff toned paper: black chalk for line and type, white chalk for the light, one Rötel for the accent.
    Chips are black chalk with paper type, cards are paper with ink type. */
+/* the two typefaces are served from this site (vendor/fonts): no font service is asked for anything */
+@font-face { font-family: 'Chakra Petch'; font-weight: 500; font-style: normal; font-display: swap; src: url('../vendor/fonts/ChakraPetch-500.woff2') format('woff2'); }
+@font-face { font-family: 'Chakra Petch'; font-weight: 600; font-style: normal; font-display: swap; src: url('../vendor/fonts/ChakraPetch-600.woff2') format('woff2'); }
+@font-face { font-family: 'Chakra Petch'; font-weight: 700; font-style: normal; font-display: swap; src: url('../vendor/fonts/ChakraPetch-700.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 400; font-style: normal; font-display: swap; src: url('../vendor/fonts/IBMPlexMono-400.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 500; font-style: normal; font-display: swap; src: url('../vendor/fonts/IBMPlexMono-500.woff2') format('woff2'); }
+@font-face { font-family: 'IBM Plex Mono'; font-weight: 600; font-style: normal; font-display: swap; src: url('../vendor/fonts/IBMPlexMono-600.woff2') format('woff2'); }
 :root {
   --paper: #dfd2ba;
   --paper-hi: #eadfcb;
@@ -136,6 +143,10 @@ html.q-low .grain { display: none; }
   font-weight: 600;
 }
 .loader.gone { opacity: 0; pointer-events: none; }
+.loader.failed { background: var(--paper); z-index: 50; opacity: 1; pointer-events: auto; }
+.loader.failed p { max-width: min(520px, 86vw); text-transform: none; letter-spacing: .02em; font-size: 12.5px; line-height: 1.5; }
+.loader.failed p:first-child { text-transform: uppercase; letter-spacing: .08em; font-size: 10.5px; }
+.loader.failed a { color: var(--accent-ink); font-weight: 600; }
 
 /* top bar */
 .topbar {
