@@ -1,6 +1,7 @@
 // The invented projects as small procedural models, built from the same data as their own pages. One merged geometry each, light baked into vertex colours,
 // so a model costs one draw call and no lighting. Units are metres, y is up, the plot centre is the origin.
 import * as THREE from 'three';
+import { lookFor } from './looks.js';
 
 const V = {                                    // the one colour family of the projects
   body: [134, 82, 168], body2: [158, 110, 188], deep: [98, 58, 128], glass: [58, 36, 82], roof: [216, 202, 228],
@@ -84,13 +85,13 @@ const rgb = (v, d) => { const n = typeof v === 'string' ? parseInt(v, 16) : (v ?
 const ZINC = [122, 133, 141], STONE = [205, 197, 181], LOT = { Frei: [150, 205, 160], Verkauft: [226, 160, 152] }, EDGE = { Frei: [58, 150, 92], Verkauft: [186, 68, 58] };
 
 // one house. cx: its centre along the row, zf: its front, f: +1 when it faces +z
-function house(b, cx, zf, f, st, v, i) {
-  const o = { ...(st.base || {}), ...v };
+function house(b, cx, zf, f, st, v, i, look) {
+  const o = { ...(st.base || {}), ...v, ...look };          // the tone of its wall, its roof and its door are the house's own (looks.js)
   const wall = rgb(o.brick, 0xefebe2), roofC = rgb(o.roofColor, 0x7a858d), par = o.par || 6.7, roof = o.roof || 'pitch';
   const zc = zf - f * 5, side = i % 2 ? 1 : -1;               // the door, and what hangs over it, sits on alternating sides
   b.box(cx, 0, zc, 6, par, 10, wall, { lid: roof === 'none', top: STONE });
   b.box(cx, 0, zf - f * 11, 6, 3.3, 2, wall, { top: STONE });   // the kitchen runs out under a low roof to the garden
-  b.box(cx + side * -1.0, 0.3, zf + f * 0.02, 2.2, 2.7, 0.3, [52, 48, 46], { lid: false });   // the porch
+  b.box(cx + side * -1.0, 0.3, zf + f * 0.02, 2.2, 2.7, 0.3, rgb(o.doorColor, 0x34302e), { lid: false });   // the porch, in the colour of the door
   if (roof === 'none') {
     b.box(cx, par, zc, 5.6, 0.25, 9.6, [226, 222, 212]);
     if (o.terrace) b.box(cx + 1.5 * -side, par, zf - f * 6, 2.5, 2.3, 3.1, wall, { top: STONE });
@@ -103,9 +104,9 @@ function house(b, cx, zf, f, st, v, i) {
     if (o.dormer) b.box(cx, par + 0.45, zf - f * 1.9, 3.0, 1.3, 2.4, ZINC, { top: roofC });
   }
   const first = o.first || 'bay';
-  if (first === 'bay') b.box(cx + side * -1.0, 3.7, zf + f * 0.4, 2.8, 2.35, 0.8, ZINC);
+  if (first === 'bay') b.box(cx + side * -1.0, 3.7, zf + f * 0.4, 2.7, 2.35, 0.8, ZINC);
   else if (first === 'frame') b.box(cx, 3.8, zf + f * 0.12, 4.5, 2.4, 0.3, STONE);
-  else if (first === 'balcony') b.box(cx + side * -1.0, 3.7, zf + f * 0.55, 3.1, 0.16, 1.1, STONE);
+  else if (first === 'balcony') b.box(cx + side * -1.0, 3.7, zf + f * 0.55, 3.0, 0.16, 1.1, STONE);
 }
 
 // the site plan of a project: its rows on the plot, a lane between them, every lot in the colour of its state
@@ -113,6 +114,7 @@ function site(b, p) {
   const st = p.style || {}, vars = st.variants || [{}], G = st.group || 0, gap = st.gap || 0;
   const xOf = (i) => i * 6 + (G ? Math.floor(i / G) * gap : 0);
   const rows = p.rows, R = rows.length, len = Math.max(...rows.map((r) => xOf(r.houses.length - 1) + 6));
+  let k0 = 0;                                   // the place of a row's first house in the project
   const cols = R > 2 ? 2 : 1, lane = 13, colGap = 16, depth = 12 + 9;          // house and garden
   rows.forEach((row, r) => {
     const col = cols > 1 ? r % 2 : 0, band = cols > 1 ? Math.floor(r / 2) : r;
@@ -126,13 +128,14 @@ function site(b, p) {
       const cx = x0 + xOf(i) + 3, w = G ? 6 + gap / 2 : 6, lx = G ? cx + (i % G === 0 ? -gap / 4 : gap / 4) : cx;
       b.box(lx, 0.3, zf - f * (depth / 2 - 1.5), w - 0.5, 0.08, depth + 3, LOT[h.status] || LOT.Verkauft);
       b.box(lx, 0.3, zf - f * (depth + 0.7), w - 0.5, 0.5, 0.5, EDGE[h.status] || EDGE.Verkauft);     // a low hedge at the end of the garden, in the colour of the state
-      house(b, cx, zf, f, st, vars[i % vars.length], i);
+      house(b, cx, zf, f, st, vars[i % vars.length], i, lookFor(p, k0 + i));
       if ((i + r) % 3 === 0) b.tree(lx + 1.2, zf - f * (depth - 3), 0.55);
     });
     if (st.garage && G) for (let k = 1; k * G < row.houses.length; k++) {
       const gx = x0 + xOf(k * G) - gap / 2;
       b.box(gx, 0, zf - f * 3.6, gap - 0.3, 2.7, 6, rgb((st.base || {}).brick, 0xefebe2), { top: STONE });
     }
+    k0 += row.houses.length;
   });
 }
 

@@ -53,3 +53,5 @@ und zeig es mir, bevor du weitermachst.
 ```
 
 Der letzte Absatz ist genauso wichtig wie die Idee. Ohne ihn bekommen Sie eine fertige Seite, die Sie nicht selbst ausgewählt haben.
+
+Der Prompt lädt three.js von einem CDN, weil das für einen ersten Entwurf am schnellsten geht. Dieses Projekt selbst liefert three.js und seine Schriften mit (`vendor/`): Für eine Seite, die verschickt wird, soll nichts von außen kommen.

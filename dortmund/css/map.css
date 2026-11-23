@@ -167,3 +167,62 @@ body[data-page="objekt"] .credit { bottom: 8px; }
   .pill.strong { background: var(--violet); } .pill[disabled] { background: rgba(31, 32, 35, .6); }
   body[data-page="objekt"] .hint, body[data-page="objekt"] .credit { display: none; }
 }
+
+/* ── the panel: projects, free houses, what the builder does ── */
+.tabs { display: flex; gap: 2px; flex: 1; min-width: 0; }
+.tabs button { appearance: none; border: 0; background: none; padding: 8px 9px 7px; font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--violet); }
+.panel section { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.panel li .t i { font-style: normal; color: var(--violet); font-weight: 700; }
+.filters { display: grid; gap: 10px; margin: 0 0 12px; font-size: 12.5px; }
+.filters label { display: grid; gap: 4px; color: var(--mute); } .filters label b { color: var(--ink); float: right; }
+.filters input[type=range] { width: 100%; accent-color: var(--violet); height: 22px; margin: 0; }
+.seg { display: flex; gap: 4px; }
+.seg button { appearance: none; flex: 1; border: 1px solid var(--line); background: none; height: 32px; font-weight: 700; font-size: 12px; letter-spacing: .04em; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+#houseList li a { display: flex; gap: 12px; align-items: center; padding: 10px 8px; border-top: 1px solid var(--line); color: inherit; text-decoration: none; }
+#houseList li a:hover { background: #f4f1f7; }
+#houseList .no { flex: none; width: 40px; height: 40px; background: #1f7a45; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 15px; }
+#houseList .empty { padding: 18px 8px; color: var(--mute); font-size: 13.5px; }
+.service { overflow: auto; flex: 1; overscroll-behavior: contain; padding-right: 2px; }
+.service h3 { margin: 14px 0 6px; font-weight: 800; font-size: 17px; line-height: 1.2; }
+.service h4 { margin: 18px 0 6px; font-weight: 800; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+.service p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.service dl { margin: 0; } .service dt { font-weight: 800; font-size: 14px; margin-top: 10px; } .service dd { margin: 2px 0 0; font-size: 13.5px; line-height: 1.5; color: var(--ink-2); }
+.service ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 1.7; color: var(--ink-2); }
+/* how far the building is */
+.pbar { height: 4px; background: var(--line); margin: -4px 0 12px; } .pbar i { display: block; height: 100%; background: var(--violet); width: 0; transition: width .5s; }
+.phases { list-style: none; margin: 8px 0 0 !important; padding: 0 !important; counter-reset: ph; font-size: 13px !important; line-height: 1.3 !important; }
+.phases li { counter-increment: ph; position: relative; padding: 4px 0 4px 26px; color: var(--mute); }
+.phases li::before { content: counter(ph); position: absolute; left: 0; top: 3px; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--mute); font-size: 9.5px; font-weight: 800; display: grid; place-items: center; }
+.phases li.done { color: var(--ink-2); } .phases li.done::before { content: '✓'; background: var(--ink); border-color: var(--ink); color: #fff; }
+.phases li.now { color: var(--violet); font-weight: 800; } .phases li.now::before { background: var(--violet); border-color: var(--violet); color: #fff; }
+.hlist { list-style: none; padding: 0 !important; margin: 0 0 18px !important; border: 1px solid var(--line); }
+.hlist li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 12px; font-size: 13.5px; }
+.hlist li + li { border-top: 1px solid var(--line); }
+.hlist li b { font-weight: 800; } .hlist a { color: #1f7a45; font-weight: 800; text-decoration: none; } .hlist a:hover { text-decoration: underline; }
+.hlist .sold { color: #b3261e; font-weight: 700; } .hlist span { color: var(--mute); }
+/* legend and small links at the bottom */
+.legend i { display: inline-block; width: 9px; height: 9px; margin: 0 4px 0 8px; vertical-align: -1px; } .legend i.f { background: #96cda0; margin-left: 0; } .legend i.s { background: #e2a098; }
+.link { appearance: none; border: 0; background: none; padding: 0; font: inherit; color: inherit; text-decoration: underline; text-shadow: inherit; }
+/* the enquiry */
+.modal { overflow: auto; }
+.modal-card form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-card label { display: block; font-weight: 700; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--mute); }
+.modal-card label.full { grid-column: 1 / -1; }
+.modal-card input:not([type=checkbox]), .modal-card select, .modal-card textarea { display: block; width: 100%; margin-top: 5px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: 500 14px/1.3 var(--font); padding: 9px 10px; border-radius: 0; }
+.modal-card input:focus, .modal-card select:focus, .modal-card textarea:focus { outline: 2px solid var(--violet); outline-offset: 0; }
+.modal-card textarea { resize: vertical; min-height: 70px; }
+.modal-card label.check { display: flex; gap: 9px; align-items: flex-start; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 12.5px; line-height: 1.45; color: var(--ink-2); }
+.modal-card label.bad { color: #b3261e; } .modal-card label.bad input, .modal-card label.bad select { border-color: #b3261e; box-shadow: 0 0 0 1px #b3261e; }
+.modal-card .cta { grid-column: 1 / -1; }
+.modal-card h3 { margin: 0 0 8px; font-weight: 800; font-size: 18px; }
+#aboutBody p { margin: 0 0 10px; }
+/* the graphics were taken away */
+.lost { position: fixed; inset: 0; z-index: 200; background: var(--ink); color: #fff; display: grid; place-items: center; text-align: center; padding: 24px; }
+.lost p { max-width: 420px; font-size: 15px; line-height: 1.5; } .lost a { color: #fff; font-weight: 800; }
+@media (max-width: 760px) {
+  .tabs button { padding: 8px 6px 7px; font-size: 11px; letter-spacing: .04em; }
+  .modal-card form { grid-template-columns: 1fr; }
+  .credit .legend { display: none; }
+}

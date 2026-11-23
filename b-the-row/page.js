@@ -4,6 +4,7 @@
 // (the open one, outlined in red), its two glass leaves swing open, and the lens walks into its hall,
 // past the sitting room, and on to the kitchen.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
+window.__boot = true;                                      // the modules have arrived (see the note for old browsers in the page)
 
 const S = createStage({ hatch: 0.18, hatchPhone: 0.24, drawSpan: [-2, 45], drawDir: [1, 0.9], wipe: [-10, 26], soft: 1.6 });
 

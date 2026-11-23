@@ -1,10 +1,12 @@
 // Wohnungsfinder Dortmund: the whole city as one three.js map.
 // The overview (ground, water, green, streets, every building as a flat block) is one file. Coming closer, the
-// tiles around the view load their full detail in a worker and the buildings rise. Twelve invented projects stand on
-// the map as violet models with a pin; a click opens their card, "Entdecken" leads to the page of the project.
+// tiles around the view load their full detail in a worker and the buildings rise. Six invented projects stand on
+// the map as small site plans with a pin; a click opens their card, "Entdecken" leads to the houses of the project.
+// The panel lists the projects, every free house (with a filter) and what the builder does.
 import * as THREE from 'three';
 import { loadPack } from './data.js';
-import { low, mid, governor, visible, isTouch } from './quality.js';
+window.__boot = true;                                      // the modules have arrived (see the note for old browsers in the page)
+import { low, mid, governor, visible, isTouch, safeMode, enterSafeMode } from './quality.js';
 import { projectGeometry, projectMaterial } from './models.js';
 
 THREE.ColorManagement.enabled = false;                    // flat colours, written exactly as they should appear
@@ -20,26 +22,14 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // title sequence. Both pages load the same three.js file, so it is in the cache already.
 const SITE = new URL('../../', import.meta.url).href;
 const HOUSES = SITE + 'haeuser/?at=310&id=';
-// Getting there fast. Once the map stands, the files of the houses page are fetched into the cache. When a card
-// is open and the camera has landed, the browser is asked to prepare that very page in the background
-// (speculation rules: Chrome and Edge build it completely, so the click shows it at once; others ignore the hint).
+// Getting there fast. Once the map stands, the files of the houses page are fetched into the cache, so the click
+// on "Entdecken" finds them there. The page itself is not built ahead in the background: a second 3D scene behind
+// the map costs the graphics card twice the memory, and that is what took the browser down on weaker machines.
 const hint = (href, as) => { const l = document.createElement('link'); l.rel = 'prefetch'; l.href = href; if (as) l.as = as; document.head.appendChild(l); };
 function warmHouses() {
-  for (const f of ['engine/elevation.js', 'engine/quality.js', 'haeuser/page.js']) hint(SITE + f, 'script');
+  for (const f of ['engine/elevation.js', 'engine/quality.js', 'engine/interior.js', 'haeuser/page.js', 'dortmund/js/looks.js', 'vendor/three/addons/lines/LineSegments2.js', 'vendor/three/addons/lines/LineSegmentsGeometry.js', 'vendor/three/addons/lines/LineMaterial.js', 'vendor/three/addons/utils/BufferGeometryUtils.js']) hint(SITE + f, 'script');
   hint(SITE + 'engine/page.css', 'style');
-  hint('https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,600;0,700;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap', 'style');
-}
-let specEl = null, specT = 0;
-function prepare(url) {
-  clearTimeout(specT);
-  if (!HTMLScriptElement.supports || !HTMLScriptElement.supports('speculationrules')) { if (url) hint(url, 'document'); return; }
-  specT = setTimeout(() => {
-    specEl?.remove(); specEl = null;
-    if (!url) return;
-    specEl = document.createElement('script'); specEl.type = 'speculationrules';
-    specEl.textContent = JSON.stringify({ prerender: [{ urls: [url] }] });
-    document.head.appendChild(specEl);
-  }, url ? 1700 : 0);
+  for (const f of ['ChakraPetch-600', 'IBMPlexMono-500']) hint(SITE + `vendor/fonts/${f}.woff2`, 'font');
 }
 const OBJ = document.body.dataset.page === 'objekt';       // objekt.html: one project in its neighbourhood, the camera circles it
 const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
@@ -51,27 +41,72 @@ const COL = {
 
 // ------------------------------------------------------------------------------------------------ text
 const I18N = {
-  de: { menu: 'Menü', district: 'Stadtteil', contact: 'Kontakt', projects: 'Projekte', projectsSub: 'Sechs Neubauprojekte in Dortmund. Wählen Sie eines, die Karte fliegt hin.',
-    invented: 'Alle Projekte, Preise und Daten sind erfunden.', price: 'Kaufpreis', size: 'Wohnfläche', ready: 'Fertigstellung', discover: 'Entdecken',
-    contactTitle: 'Rückruf anfordern', contactText: 'Das ist eine Demo: Hier stünde das Kontaktformular des Maklers. Es wird nichts gesendet.', contactCta: 'Verstanden',
+  de: { menu: 'Menü', district: 'Stadtteil', contact: 'Anfrage', projects: 'Projekte', projectsSub: 'Sechs Neubauprojekte in Dortmund. Wählen Sie eines, die Karte fliegt hin.',
+    invented: 'Portfolio-Demo: Alle Projekte, Preise und Daten sind erfunden.', price: 'Kaufpreis', size: 'Wohnfläche', ready: 'Fertigstellung', discover: 'Häuser ansehen',
     hint: isTouch ? 'Karte ziehen · zoomen' : 'Karte bewegen', loading: 'Lädt', all: 'Ganz Dortmund', city: 'City',
-    details: 'Datenblatt', units: 'Einheiten', free: 'Frei', freeWord: 'frei', arch: 'Architektur', type: 'Bauform', mix: 'Wohnungsmix', features: 'Besonderheiten', call: 'Rückruf anfordern', back: 'Zurück zur Karte',
-    maps: 'Google Maps', spin: 'Drehen', inside: 'Häuser ansehen', site: 'Lage in 3D', hintObj: 'Ziehen zum Drehen' },
-  en: { menu: 'Menu', district: 'District', contact: 'Reach out', projects: 'Projects', projectsSub: 'Six new developments in Dortmund. Pick one and the map flies there.',
-    invented: 'All projects, prices and dates are invented.', price: 'Price', size: 'Living area', ready: 'Handover', discover: 'Discover',
-    contactTitle: 'Request a call', contactText: 'This is a demo: the agent\'s contact form would be here. Nothing is sent.', contactCta: 'Got it',
+    details: 'Datenblatt', units: 'Einheiten', free: 'Frei', freeWord: 'frei', arch: 'Architektur', type: 'Bauform', mix: 'Wohnungsmix', features: 'Besonderheiten', call: 'Besichtigung anfragen', back: 'Zurück zur Karte',
+    maps: 'Google Maps', spin: 'Drehen', inside: 'Häuser ansehen', site: 'Lage in 3D', hintObj: 'Ziehen zum Drehen',
+    freeHouses: 'Freie Häuser', service: 'Leistungen', housesSub: 'Alle freien Häuser der sechs Projekte. Ein Klick führt hinein.', fAll: 'Alle', fRooms: 'Zimmer', fMax: 'Kaufpreis bis',
+    noHouse: 'Kein freies Haus passt zu dieser Auswahl.', house: 'Haus', progress: 'Baufortschritt', tech: 'Bau & Technik', build: 'Bauweise', energy: 'Energie', heat: 'Heizung', houses: 'Häuser',
+    soldW: 'verkauft', next: 'Als Nächstes', enter: 'ansehen', legendFree: 'frei', legendSold: 'verkauft', about: 'Über diese Seite', aboutTitle: 'Über diese Seite',
+    aboutBody: ['Diese Seite ist eine Portfolio-Demo: ein Wohnungsfinder, wie ihn ein Bauunternehmen oder Bauträger für seine Neubauprojekte einsetzen kann. Alle Projekte, Häuser, Preise und Termine sind erfunden.',
+      'Die Karte zeigt ganz Dortmund aus OpenStreetMap-Daten. Jedes Projekt führt zu seinen Häusern: freie Häuser lassen sich betreten, jedes mit eigenem Grundriss, eigener Ausstattung und eigenem Exposé.',
+      'Datenschutz: keine Cookies, kein Tracking, keine externen Dienste. Skripte, Schriften und Kartendaten liegen auf diesem Server. Die Anfrageformulare senden und speichern nichts.'],
+    contactTitle: 'Anfrage', contactText: 'Besichtigung, Rückruf oder Unterlagen: Wir melden uns innerhalb eines Werktags.', cKind: 'Anliegen', cProject: 'Projekt', cAny: 'Allgemeine Anfrage', cName: 'Name', cTel: 'Telefon', cMail: 'E-Mail', cMsg: 'Nachricht',
+    cKinds: ['Besichtigung auf der Baustelle', 'Rückruf', 'Exposé und Baubeschreibung per E-Mail', 'Beratung zur Finanzierung'],
+    cOk: 'Ich bin einverstanden, dass meine Angaben zur Bearbeitung der Anfrage verwendet werden.', cSend: 'Anfrage senden', cThanks: 'Vielen Dank', cDone: 'Ihre Anfrage wäre jetzt beim Vertrieb. Wir würden uns innerhalb eines Werktags melden.',
+    cDemo: 'Dies ist eine Portfolio-Demo: Es wurde nichts gesendet und nichts gespeichert.', close: 'Schließen',
+    lost: 'Der Browser hat die Grafik angehalten. Die Karte startet in einer sparsamen Darstellung neu.', reload: 'Neu laden',
+    phases: ['Planung & Genehmigung', 'Erdarbeiten & Bodenplatte', 'Rohbau', 'Dach & Fenster', 'Innenausbau', 'Übergabe'],
+    svcTitle: 'Bauen aus einer Hand', svcLead: 'Vom Grundstück bis zur Schlüsselübergabe: ein Vertrag, ein Ansprechpartner, ein fester Preis.',
+    svc: [['Schlüsselfertig zum Festpreis', 'Der Kaufpreis steht im Vertrag und bleibt. Er umfasst Haus, Außenanlagen und Hausanschlüsse.'],
+      ['Eigene Bauleitung', 'Jede Baustelle hat ihren Bauleiter. Den Stand jedes Projekts zeigt diese Karte: von der Bodenplatte bis zur Übergabe.'],
+      ['Bemusterung am Modell', 'Boden, Einbauten und Arbeitsplatte wählen Sie im begehbaren Haus und sehen sofort, wie es wirkt.'],
+      ['Energie und Technik', 'Effizienzhaus 40 mit Wärmepumpe, Fußbodenheizung und Photovoltaik. Die Baubeschreibung steht im Exposé jedes Hauses.'],
+      ['Übergabe mit Gewähr', 'Abnahme mit Protokoll, fünf Jahre Gewährleistung, ein fester Ansprechpartner auch danach.']],
+    phasesTitle: 'Bauablauf in sechs Schritten', svcNote: 'Beispielinhalt einer Portfolio-Demo.' },
+  en: { menu: 'Menu', district: 'District', contact: 'Enquiry', projects: 'Projects', projectsSub: 'Six new developments in Dortmund. Pick one and the map flies there.',
+    invented: 'Portfolio demo: all projects, prices and dates are invented.', price: 'Price', size: 'Living area', ready: 'Handover', discover: 'View the houses',
     hint: isTouch ? 'Drag the map · pinch to zoom' : 'Move around', loading: 'Loading', all: 'All of Dortmund', city: 'City centre',
-    details: 'Data sheet', units: 'Units', free: 'Available', freeWord: 'free', arch: 'Architecture', type: 'Type', mix: 'Unit mix', features: 'Notable features', call: 'Request a call', back: 'Return to map',
-    maps: 'Google Maps', spin: 'Rotate', inside: 'View the houses', site: 'Location in 3D', hintObj: 'Drag to rotate' },
+    details: 'Data sheet', units: 'Units', free: 'Available', freeWord: 'free', arch: 'Architecture', type: 'Type', mix: 'Unit mix', features: 'Notable features', call: 'Request a viewing', back: 'Return to map',
+    maps: 'Google Maps', spin: 'Rotate', inside: 'View the houses', site: 'Location in 3D', hintObj: 'Drag to rotate',
+    freeHouses: 'Free houses', service: 'Services', housesSub: 'Every available house of the six projects. One click takes you inside.', fAll: 'All', fRooms: 'rooms', fMax: 'Price up to',
+    noHouse: 'No available house matches this selection.', house: 'House', progress: 'Construction', tech: 'Construction & services', build: 'Construction', energy: 'Energy', heat: 'Heating', houses: 'Houses',
+    soldW: 'sold', next: 'Next', enter: 'view', legendFree: 'available', legendSold: 'sold', about: 'About this site', aboutTitle: 'About this site',
+    aboutBody: ['This site is a portfolio demo: a home finder as a builder or developer could use it for new developments. All projects, houses, prices and dates are invented.',
+      'The map shows all of Dortmund from OpenStreetMap data. Every project leads to its houses: available houses can be entered, each with its own plan, its own fit-out and its own data sheet.',
+      'Privacy: no cookies, no tracking, no third-party services. Scripts, fonts and map data are served from this site. The enquiry forms send and store nothing.'],
+    contactTitle: 'Enquiry', contactText: 'A viewing, a call back or documents: we reply within one working day.', cKind: 'Subject', cProject: 'Project', cAny: 'General enquiry', cName: 'Name', cTel: 'Phone', cMail: 'E-mail', cMsg: 'Message',
+    cKinds: ['Viewing on site', 'Call back', 'Data sheet and specification by e-mail', 'Advice on financing'],
+    cOk: 'I agree that my details are used to handle this enquiry.', cSend: 'Send enquiry', cThanks: 'Thank you', cDone: 'Your enquiry would now be with the sales team. We would reply within one working day.',
+    cDemo: 'This is a portfolio demo: nothing was sent and nothing was stored.', close: 'Close',
+    lost: 'The browser has stopped the graphics. The map restarts in a lighter mode.', reload: 'Reload',
+    phases: ['Planning & permit', 'Groundworks & slab', 'Shell', 'Roof & windows', 'Fit-out', 'Handover'],
+    svcTitle: 'Building from one source', svcLead: 'From the plot to the keys: one contract, one contact, one fixed price.',
+    svc: [['Turnkey at a fixed price', 'The price stands in the contract and stays. It covers house, grounds and connections.'],
+      ['Our own site management', 'Every site has its manager. This map shows how far each project is: from the slab to the handover.'],
+      ['Choosing finishes in the model', 'Pick floor, joinery and worktop in the house you can walk through, and see at once how it looks.'],
+      ['Energy and services', 'Efficiency House 40 with heat pump, underfloor heating and photovoltaics. The specification is in the data sheet of every house.'],
+      ['Handover with warranty', 'Acceptance with a record, five years of warranty, one contact afterwards too.']],
+    phasesTitle: 'Six steps to a finished house', svcNote: 'Sample content of a portfolio demo.' },
 };
-let lang = (Q.get('lang') || localStorage.getItem('wf-lang') || 'de') === 'en' ? 'en' : 'de';
+const stored = (() => { try { return localStorage.getItem('wf-lang'); } catch (e) { return null; } })();     // a browser that blocks storage must not stop the map
+let lang = (Q.get('lang') || stored || 'de') === 'en' ? 'en' : 'de';
 const T = (k) => I18N[lang][k] ?? k;
 const pf = (p, k) => (lang === 'en' && p.en && p.en[k]) || p[k];
 const freeOf = (p) => (lang === 'en' ? `${p.free} of ${p.total}` : `${p.free} von ${p.total}`);
+const bf = (p, k) => (lang === 'en' && p.build?.en?.[k]) || p.build?.[k];          // how far the building is
+const sf = (p, k) => (lang === 'en' && p.spec?.en?.[k]) || p.spec?.[k];            // how it is built
+const money = (s) => (lang === 'en' ? '€' + s.replace(/[^\d.]/g, '').replace(/\./g, ',') : s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const houseUrl = (p, no) => `${HOUSES}${p.id}&haus=${parseInt(no, 10)}`;
+const phaseHtml = (p) => `<ol class="phases">${T('phases').map((n, k) => `<li class="${k < p.build.phase ? 'done' : k === p.build.phase ? 'now' : ''}">${n}</li>`).join('')}</ol>`;
 
 // ------------------------------------------------------------------------------------------------ renderer
 const canvas = $('gl');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false }); }
+catch (e) { $('ldText').textContent = lang === 'en' ? 'This browser provides no WebGL. Please use a current browser.' : 'Dieser Browser stellt kein WebGL bereit. Bitte einen aktuellen Browser verwenden.'; throw e; }
 renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
 renderer.setClearColor(COL.bg);
 const scene = new THREE.Scene();
@@ -94,6 +129,16 @@ const gov = governor({ apply: (dpr) => { renderer.setPixelRatio(dpr); resize(); 
   }, { passive: true });
 }
 document.addEventListener('visibilitychange', invalidate);
+// The browser may take the WebGL context away (memory, a driver that hangs). Say so, and start again on the lowest
+// tier: never more than twice in a row on its own.
+let lost = false;
+canvas.addEventListener('webglcontextlost', (e) => {
+  e.preventDefault(); lost = true; enterSafeMode();
+  const el = document.body.appendChild(document.createElement('div')); el.className = 'lost';
+  el.innerHTML = `<p>${T('lost')}<br><br><a href="" onclick="location.reload();return false">${T('reload')}</a></p>`;
+  let n = 0; try { n = +sessionStorage.getItem('wf-lost') || 0; sessionStorage.setItem('wf-lost', String(n + 1)); } catch (err) {}
+  if (n < 2 && !safeMode) setTimeout(() => location.reload(), 1600);
+});
 
 // ------------------------------------------------------------------------------------------------ camera
 // The camera looks at a point on the ground. Far away it looks almost straight down, close up it leans over.
@@ -293,10 +338,12 @@ const sMat = flatMat(COL.small, 7);
 const NEAR_DIST = low ? 2500 : 4300;                             // closer than this, full detail is shown
 const NEAR_R = low ? 1150 : mid ? 2000 : 2700;
 const TILE_KEEP = low ? 30 : mid ? 60 : 110;
-const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
+// without a worker (a very old browser) the overview stays: no building rises, but nothing breaks
+let worker = null;
+try { worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' }); } catch (e) { console.warn(e); }
 let inFlight = 0, reqId = 0;
 const DATA = new URL('../data/', import.meta.url).href;
-worker.onmessage = (e) => {
+const onTile = (e) => {
   inFlight--;
   const d = e.data, t = tiles.get(d.tx + '_' + d.tz);
   if (!t) return;
@@ -322,7 +369,9 @@ worker.onmessage = (e) => {
   tileGroup.add(g); invalidate(); pump();
 };
 const queue = [];
+if (worker) { worker.onmessage = onTile; worker.onerror = (e) => { console.warn('tile worker', e.message); }; }
 function pump() {
+  if (!worker) { queue.length = 0; return; }
   while (inFlight < 2 && queue.length) {
     const t = queue.shift();
     if (!t.want || t.state !== 'queued') { if (t.state === 'queued') t.state = 'idle'; continue; }
@@ -466,8 +515,8 @@ function openProject(p, quick = false) {
   $('popMark').textContent = p.mark; $('popName').textContent = p.name; $('popDistrict').textContent = pf(p, 'district');
   $('popPrice').textContent = pf(p, 'price'); $('popSize').textContent = pf(p, 'size'); $('popReady').textContent = pf(p, 'ready');
   $('popFree').textContent = freeOf(p); $('popType').textContent = pf(p, 'type');
+  if (p.build) { $('popBuild').textContent = `${T('phases')[p.build.phase]} · ${p.build.pct} %`; $('popBar').style.width = p.build.pct + '%'; }
   $('popLink').href = HOUSES + p.id;                                  // the houses of the project: which are free, which are sold
-  if (!quick) prepare(HOUSES + p.id);
   $('popSite').href = `objekt.html?id=${p.id}${lang === 'en' ? '&lang=en' : ''}`;
   $('popup').hidden = false; $('live').textContent = `${p.name}, ${pf(p, 'district')}, ${pf(p, 'price')}`;
   // fly so that the building sits in the lower half and the card has room above it
@@ -475,7 +524,7 @@ function openProject(p, quick = false) {
   flyTo({ x: p.x - Math.sin(cam.az) * off, z: p.z - Math.cos(cam.az) * off, dist: d }, quick ? 0.01 : 1.4);
   closeAll(); interacted(); invalidate();
 }
-function closePopup() { if (!active || OBJ) return; prepare(null); active.pin.classList.remove('on'); active = null; $('popup').hidden = true; invalidate(); }
+function closePopup() { if (!active || OBJ) return; active.pin.classList.remove('on'); active = null; $('popup').hidden = true; invalidate(); }
 function stepOverlay() {
   const s = projScale(), far = cam.dist > 5200;
   if (OBJ) return;
@@ -497,7 +546,7 @@ function stepOverlay() {
   }
   $('north').style.setProperty('--az', (cam.az * 180 / Math.PI).toFixed(1) + 'deg');
 }
-on('callBtn', 'click', () => { $('contact').hidden = false; });
+on('callBtn', 'click', () => openContact());
 on('spinBtn', 'click', () => { spin = !spin; spinHold = 0; $('spinBtn').setAttribute('aria-pressed', String(spin)); invalidate(); });
 on('sheetGrab', 'click', () => { const d = $('sheet').classList.toggle('down'); $('sheetGrab').setAttribute('aria-expanded', String(!d)); setTimeout(layoutObj, 340); });
 
@@ -510,10 +559,27 @@ function closeAll(except) {
   if (except !== 'menu' && $('menu')) { $('menu').hidden = true; $('menuBtn').setAttribute('aria-expanded', 'false'); }
   if (except !== 'city' && $('cityList')) { $('cityList').hidden = true; $('cityBtn').setAttribute('aria-expanded', 'false'); }
   if (except !== 'contact') $('contact').hidden = true;
+  if ($('about')) $('about').hidden = true;
+}
+const flt = { rooms: 0, max: 0 };
+const priceNo = (h) => parseInt(String(h.price || '').replace(/\D/g, ''), 10) || 0;
+function fillHouses() {
+  const ul = $('houseList'); if (!ul) return;
+  const rows = [];
+  for (const p of PROJECTS) for (const r of p.rows) for (const h of r.houses) if (h.status === 'Frei' && (!flt.rooms || h.rooms === flt.rooms) && priceNo(h) <= flt.max) rows.push([p, h]);
+  rows.sort((a, b) => priceNo(a[1]) - priceNo(b[1]));
+  $('fMaxV').textContent = money(flt.max.toLocaleString('de-DE') + ' €');
+  ul.innerHTML = rows.length ? rows.map(([p, h]) => `<li><a href="${houseUrl(p, h.no)}"><span class="no">${h.no}</span><span class="t"><b>${T('house')} ${h.no} · ${esc(p.name)}</b><span>${h.rooms} ${T('fRooms')} · ${h.area} m² · ${esc(pf(p, 'district'))}</span></span><span class="p">${money(h.price)}<small>${T('enter')} →</small></span></a></li>`).join('')
+    : `<li class="empty">${T('noHouse')}</li>`;
 }
 function buildUi() {
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = T(el.dataset.i18n); });
   $('langBtn').textContent = lang === 'de' ? 'DE' : 'EN'; document.documentElement.lang = lang;
+  // the enquiry and the note about the site are the same on both pages
+  $('cKind').innerHTML = T('cKinds').map((k) => `<option>${k}</option>`).join('');
+  $('cProject').innerHTML = PROJECTS.map((p) => `<option value="${p.id}">${esc(p.name)} · ${esc(pf(p, 'district'))}</option>`).join('') + `<option value="">${T('cAny')}</option>`;
+  $('cProject').value = (THE || active || {}).id ?? '';
+  $('aboutBody').innerHTML = T('aboutBody').map((t) => `<p>${t}</p>`).join('');
   if (OBJ) return fillSheet();
   const ul = $('cityList'); ul.innerHTML = '';
   const add = (text, fn, cls) => { const li = document.createElement('li'); li.textContent = text; li.tabIndex = 0; li.setAttribute('role', 'option'); if (cls) li.className = cls;
@@ -524,13 +590,45 @@ function buildUi() {
   const pl = $('projectList'); pl.innerHTML = '';
   for (const p of PROJECTS) {
     const li = document.createElement('li'), b = document.createElement('button');
-    b.innerHTML = `<span class="mark"></span><span class="t"><b></b><span></span></span><span class="p"></span>`;
+    b.innerHTML = `<span class="mark"></span><span class="t"><b></b><span></span><span class="s"></span></span><span class="p"></span>`;
     b.querySelector('.mark').textContent = p.mark; b.querySelector('b').textContent = p.name;
     b.querySelector('.t span').textContent = `${pf(p, 'type')} · ${pf(p, 'district')}`; b.querySelector('.p').innerHTML = `${pf(p, 'price')}<small>${freeOf(p)} ${T('freeWord')}</small>`;
+    if (p.build) b.querySelector('.s').innerHTML = `<i>${T('phases')[p.build.phase]} · ${p.build.pct} %</i>`;
     b.addEventListener('click', () => openProject(p)); li.appendChild(b); pl.appendChild(li);
   }
+  // the free houses, with their filter: rooms, and a price they must not exceed
+  const prices = PROJECTS.flatMap((p) => p.rows.flatMap((r) => r.houses.filter((h) => h.status === 'Frei').map(priceNo)));
+  const lo = Math.floor(Math.min(...prices) / 5000) * 5000, hi = Math.ceil(Math.max(...prices) / 5000) * 5000;
+  $('fMax').min = lo; $('fMax').max = hi; if (!flt.max) flt.max = hi; $('fMax').value = flt.max;
+  $('fRooms').innerHTML = [0, 4, 5].map((n) => `<button type="button" data-n="${n}" aria-pressed="${flt.rooms === n}">${n ? n + ' ' + T('fRooms') : T('fAll')}</button>`).join('');
+  fillHouses();
+  $('serviceBody').innerHTML = `<h3>${T('svcTitle')}</h3><p>${T('svcLead')}</p><dl>${T('svc').map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join('')}</dl><h4>${T('phasesTitle')}</h4><ol>${T('phases').map((n) => `<li>${n}</li>`).join('')}</ol><p style="margin-top:14px;color:var(--mute);font-size:12px">${T('svcNote')}</p>`;
   if (active) openProject(active, true);
 }
+on('fRooms', 'click', (e) => { const b = e.target.closest('button'); if (!b) return; flt.rooms = +b.dataset.n; [...$('fRooms').children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); fillHouses(); });
+on('fMax', 'input', (e) => { flt.max = +e.target.value; fillHouses(); });
+document.querySelectorAll('.tabs button').forEach((b) => b.addEventListener('click', () => {
+  document.querySelectorAll('.tabs button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+  document.querySelectorAll('#menu [data-pane]').forEach((s) => { s.hidden = s.dataset.pane !== b.dataset.tab; });
+}));
+// the enquiry: a form that checks what is entered. A demo: nothing is sent or stored
+on('contactForm', 'submit', (e) => {
+  e.preventDefault();
+  const form = e.target; let ok = true;
+  for (const el of form.querySelectorAll('[required]')) {
+    const bad = el.type === 'checkbox' ? !el.checked : !el.value.trim() || (el.type === 'email' && !/^\S+@\S+\.\S+$/.test(el.value.trim()));
+    el.closest('label').classList.toggle('bad', bad); if (bad && ok) { el.focus(); ok = false; }
+  }
+  if (!ok) return;
+  $('contactDone').innerHTML = `<h3>${T('cThanks')}, ${esc($('cName').value.trim())}.</h3><p>${T('cDone')}</p><p style="font-size:12.5px;color:var(--mute)">${T('cDemo')}</p><button class="cta" type="button" id="contactOk">${T('close')}</button>`;
+  $('contactOk').addEventListener('click', () => closeAll());
+  form.hidden = true; $('contactDone').hidden = false; form.reset();
+});
+function openContact() { closeAll(); $('contactForm').hidden = false; $('contactDone').hidden = true; $('cProject').value = (THE || active || {}).id ?? ''; $('contact').hidden = false; }
+on('menuAsk', 'click', () => openContact());
+on('aboutBtn', 'click', () => { closeAll(); $('about').hidden = false; });
+on('aboutClose', 'click', () => closeAll());
+on('about', 'click', (e) => { if (e.target === $('about')) closeAll(); });
 // objekt.html: the data sheet of the one project
 let THE = null;
 function fillSheet() {
@@ -543,6 +641,14 @@ function fillSheet() {
   const back = `./?p=${p.id}${lang === 'en' ? '&lang=en' : ''}`; $('backLink').href = back; $('homeLink').href = back;
   $('mapsLink').href = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lon}`;
   $('insideLink').href = HOUSES + p.id;
+  if (p.build) $('oBuild').innerHTML = `<div class="pbar" style="margin:6px 0 8px"><i style="width:${p.build.pct}%"></i></div><p><b>${p.build.pct} %</b> · ${esc(bf(p, 'note'))}. ${T('next')}: ${esc(bf(p, 'next'))}.</p>${phaseHtml(p)}`;
+  if (p.spec) {
+    $('oSpec').innerHTML = [['build', 'bauweise'], ['energy', 'energie'], ['heat', 'heizung']].map(([t, k]) => `<div><dt>${T(t)}</dt><dd>${esc(sf(p, k))}</dd></div>`).join('');
+    $('oExtras').innerHTML = sf(p, 'extras').map((x) => `<li>${esc(x)}</li>`).join('');
+  }
+  $('oHouses').innerHTML = p.rows.flatMap((r) => r.houses).map((h) => (h.status === 'Frei'
+    ? `<li><b>${T('house')} ${h.no}</b><span>${h.rooms} ${T('fRooms')} · ${h.area} m²</span><a href="${houseUrl(p, h.no)}">${money(h.price)} →</a></li>`
+    : `<li><b>${T('house')} ${h.no}</b><span>${h.rooms} ${T('fRooms')} · ${h.area} m²</span><span class="sold">${T('soldW')}</span></li>`)).join('');
 }
 function layoutObj() {            // keep the model in the free part of the screen: left of the sheet, or above it on a phone
   const sh = $('sheet'); if (!sh) return;
@@ -553,9 +659,8 @@ function layoutObj() {            // keep the model in the free part of the scre
 on('menuBtn', 'click', () => { const o = $('menu').hidden; closeAll(); $('menu').hidden = !o; $('menuBtn').setAttribute('aria-expanded', String(o)); });
 on('menuClose', 'click', () => closeAll());
 on('cityBtn', 'click', () => { const o = $('cityList').hidden; closeAll(); $('cityList').hidden = !o; $('cityBtn').setAttribute('aria-expanded', String(o)); });
-on('contactBtn', 'click', () => { closeAll(); $('contact').hidden = false; });
+on('contactBtn', 'click', () => openContact());
 on('contactClose', 'click', () => closeAll());
-on('contactOk', 'click', () => closeAll());
 on('contact', 'click', (e) => { if (e.target === $('contact')) closeAll(); });
 on('popClose', 'click', closePopup);
 on('langBtn', 'click', () => { lang = lang === 'de' ? 'en' : 'de'; try { localStorage.setItem('wf-lang', lang); } catch (e) {} buildUi(); });
@@ -627,7 +732,7 @@ let last = performance.now(), tileTick = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (!visible()) { gov.frame(now, false); return; }
+  if (!visible() || lost) { gov.frame(now, false); return; }
   const moving = stepCamera(dt);
   if (moving || dirty) {
     if (now - tileTick > 140 || Math.hypot(cam.x - lastTileCheck.x, cam.z - lastTileCheck.z) > 300) { tileTick = now; lastTileCheck = { x: cam.x, z: cam.z }; wantTiles(); }

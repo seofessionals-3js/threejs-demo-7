@@ -4,6 +4,7 @@
 // (every header's small hatched shadow becomes a real one), then drops low and rakes across the
 // wall until the pattern stands out, the lens inspects the proud headers, and steps through the open glass door.
 import { createStage, run, THREE, span, ease, smooth, lerp, CONVENTION } from '../engine/elevation.js';
+window.__boot = true;                                      // the modules have arrived (see the note for old browsers in the page)
 
 const S = createStage({ hatch: 0.055, hatchPhone: 0.065, drawSpan: [0, 6.2], wipe: [-5, 7], soft: 0.7, envScale: 0.55 });
 
