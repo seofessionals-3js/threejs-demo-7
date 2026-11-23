@@ -540,7 +540,7 @@ export function createStage(cfg = {}) {
                   float v1 = (1.0 - smoothstep(0.0, 0.07, abs(fract(q.x * 0.9 + q.y * 0.35 + wv) - 0.5))) * (0.4 + 0.6 * vnoise(q * 9.0));
                   float v2 = 1.0 - smoothstep(0.0, 0.03, abs(fract(q.x * 0.4 - q.y * 1.1 + wv * 1.7) - 0.5));
                   float lum = dot(diffuseColor.rgb, vec3(0.3, 0.6, 0.1));
-                  diffuseColor.rgb = mix(diffuseColor.rgb, lum < 0.15 ? vec3(0.72, 0.70, 0.66) : diffuseColor.rgb * 0.45, clamp(0.6 * v1 + 0.35 * v2, 0.0, 1.0));
+                  diffuseColor.rgb = mix(diffuseColor.rgb, lum < 0.15 ? vec3(0.62, 0.60, 0.57) : diffuseColor.rgb * 0.45, clamp(0.6 * v1 + 0.35 * v2, 0.0, 1.0) * (lum < 0.15 ? 0.6 : 1.0));   // pale veins in a dark stone, dark ones in a pale stone
                 } else if (uTx.x < 2.5) {
                   vec2 cq = q * 55.0, ic = floor(cq);
                   float hs = hash12(ic), dd = length(fract(cq) - 0.5 - 0.3 * (vec2(hash12(ic + 3.1), hash12(ic + 7.7)) - 0.5));
