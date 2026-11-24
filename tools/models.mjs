@@ -46,6 +46,15 @@ async function one(name, def) {
       await doc.transform(simplify({ simplifier: MeshoptSimplifier, ratio: Math.min(1, def.tris / now), error, lockBorder: false }));
     }
     await doc.transform(prune(), textureCompress({ encoder: sharp, resize: [def.tex, def.tex], targetFormat: 'png' }));
+    if (!lite) {                                   // the mean colour of each material (linear): the page can give a piece another colour and keep its folds
+      out.avg = {};
+      for (const m of doc.getRoot().listMaterials()) {
+        const t = m.getBaseColorTexture(); if (!t) continue;
+        const px = await sharp(Buffer.from(t.getImage())).resize(32, 32, { fit: 'fill' }).removeAlpha().raw().toBuffer(), a = [0, 0, 0], lin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+        for (let i = 0; i < px.length; i += 3) for (let k = 0; k < 3; k++) a[k] += lin(px[i + k] / 255);
+        out.avg[m.getName()] = a.map((v) => +(v / (px.length / 3)).toFixed(4));
+      }
+    }
     // colour and the packed occlusion/roughness/metal map as ETC1S, the relief as UASTC
     await doc.transform(
       ktx2({ imageDecoder: decode, slots: /^(baseColor|emissive)/, isUASTC: false, qualityLevel: 230, compressionLevel: 2, generateMipmap: true, isPerceptual: true, isSetKTX2SRGBTransferFunc: true }),
@@ -70,8 +79,9 @@ for (const [name, def] of Object.entries(LIST)) {
   catch (e) { console.log(name.padEnd(12), 'FAILED', String(e.stack || e).slice(0, 400)); }
   fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 1));
 }
-// what the engine has to know to place a model before it is there: its box as modelled (metres)
-const lines = Object.keys(LIST).filter((k) => manifest[k]).map((k) => `  ${k}: { min: [${manifest[k].min.join(', ')}], max: [${manifest[k].max.join(', ')}] },`);
+// what the engine has to know to place a model before it is there: its box as modelled (metres), and the mean colour
+// of each of its materials
+const lines = Object.keys(LIST).filter((k) => manifest[k]).map((k) => `  ${k}: { min: [${manifest[k].min.join(', ')}], max: [${manifest[k].max.join(', ')}], avg: ${JSON.stringify(manifest[k].avg || {})} },`);
 fs.writeFileSync(path.join(HERE, '..', 'engine', 'furniture.js'), `// Written by tools/models.mjs: the furniture under assets/models/ (sources and licences: assets/models/CREDITS.md).\nexport const FURNITURE = {\n${lines.join('\n')}\n};\n`);
 const credits = Object.keys(LIST).filter((k) => manifest[k]).map((k) => `| \`models/${k}.glb\` | ${manifest[k].credit.replace(/, CC0, /, ' | CC0 | ')} |`);
 fs.writeFileSync(path.join(OUT, 'CREDITS.md'), `# Furniture\n\nAll models are CC0 (public domain). Thank you to Poly Haven.\n\n| File | Source | Licence | Link |\n|---|---|---|---|\n${credits.join('\n')}\n`);

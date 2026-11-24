@@ -437,7 +437,7 @@ export function createStage(cfg = {}) {
         vWP = (modelMatrix * wpp).xyz;
         vWN = normalize(mat3(modelMatrix) * objectNormal);
         vSky = vec4(elevSky(vWN, 1.0), 0.87 + 0.13 * dot(vWN, vec3(0.45, 0.65, 0.61)));`);
-      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\n#define ELEV_SHINY ${shiny}\n#define ELEV_TEX ${tex}\n#define ELEV_NRM ${nrm}\nvarying vec3 vWP; varying vec3 vWN; varying vec4 vSky; uniform vec3 uHemiSky; uniform vec3 uHemiGround; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx; uniform float uGlass;\n#if ELEV_TEX == 1\nuniform sampler2D tCol; uniform sampler2D tOrm; uniform sampler2D tNrm; uniform vec4 uTex; uniform vec4 uTexK; uniform float uTexN;\n#endif\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0; float elevAo = 1.0; vec3 elevTn = vec3(0.0, 0.0, 1.0);\n${GLSL_COMMON}${GLSL_KINDS}${GLSL_SKY}
+      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\n#define ELEV_SHINY ${shiny}\n#define ELEV_TEX ${tex}\n#define ELEV_NRM ${nrm}\nvarying vec3 vWP; varying vec3 vWN; varying vec4 vSky; uniform vec3 uHemiSky; uniform vec3 uHemiGround; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx; uniform float uGlass; uniform vec4 uRecol; uniform float uRecolL;\n#if ELEV_TEX == 1\nuniform sampler2D tCol; uniform sampler2D tOrm; uniform sampler2D tNrm; uniform vec4 uTex; uniform vec4 uTexK; uniform float uTexN;\n#endif\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0; float elevAo = 1.0; vec3 elevTn = vec3(0.0, 0.0, 1.0);\n${GLSL_COMMON}${GLSL_KINDS}${GLSL_SKY}
       ` + sh.fragmentShader
           // the sun's shadow, read once per pixel and used twice: by the light of the real model and by the hatching.
           // The depth bias follows the slope of the surface to the sun, so a brick 60 mm proud keeps its small shadow.
@@ -706,6 +706,9 @@ export function createStage(cfg = {}) {
                 diffuseColor.rgb *= uGlass;
               #elif KIND == 9
                 diffuseColor.rgb *= 0.94 + 0.10 * vnoise(q * 45.0);
+              #elif KIND == 16
+                // a model in another colour: its own picture only says where it is lighter and darker than its mean
+                if (uRecol.a > 0.0) diffuseColor.rgb = mix(diffuseColor.rgb, uRecol.rgb * mix(1.0, clamp(dot(diffuseColor.rgb, vec3(0.3, 0.6, 0.1)) * uRecolL, 0.3, 1.9), 0.4), uRecol.a);
               #endif
             }`)
           .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
@@ -860,18 +863,22 @@ export function createStage(cfg = {}) {
   }
   const modelOf = (name) => (MODELS[name] && MODELS[name].parts ? MODELS[name] : null);
   // the material of a part, lit like everything else on the sheet. o.in: how much of the room light it gets, o.color: a
-  // tint over its own colour, o.glow: it shines (the globe of a lamp)
+  // tint over its own colour, o.recolor: another colour in its place, o.glow: it shines (the globe of a lamp)
   function modelMat(src, o = {}) {
-    const key = [src.uuid, o.in || 0, o.color ?? '', o.glow || 0].join('|');
+    const key = [src.uuid, o.in || 0, o.color ?? '', o.glow || 0, o.recolor ?? ''].join('|');
     if (MMATS[key]) return MMATS[key];
     const m = new THREE.MeshStandardMaterial({ color: src.color, roughness: src.roughness, metalness: src.metalness, map: src.map, normalMap: TEX_NRM ? src.normalMap : null,
       roughnessMap: src.roughnessMap, metalnessMap: src.metalnessMap, aoMap: src.aoMap, alphaTest: src.alphaTest, side: src.side });
     if (m.normalMap) m.normalScale.copy(src.normalScale);
     if (o.color != null) m.color.multiply(new THREE.Color(o.color));
+    // another colour altogether: the picture of the piece keeps its light and dark (its folds, its seams), its mean
+    // colour (o.avg) becomes o.recolor. A leather sofa in the cloth of the house.
+    const rc = o.recolor != null && o.avg ? new THREE.Color(o.recolor) : null;
+    const recU = { uRecol: { value: rc ? new THREE.Vector4(rc.r, rc.g, rc.b, 1) : new THREE.Vector4(0, 0, 0, 0) }, uRecolL: { value: rc ? 1 / Math.max(0.3 * o.avg[0] + 0.6 * o.avg[1] + 0.1 * o.avg[2], 0.002) : 1 } };
     if (o.glow) { m.emissive.setHex(0xfff1dd); m.emissiveIntensity = o.glow; }
     m.envMapIntensity = 0.6 * (cfg.envScale || 1);
     Object.assign(m.userData, { kind: 'model', model: true });
-    dress(m, KIND.model, 0, 1, 0, 0, new THREE.Vector4(0, 1, 0, o.in || 0), new THREE.Vector4(), null);     // (uFx.y = 1: only on the real side of the scan. A drawing has no leather)
+    dress(m, KIND.model, 0, 1, 0, 0, new THREE.Vector4(0, 1, 0, o.in || 0), new THREE.Vector4(), recU);     // (uFx.y = 1: only on the real side of the scan. A drawing has no leather)
     return (MMATS[key] = m);
   }
   // a copy of a model into a house. at: where its foot stands, yaw: degrees about the upright axis (0: its front looks
@@ -880,7 +887,7 @@ export function createStage(cfg = {}) {
     const md = modelOf(name); if (!md) return false;
     const sc = Array.isArray(scale) ? scale : [scale, scale, scale];
     const M = new THREE.Matrix4().compose(new THREE.Vector3(...at), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw * Math.PI / 180), new THREE.Vector3(...sc));
-    md.parts.forEach((p) => add(p.geo.clone().applyMatrix4(M), modelMat(p.src, { in: o.in, color: o.color, glow: o.glowPart && o.glowPart.test(p.src.name) ? (o.glow || 1) : 0 }), 0, { parent: o.parent, cast: o.cast }));
+    md.parts.forEach((p) => add(p.geo.clone().applyMatrix4(M), modelMat(p.src, { in: o.in, color: o.color, recolor: o.recolor, avg: o.recolor != null ? (FURNITURE[name].avg || {})[p.src.name] : null, glow: o.glowPart && o.glowPart.test(p.src.name) ? (o.glow || 1) : 0 }), 0, { parent: o.parent, cast: o.cast }));
     return true;
   }
   // A soft dark patch on the floor under a piece of furniture: the room light comes from everywhere and throws no

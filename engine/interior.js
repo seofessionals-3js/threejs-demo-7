@@ -325,7 +325,7 @@ export function buildInterior(K, c) {
     const yaw = (typeof p.face === 'number' ? p.face : YAW[p.face]) * (doorL ? 1 : -1), a = yaw * Math.PI / 180, y = typeof p.y === 'function' ? p.y() : p.y;
     const cx = (f.min[0] + f.max[0]) / 2 * s[0], cz = (f.min[2] + f.max[2]) / 2 * s[2];                 // (the middle of its box comes to stand on the spot)
     K.placeModel(p.name, [X(p.x) - (cx * Math.cos(a) + cz * Math.sin(a)), y - f.min[1] * s[1], p.z - (-cx * Math.sin(a) + cz * Math.cos(a))], yaw, s,
-      { parent: gF, in: p.o.in ?? 1, color: p.o.color, glowPart: p.o.glowPart, glow: p.o.glow, cast: p.o.cast });
+      { parent: gF, in: p.o.in ?? 1, color: p.o.color, recolor: p.o.recolor, glowPart: p.o.glowPart, glow: p.o.glow, cast: p.o.cast });
     if (p.o.shade !== false && typeof p.y !== 'function') {                                              // its shadow on the floor
       const q = Math.abs(Math.round(yaw / 90) * 90 - yaw) < 1, turned = q && Math.abs(Math.round(yaw / 90)) % 2 === 1;
       const hw = (q ? (turned ? d0 * s[2] : w0 * s[0]) : hi(w0 * s[0], d0 * s[2])) / 2 + 0.09, hd = (q ? (turned ? w0 * s[0] : d0 * s[2]) : hi(w0 * s[0], d0 * s[2])) / 2 + 0.09;
@@ -403,7 +403,8 @@ export function buildInterior(K, c) {
   }
   function sofa(L, len, style = 0) {
     const [sx, sz] = L.at(len / 2, 0.46);
-    if (style === 0) piece('sofa', sx, G0, sz, L.face, { w: len, d: 0.92, h: 0.76, stretch: true }, () => sofaBoxes(L, len, style)); else pieces.push({ boxes: () => sofaBoxes(L, len, style), o: {} });
+    // two of the three makes are the buttoned sofa (a model), in the colour of the house's cloth; the third stays the low platform with loose cushions
+    if (style !== 1) piece('sofa', sx, G0, sz, L.face, { w: len, d: 0.92, h: 0.76, stretch: true }, () => sofaBoxes(L, len, style), { recolor: fit.sofa[0].color ?? 0xcdc5b5 }); else pieces.push({ boxes: () => sofaBoxes(L, len, style), o: {} });
   }
   function sofaBoxes(L, len, style) {
     const y = G0;

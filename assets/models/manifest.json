@@ -81,6 +81,13 @@
   "credit": "Poly Haven, \"Ottoman 01\" (Caspian Fortune), CC0, https://polyhaven.com/a/Ottoman_01"
  },
  "sofa": {
+  "avg": {
+   "sofa_02": [
+    0.012,
+    0.0052,
+    0.0024
+   ]
+  },
   "bytes": 361828,
   "tris": 2200,
   "from": 2728,
