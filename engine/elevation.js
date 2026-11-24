@@ -1055,9 +1055,9 @@ export function createStage(cfg = {}) {
       add(alongX(new THREE.Shape(V2([[0, 0], ...top, [-12.3, PAR - 0.3], [-12.3, 0]])), 0.3, side), brick, LW, O);
     }
     // the back of the house: the wall above the garden glass (down to the ground where nobody goes in), a low roof
-    // over the last bay. A house with the high living room at the garden has a window in it.
+    // over the last bay. Where somebody goes in, it has the windows of the rooms upstairs (the plan says which).
     if (!faint) {
-      add(panel([0, show ? L1 - 0.25 : 0, 6, PAR - 0.3], show && v.plan === 'B' ? [R4(1.3, 3.9, 4.7, 5.9)] : [], -12.3, -12.0), brick, 0, { parent: g });
+      add(panel([0, show ? L1 - 0.25 : 0, 6, PAR - 0.3], show ? (planInfo(PLANS[v.plan] ? v.plan : 'A', v.variant || 0).rear || []).map((h) => R4(...h)) : [], -12.3, -12.0), brick, 0, { parent: g });
       add(box(-0.02, PAR - 0.3, -12.34, 6.02, PAR - 0.22, -11.98), st, 0, { parent: g });
       add(box(0, PAR - 0.34, -12.0, 6, PAR - 0.2, -9.5), zm, 0, { parent: g });
     }
@@ -1114,6 +1114,29 @@ export function createStage(cfg = {}) {
       // a camera key from where the lens stands, written for a house with its door on the left
       // (see viewKey): the house mirrors it if its door is on the right
       key(p, cam, yaw, pitch, fov, fh, extra) { return viewKey(p, [ox + X(cam[0]), cam[1], zs + cam[2]], doorL ? yaw : -yaw, pitch, fov, fh, extra); },
+      // The way upstairs and down again, as camera keys: from the last station downstairs (`from`, at p.rear) to the
+      // bedroom (p.bed), the bath (p.bath), the foot of the stair again (p.down) and on towards `to` (at p.glass, not
+      // included). The plan gives the way as lists of places (PLANS[..].up). The stations stand at the given points
+      // of the scroll; the places between two of them are spread by how far apart they are and how far the lens
+      // turns, and are passed without a halt.
+      wayUp(p, from, to) {
+        const U = this.info.up, out = [], me = this;
+        const flow = { ease: (u) => u }, leave = { ease: (u) => u * u * (1.5 - 0.5 * u) }, arrive = { ease: (u) => 1 - (1 - u) * (1 - u) * (1.5 - 0.5 * (1 - u)) };
+        const st = (q, s, e) => me.key(q, s[0], s[1], s[2], s[3] || 58, s[4] || 2.4, e);
+        const spread = (p0, a, way, p1, b) => {
+          const pts = [a, ...way, b], w = [];
+          for (let j = 1; j < pts.length; j++) w.push(Math.hypot(pts[j][0][0] - pts[j - 1][0][0], pts[j][0][1] - pts[j - 1][0][1], pts[j][0][2] - pts[j - 1][0][2]) + Math.abs(((pts[j][1] - pts[j - 1][1]) % 360 + 540) % 360 - 180) * 0.011 + 0.25);
+          const sum = w.reduce((x, y) => x + y, 0); let acc = 0;
+          way.forEach((s, j) => { acc += w[j]; out.push(st(lerp(p0, p1, acc / sum), s, j === way.length - 1 ? arrive : flow)); });
+        };
+        const foot = U.c[U.c.length - 1];
+        out.push(st(p.rear, from, U.a.length ? leave : {}));
+        spread(p.rear, from, U.a, p.bed, U.bed); out.push(st(p.bed, U.bed, U.b.length ? leave : {}));
+        spread(p.bed, U.bed, U.b, p.bath, U.bath); out.push(st(p.bath, U.bath, leave));
+        spread(p.bath, U.bath, U.c.slice(0, -1), p.down, foot); out.push(st(p.down, foot, U.d.length ? leave : {}));
+        spread(p.down, foot, U.d, p.glass, to);
+        return out;
+      },
       // the rooms are drawn, or not (the lens is in another house)
       show(on) { shown = !!on; sync(); },
       // another floor, other joinery, another stone, while you look at it. role: 'floor' | 'wood' | 'stone', def: [kind, options]
@@ -1220,6 +1243,11 @@ export function createStage(cfg = {}) {
     const dir = [Math.sin(yaw * D2R) * Math.cos(pitch * D2R), Math.sin(pitch * D2R), Math.cos(yaw * D2R) * Math.cos(pitch * D2R)];
     return { p, t: [cam[0] - dir[0] * d, cam[1] - dir[1] * d, cam[2] - dir[2] * d], fh, fov, yaw, pitch, cam: [cam[0], cam[1], cam[2]], ...extra };
   }
+  // the lens always turns the short way round: every yaw of a walk is written as the one nearest to the yaw before it
+  function turnShort(keys) {
+    for (let j = 1; j < keys.length; j++) if (keys[j].cam && keys[j - 1].cam) keys[j].yaw -= Math.round((keys[j].yaw - keys[j - 1].yaw) / 360) * 360;
+    return keys;
+  }
   const lastTarget = new THREE.Vector3(), _dir = new THREE.Vector3();
   function setCam(c) {
     camera.fov = c.fov; camera.aspect = W / H;
@@ -1319,7 +1347,7 @@ export function createStage(cfg = {}) {
     THREE, U, scene, root, renderer, camera, sun, hemi, phone, tier, gov,
     get DPR() { return DPR; }, get W() { return W; }, get H() { return H; }, get lost() { return lost; },
     get dirty() { return dirty || shadowDirty || pending; }, touch() { dirty = true; },
-    mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, cut, camAt, setCam, viewKey, pin, placePins,
+    mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, cut, camAt, setCam, viewKey, turnShort, pin, placePins,
     flush, warm, render,
   }));
   return S;
@@ -1510,6 +1538,7 @@ export function run(S, o) {
       // Active zone highlight
       let activeZone = zoneAt(u);
       if (p > 340 && u < 0.2) activeZone = radarCfg.zones[1] || activeZone;
+      if (camPos.y > 4.2 && u > 0.2 && u < 12.1 && S.camera.fov > 22) activeZone = radarCfg.zones.find((z) => z.id === 'up') || activeZone;   // upstairs, if the page has a zone for it
       if (activeZone.id !== activeId) {
         activeId = activeZone.id;
         cmZones.forEach((el) => el.classList.toggle('active', el.dataset.id === activeId));

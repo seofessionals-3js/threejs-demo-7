@@ -20,8 +20,8 @@ Der Scrollablauf, der Reihe nach:
    Papier in weißen Backstein, Stein, Zink und Glas. Kein einziger Schatten bewegt sich.
 3. Dann wandert die Sonne zum [späten Nachmittag], und die Schatten gleiten über den Backstein.
 4. Die Kamera steigt die Stufen hinauf, die zwei Flügel der großen Glastür schwingen auf, und
-   sie geht auf Augenhöhe durch [die hohe Halle, am Wohnraum vorbei, durch Küche und Essplatz]
-   bis [in den Garten].
+   sie geht auf Augenhöhe durch [die hohe Halle, am Wohnraum vorbei, durch Küche und Essplatz],
+   die Treppe hinauf [ins Schlafzimmer und ins Bad], wieder hinunter und [in den Garten].
 5. Eine letzte Karte mit den Fakten und [Besichtigung buchen].
 
 Worauf es mir ankommt:
