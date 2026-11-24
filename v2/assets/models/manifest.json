@@ -1,0 +1,353 @@
+{
+ "armchair": {
+  "bytes": 525500,
+  "tris": 2599,
+  "from": 8916,
+  "min": [
+   -0.407,
+   0,
+   -0.575
+  ],
+  "max": [
+   0.414,
+   1.023,
+   0.411
+  ],
+  "mats": [
+   "modern_arm_chair_01_legs:OPAQUE",
+   "modern_arm_chair_01_pillow:OPAQUE"
+  ],
+  "liteBytes": 213428,
+  "credit": "Poly Haven, \"Modern Arm Chair 01\" (Vibrant Nordic), CC0, https://polyhaven.com/a/modern_arm_chair_01"
+ },
+ "lounge": {
+  "bytes": 379480,
+  "tris": 2400,
+  "from": 6148,
+  "min": [
+   -0.504,
+   0.001,
+   -0.661
+  ],
+  "max": [
+   0.504,
+   1.169,
+   0.528
+  ],
+  "mats": [
+   "mid_century_lounge_chair:OPAQUE"
+  ],
+  "liteBytes": 165196,
+  "credit": "Poly Haven, \"Mid Century Lounge Chair\" (Kuutti Siitonen), CC0, https://polyhaven.com/a/mid_century_lounge_chair"
+ },
+ "chair": {
+  "bytes": 332904,
+  "tris": 1299,
+  "from": 22013,
+  "min": [
+   -0.217,
+   0.002,
+   -0.331
+  ],
+  "max": [
+   0.215,
+   0.973,
+   0.245
+  ],
+  "mats": [
+   "dining_chair_02:OPAQUE"
+  ],
+  "liteBytes": 136764,
+  "credit": "Poly Haven, \"Dining Chair 02\" (James Ray Cock), CC0, https://polyhaven.com/a/dining_chair_02"
+ },
+ "ottoman": {
+  "bytes": 370256,
+  "tris": 1200,
+  "from": 4240,
+  "min": [
+   -0.438,
+   0,
+   -0.31
+  ],
+  "max": [
+   0.444,
+   0.624,
+   0.311
+  ],
+  "mats": [
+   "Ottoman_01:OPAQUE"
+  ],
+  "liteBytes": 145980,
+  "credit": "Poly Haven, \"Ottoman 01\" (Caspian Fortune), CC0, https://polyhaven.com/a/Ottoman_01"
+ },
+ "sofa": {
+  "avg": {
+   "sofa_02": [
+    0.012,
+    0.0052,
+    0.0024
+   ]
+  },
+  "bytes": 361828,
+  "tris": 2200,
+  "from": 2728,
+  "min": [
+   -0.903,
+   0,
+   -0.478
+  ],
+  "max": [
+   0.904,
+   0.71,
+   0.34
+  ],
+  "mats": [
+   "sofa_02:OPAQUE"
+  ],
+  "liteBytes": 136468,
+  "credit": "Poly Haven, \"Sofa 02\" (Kirill Sannikov), CC0, https://polyhaven.com/a/sofa_02"
+ },
+ "table_oak": {
+  "bytes": 230912,
+  "tris": 1200,
+  "from": 4504,
+  "min": [
+   -0.3,
+   0,
+   -0.601
+  ],
+  "max": [
+   0.3,
+   0.39,
+   0.601
+  ],
+  "mats": [
+   "modern_coffee_table_01:OPAQUE"
+  ],
+  "liteBytes": 131360,
+  "credit": "Poly Haven, \"Modern Coffee Table 01\" (Amin), CC0, https://polyhaven.com/a/modern_coffee_table_01"
+ },
+ "table_round": {
+  "bytes": 229984,
+  "tris": 1500,
+  "from": 4044,
+  "min": [
+   -0.651,
+   -0.001,
+   -0.651
+  ],
+  "max": [
+   0.651,
+   0.489,
+   0.651
+  ],
+  "mats": [
+   "coffee_table_round_01:OPAQUE"
+  ],
+  "liteBytes": 143864,
+  "credit": "Poly Haven, \"Coffee Table Round 01\" (Ulan Cabanilla), CC0, https://polyhaven.com/a/coffee_table_round_01"
+ },
+ "table_side": {
+  "bytes": 250412,
+  "tris": 899,
+  "from": 2756,
+  "min": [
+   -0.274,
+   -0.002,
+   -0.224
+  ],
+  "max": [
+   0.274,
+   0.548,
+   0.224
+  ],
+  "mats": [
+   "side_table_01:OPAQUE"
+  ],
+  "liteBytes": 149392,
+  "credit": "Poly Haven, \"Side Table 01\" (James Ray Cock), CC0, https://polyhaven.com/a/side_table_01"
+ },
+ "sideboard": {
+  "bytes": 307648,
+  "tris": 10418,
+  "from": 24976,
+  "min": [
+   -1.22,
+   0,
+   -0.27
+  ],
+  "max": [
+   1.219,
+   0.679,
+   0.25
+  ],
+  "mats": [
+   "modern_wooden_cabinet:OPAQUE"
+  ],
+  "liteBytes": 190184,
+  "credit": "Poly Haven, \"Modern Wooden Cabinet\" (Patrik Pangerl), CC0, https://polyhaven.com/a/modern_wooden_cabinet"
+ },
+ "shelf": {
+  "bytes": 263072,
+  "tris": 1600,
+  "from": 4348,
+  "min": [
+   -0.549,
+   -0.001,
+   -0.251
+  ],
+  "max": [
+   0.549,
+   2.139,
+   0.251
+  ],
+  "mats": [
+   "steel_frame_shelves_01:OPAQUE"
+  ],
+  "liteBytes": 148284,
+  "credit": "Poly Haven, \"Steel Frame Shelves 01\" (James Ray Cock), CC0, https://polyhaven.com/a/steel_frame_shelves_01"
+ },
+ "lamp": {
+  "bytes": 65008,
+  "tris": 699,
+  "from": 5602,
+  "min": [
+   -0.216,
+   0.221,
+   -0.212
+  ],
+  "max": [
+   0.214,
+   1.173,
+   0.215
+  ],
+  "mats": [
+   "modern_ceiling_lamp_01_glass:OPAQUE",
+   "modern_ceiling_globe:OPAQUE"
+  ],
+  "liteBytes": 34572,
+  "credit": "Poly Haven, \"Modern Ceiling Lamp 01\" (James Ray Cock), CC0, https://polyhaven.com/a/modern_ceiling_lamp_01"
+ },
+ "plant_a": {
+  "bytes": 788332,
+  "tris": 4195,
+  "from": 176226,
+  "min": [
+   -0.338,
+   0.001,
+   -0.364
+  ],
+  "max": [
+   0.249,
+   1.336,
+   0.27
+  ],
+  "mats": [
+   "potted_plant_01_pot:OPAQUE",
+   "potted_plant_01_leaves:MASK"
+  ],
+  "liteBytes": 319316,
+  "credit": "Poly Haven, \"Potted Plant 01\" (Rico Cilliers), CC0, https://polyhaven.com/a/potted_plant_01"
+ },
+ "plant_b": {
+  "bytes": 653872,
+  "tris": 4197,
+  "from": 69806,
+  "min": [
+   -0.396,
+   0.001,
+   -0.42
+  ],
+  "max": [
+   0.304,
+   0.84,
+   0.235
+  ],
+  "mats": [
+   "potted_plant_02_pot:OPAQUE",
+   "potted_plant_02_leaves:MASK"
+  ],
+  "liteBytes": 301348,
+  "credit": "Poly Haven, \"Potted Plant 02\" (Rico Cilliers), CC0, https://polyhaven.com/a/potted_plant_02"
+ },
+ "plant_c": {
+  "bytes": 124044,
+  "tris": 1400,
+  "from": 8929,
+  "min": [
+   -0.083,
+   0,
+   -0.083
+  ],
+  "max": [
+   0.084,
+   0.268,
+   0.094
+  ],
+  "mats": [
+   "potted_plant_04:OPAQUE"
+  ],
+  "liteBytes": 56916,
+  "credit": "Poly Haven, \"Potted Plant 04\" (James Ray Cock), CC0, https://polyhaven.com/a/potted_plant_04"
+ },
+ "vase_a": {
+  "bytes": 58412,
+  "tris": 1048,
+  "from": 10296,
+  "min": [
+   -0.101,
+   0.002,
+   -0.101
+  ],
+  "max": [
+   0.101,
+   0.401,
+   0.1
+  ],
+  "mats": [
+   "ceramic_vase_01:OPAQUE"
+  ],
+  "liteBytes": 23300,
+  "credit": "Poly Haven, \"Ceramic Vase 01\" (James Ray Cock), CC0, https://polyhaven.com/a/ceramic_vase_01"
+ },
+ "vase_b": {
+  "bytes": 87284,
+  "tris": 1000,
+  "from": 11128,
+  "min": [
+   -0.109,
+   0.004,
+   -0.108
+  ],
+  "max": [
+   0.108,
+   0.309,
+   0.109
+  ],
+  "mats": [
+   "ceramic_vase_02:OPAQUE"
+  ],
+  "liteBytes": 45140,
+  "credit": "Poly Haven, \"Ceramic Vase 02\" (James Ray Cock), CC0, https://polyhaven.com/a/ceramic_vase_02"
+ },
+ "vase_c": {
+  "bytes": 85272,
+  "tris": 1000,
+  "from": 9000,
+  "min": [
+   -0.089,
+   0.001,
+   -0.089
+  ],
+  "max": [
+   0.09,
+   0.342,
+   0.087
+  ],
+  "mats": [
+   "ceramic_vase_04:OPAQUE"
+  ],
+  "liteBytes": 45792,
+  "credit": "Poly Haven, \"Ceramic Vase 04\" (James Ray Cock), CC0, https://polyhaven.com/a/ceramic_vase_04"
+ }
+}

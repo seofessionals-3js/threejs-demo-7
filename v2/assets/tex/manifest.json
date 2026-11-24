@@ -1,0 +1,737 @@
+{
+ "brick_buff": {
+  "size": [
+   2.01,
+   2.01
+  ],
+  "avg": [
+   0.3583,
+   0.2341,
+   0.1672
+  ],
+  "rough": 0.933,
+  "ao": 0.942,
+  "normal": true,
+  "bytes": {
+   "c1024": 238758,
+   "c512": 84249,
+   "n512": 281135,
+   "o512": 65499
+  },
+  "credit": "Poly Haven, \"Brick Wall 09\" (Rob Tuytel, Matterfield), CC0, https://polyhaven.com/a/brick_wall_09"
+ },
+ "brick_long": {
+  "size": [
+   4,
+   4
+  ],
+  "avg": [
+   0.1481,
+   0.1019,
+   0.0624
+  ],
+  "rough": 0.964,
+  "ao": 0.949,
+  "normal": true,
+  "bytes": {
+   "c1024": 235064,
+   "c512": 80176,
+   "n512": 237116,
+   "o512": 51349
+  },
+  "credit": "Poly Haven, \"Brick Wall 11\" (Rob Tuytel), CC0, https://polyhaven.com/a/brick_wall_11"
+ },
+ "brick_dark": {
+  "size": [
+   1.9,
+   1.9
+  ],
+  "avg": [
+   0.0626,
+   0.0378,
+   0.0301
+  ],
+  "rough": 0.788,
+  "ao": 0.847,
+  "normal": true,
+  "bytes": {
+   "c1024": 235856,
+   "c512": 81962,
+   "n512": 246182,
+   "o512": 53349
+  },
+  "credit": "Poly Haven, \"Brick Wall 10\" (Dimitrios Savva), CC0, https://polyhaven.com/a/brick_wall_10"
+ },
+ "brick_white": {
+  "size": [
+   2,
+   2
+  ],
+  "avg": [
+   0.3839,
+   0.324,
+   0.2676
+  ],
+  "rough": 0.93,
+  "ao": 0.878,
+  "normal": true,
+  "bytes": {
+   "c1024": 241102,
+   "c512": 85217,
+   "n512": 250724,
+   "o512": 63660
+  },
+  "credit": "Poly Haven, \"Whitewashed Brick\" (Charlotte Baglioni), CC0, https://polyhaven.com/a/whitewashed_brick"
+ },
+ "brick_red": {
+  "size": [
+   1.25,
+   1.25
+  ],
+  "avg": [
+   0.3636,
+   0.1693,
+   0.1063
+  ],
+  "rough": 0.628,
+  "ao": 0.955,
+  "normal": true,
+  "bytes": {
+   "c1024": 241305,
+   "c512": 83889,
+   "n512": 228339,
+   "o512": 68171
+  },
+  "credit": "ambientCG, \"Bricks101\", CC0, https://ambientcg.com/a/Bricks101"
+ },
+ "render": {
+  "size": [
+   2,
+   2
+  ],
+  "avg": [
+   0.6838,
+   0.6563,
+   0.6334
+  ],
+  "rough": 0.791,
+  "ao": 1,
+  "normal": true,
+  "bytes": {
+   "c1024": 200354,
+   "c512": 66740,
+   "n512": 321095,
+   "o512": 33847
+  },
+  "credit": "ambientCG, \"Plaster001\", CC0, https://ambientcg.com/a/Plaster001"
+ },
+ "render_rough": {
+  "size": [
+   1.8,
+   1.8
+  ],
+  "avg": [
+   0.4269,
+   0.4219,
+   0.403
+  ],
+  "rough": 0.889,
+  "ao": 0.827,
+  "normal": true,
+  "bytes": {
+   "c1024": 219529,
+   "c512": 78566,
+   "n512": 329527,
+   "o512": 76655
+  },
+  "credit": "Poly Haven, \"White Stucco 02\" (Dimitrios Savva), CC0, https://polyhaven.com/a/white_stucco_02"
+ },
+ "boards": {
+  "size": [
+   1.8,
+   1.8
+  ],
+  "avg": [
+   0.4623,
+   0.3864,
+   0.3414
+  ],
+  "rough": 0.525,
+  "ao": 0.952,
+  "normal": true,
+  "bytes": {
+   "c1024": 156565,
+   "c512": 37095,
+   "n512": 96948,
+   "o512": 31784
+  },
+  "credit": "Poly Haven, \"White Planks Clean\" (Rob Tuytel), CC0, https://polyhaven.com/a/white_planks_clean"
+ },
+ "timber": {
+  "size": [
+   1.89,
+   1.89
+  ],
+  "avg": [
+   0.3208,
+   0.186,
+   0.0866
+  ],
+  "rough": 0.916,
+  "ao": 0.95,
+  "normal": true,
+  "bytes": {
+   "c1024": 191841,
+   "c512": 65839,
+   "n512": 91279,
+   "o512": 22500
+  },
+  "credit": "Poly Haven, \"Hinoki Planks\" (Charlotte Baglioni), CC0, https://polyhaven.com/a/hinoki_planks"
+ },
+ "rooftile": {
+  "size": [
+   2.5,
+   2.5
+  ],
+  "avg": [
+   0.3028,
+   0.0842,
+   0.026
+  ],
+  "rough": 0.916,
+  "ao": 0.785,
+  "normal": true,
+  "bytes": {
+   "c1024": 267020,
+   "c512": 91991,
+   "n512": 253302,
+   "o512": 61456
+  },
+  "credit": "Poly Haven, \"Clay Roof Tiles 02\" (Amal Kumar), CC0, https://polyhaven.com/a/clay_roof_tiles_02"
+ },
+ "slate": {
+  "size": [
+   1.5,
+   1.5
+  ],
+  "avg": [
+   0.1926,
+   0.1983,
+   0.1957
+  ],
+  "rough": 0.571,
+  "ao": 0.608,
+  "normal": true,
+  "bytes": {
+   "c1024": 226647,
+   "c512": 79743,
+   "n512": 228374,
+   "o512": 74849
+  },
+  "credit": "Poly Haven, \"Grey Roof Tiles 02\" (Rob Tuytel), CC0, https://polyhaven.com/a/grey_roof_tiles_02"
+ },
+ "paving": {
+  "size": [
+   1.8,
+   1.8
+  ],
+  "avg": [
+   0.2158,
+   0.1776,
+   0.1357
+  ],
+  "rough": 0.863,
+  "ao": 0.818,
+  "normal": true,
+  "bytes": {
+   "c1024": 238130,
+   "c512": 83172,
+   "n512": 287550,
+   "o512": 67997
+  },
+  "credit": "Poly Haven, \"Concrete Pavement\" (Charlotte Baglioni), CC0, https://polyhaven.com/a/concrete_pavement"
+ },
+ "concrete": {
+  "size": [
+   2,
+   2
+  ],
+  "avg": [
+   0.3653,
+   0.316,
+   0.2451
+  ],
+  "rough": 0.609,
+  "ao": 0.929,
+  "normal": true,
+  "bytes": {
+   "c1024": 220190,
+   "c512": 78200,
+   "n512": 179998,
+   "o512": 61660
+  },
+  "credit": "ambientCG, \"Concrete048\", CC0, https://ambientcg.com/a/Concrete048"
+ },
+ "gravel": {
+  "size": [
+   2,
+   2
+  ],
+  "avg": [
+   0.4074,
+   0.3863,
+   0.3325
+  ],
+  "rough": 0.474,
+  "ao": 0.672,
+  "normal": true,
+  "bytes": {
+   "c1024": 260078,
+   "c512": 91582,
+   "n512": 336612,
+   "o512": 78312
+  },
+  "credit": "Poly Haven, \"Gravel Floor 02\" (Jenelle van Heerden, Dimitrios Savva), CC0, https://polyhaven.com/a/gravel_floor_02"
+ },
+ "grass": {
+  "size": [
+   2,
+   2
+  ],
+  "avg": [
+   0.1203,
+   0.1539,
+   0.0311
+  ],
+  "rough": 0.263,
+  "ao": 0.808,
+  "normal": true,
+  "bytes": {
+   "c1024": 284230,
+   "c512": 94982,
+   "n512": 336101,
+   "o512": 78716
+  },
+  "credit": "ambientCG, \"Grass004\", CC0, https://ambientcg.com/a/Grass004"
+ },
+ "floor_planks": {
+  "size": [
+   1.7,
+   1.7
+  ],
+  "avg": [
+   0.3321,
+   0.2196,
+   0.1276
+  ],
+  "rough": 0.378,
+  "ao": 0.984,
+  "normal": true,
+  "bytes": {
+   "c1024": 212931,
+   "c512": 74506,
+   "n512": 95233,
+   "o512": 38545
+  },
+  "credit": "Poly Haven, \"Laminate Floor 02\" (Dario Barresi, Charlotte Baglioni), CC0, https://polyhaven.com/a/laminate_floor_02"
+ },
+ "floor_herringbone": {
+  "size": [
+   3.4,
+   3.4
+  ],
+  "avg": [
+   0.2951,
+   0.1641,
+   0.0758
+  ],
+  "rough": 0.1,
+  "ao": 0.975,
+  "normal": true,
+  "bytes": {
+   "c1024": 229346,
+   "c512": 81267,
+   "n512": 99725,
+   "o512": 34549
+  },
+  "credit": "Poly Haven, \"Herringbone Parquet\" (Jenelle van Heerden, Sergej Majboroda), CC0, https://polyhaven.com/a/herringbone_parquet"
+ },
+ "floor_parquet": {
+  "size": [
+   2.25,
+   2.25
+  ],
+  "avg": [
+   0.1888,
+   0.1083,
+   0.0339
+  ],
+  "rough": 0.266,
+  "ao": 0.995,
+  "normal": true,
+  "bytes": {
+   "c1024": 210896,
+   "c512": 73071,
+   "n512": 78455,
+   "o512": 31761
+  },
+  "credit": "Poly Haven, \"Rectangular Parquet\" (Jenelle van Heerden, Sergej Majboroda), CC0, https://polyhaven.com/a/rectangular_parquet"
+ },
+ "oak": {
+  "size": [
+   1.83,
+   1.83
+  ],
+  "avg": [
+   0.3608,
+   0.2116,
+   0.0982
+  ],
+  "rough": 0.532,
+  "ao": 0.989,
+  "normal": true,
+  "bytes": {
+   "c1024": 211777,
+   "c512": 72853,
+   "n512": 92908,
+   "o512": 70066
+  },
+  "credit": "Poly Haven, \"Oak Veneer 01\" (Jenelle van Heerden), CC0, https://polyhaven.com/a/oak_veneer_01"
+ },
+ "walnut": {
+  "size": [
+   1.8,
+   1.8
+  ],
+  "avg": [
+   0.2571,
+   0.1441,
+   0.0829
+  ],
+  "rough": 0.577,
+  "ao": 0.985,
+  "normal": true,
+  "bytes": {
+   "c1024": 185290,
+   "c512": 60864,
+   "n512": 114737,
+   "o512": 60912
+  },
+  "credit": "Poly Haven, \"Walnut Veneer\" (Jenelle van Heerden), CC0, https://polyhaven.com/a/walnut_veneer"
+ },
+ "darkoak": {
+  "size": [
+   1,
+   1
+  ],
+  "avg": [
+   0.1481,
+   0.1216,
+   0.0976
+  ],
+  "rough": 0.663,
+  "ao": 0.962,
+  "normal": true,
+  "bytes": {
+   "c1024": 193582,
+   "c512": 68593,
+   "n512": 95567,
+   "o512": 11457
+  },
+  "credit": "Poly Haven, \"Black Oak Veneer\" (Jenelle van Heerden), CC0, https://polyhaven.com/a/black_oak_veneer"
+ },
+ "marble_white": {
+  "size": [
+   1.6,
+   1.6
+  ],
+  "avg": [
+   0.8245,
+   0.8262,
+   0.8254
+  ],
+  "rough": 0.366,
+  "ao": 1,
+  "normal": true,
+  "bytes": {
+   "c1024": 201565,
+   "c512": 74730,
+   "n512": 89754,
+   "o512": 63187
+  },
+  "credit": "ambientCG, \"Marble019\", CC0, https://ambientcg.com/a/Marble019"
+ },
+ "marble_dark": {
+  "size": [
+   1.6,
+   1.6
+  ],
+  "avg": [
+   0.0492,
+   0.0513,
+   0.0503
+  ],
+  "rough": 0.115,
+  "ao": 1,
+  "normal": true,
+  "bytes": {
+   "c1024": 237279,
+   "c512": 85032,
+   "n512": 92806,
+   "o512": 27206
+  },
+  "credit": "ambientCG, \"Marble016\", CC0, https://ambientcg.com/a/Marble016"
+ },
+ "travertine": {
+  "size": [
+   1.6,
+   1.6
+  ],
+  "avg": [
+   0.7449,
+   0.6035,
+   0.4171
+  ],
+  "rough": 0.037,
+  "ao": 0.996,
+  "normal": true,
+  "bytes": {
+   "c1024": 210559,
+   "c512": 75769,
+   "n512": 80459,
+   "o512": 24631
+  },
+  "credit": "ambientCG, \"Travertine009\", CC0, https://ambientcg.com/a/Travertine009"
+ },
+ "terrazzo": {
+  "size": [
+   1.2,
+   1.2
+  ],
+  "avg": [
+   0.6754,
+   0.6405,
+   0.6009
+  ],
+  "rough": 0.224,
+  "ao": 1,
+  "normal": true,
+  "bytes": {
+   "c1024": 187334,
+   "c512": 70252,
+   "n512": 89157,
+   "o512": 53997
+  },
+  "credit": "ambientCG, \"Terrazzo013\", CC0, https://ambientcg.com/a/Terrazzo013"
+ },
+ "linen": {
+  "size": [
+   0.271,
+   0.271
+  ],
+  "avg": [
+   0.2872,
+   0.4104,
+   0.6169
+  ],
+  "rough": 0.661,
+  "ao": 0.774,
+  "normal": true,
+  "bytes": {
+   "c1024": 202520,
+   "c512": 67288,
+   "n512": 198072,
+   "o512": 74208
+  },
+  "credit": "Poly Haven, \"Rough Linen\" (colormass, Rico Cilliers), CC0, https://polyhaven.com/a/rough_linen"
+ },
+ "boucle": {
+  "size": [
+   0.336,
+   0.331
+  ],
+  "avg": [
+   0.8151,
+   0.6497,
+   0.4996
+  ],
+  "rough": 0.701,
+  "ao": 0.657,
+  "normal": true,
+  "bytes": {
+   "c1024": 224422,
+   "c512": 80775,
+   "n512": 219826,
+   "o512": 81838
+  },
+  "credit": "Poly Haven, \"Curly Teddy Natural\" (colormass, Rico Cilliers), CC0, https://polyhaven.com/a/curly_teddy_natural"
+ },
+ "velvet": {
+  "size": [
+   0.284,
+   0.273
+  ],
+  "avg": [
+   0.4221,
+   0.0268,
+   0.0635
+  ],
+  "rough": 0.725,
+  "ao": 0.89,
+  "normal": true,
+  "bytes": {
+   "c1024": 217871,
+   "c512": 76136,
+   "n512": 177431,
+   "o512": 81506
+  },
+  "credit": "Poly Haven, \"Velour Velvet\" (colormass, Rico Cilliers), CC0, https://polyhaven.com/a/velour_velvet"
+ },
+ "leather": {
+  "size": [
+   0.8,
+   0.8
+  ],
+  "avg": [
+   0.1264,
+   0.0396,
+   0.0216
+  ],
+  "rough": 0.398,
+  "ao": 1,
+  "normal": true,
+  "bytes": {
+   "c1024": 56006,
+   "c512": 13555,
+   "n512": 276117,
+   "o512": 72613
+  },
+  "credit": "ambientCG, \"Leather037\", CC0, https://ambientcg.com/a/Leather037"
+ },
+ "carpet": {
+  "size": [
+   0.9,
+   0.9
+  ],
+  "avg": [
+   0.5043,
+   0.4376,
+   0.2968
+  ],
+  "rough": 0.649,
+  "ao": 0.926,
+  "normal": true,
+  "bytes": {
+   "c1024": 223059,
+   "c512": 80782,
+   "n512": 305548,
+   "o512": 50030
+  },
+  "credit": "ambientCG, \"Carpet016\", CC0, https://ambientcg.com/a/Carpet016"
+ },
+ "granite": {
+  "size": [
+   1.2,
+   1.2
+  ],
+  "avg": [
+   0.3601,
+   0.3184,
+   0.3255
+  ],
+  "rough": 0.034,
+  "ao": 1,
+  "normal": true,
+  "bytes": {
+   "c1024": 273080,
+   "c512": 93784,
+   "n512": 81332,
+   "o512": 56624
+  },
+  "credit": "ambientCG, \"Granite005A\", CC0, https://ambientcg.com/a/Granite005A"
+ },
+ "cord": {
+  "size": [
+   0.266,
+   0.267
+  ],
+  "avg": [
+   0.2686,
+   0.2957,
+   0.2196
+  ],
+  "rough": 0.738,
+  "ao": 0.744,
+  "normal": true,
+  "bytes": {
+   "c1024": 215909,
+   "c512": 68186,
+   "n512": 170262,
+   "o512": 83720
+  },
+  "credit": "Poly Haven, \"Ribbed Corduroy\" (colormass, Rico Cilliers), CC0, https://polyhaven.com/a/ribbed_corduroy"
+ },
+ "tweed": {
+  "size": [
+   0.27,
+   0.276
+  ],
+  "avg": [
+   0.1929,
+   0.1806,
+   0.1663
+  ],
+  "rough": 0.629,
+  "ao": 0.852,
+  "normal": true,
+  "bytes": {
+   "c1024": 235066,
+   "c512": 83672,
+   "n512": 259965,
+   "o512": 81207
+  },
+  "credit": "Poly Haven, \"Poly Wool Herringbone\" (colormass, Rico Cilliers), CC0, https://polyhaven.com/a/poly_wool_herringbone"
+ },
+ "concrete_boards": {
+  "size": [
+   1.8,
+   1.8
+  ],
+  "avg": [
+   0.1786,
+   0.1445,
+   0.1035
+  ],
+  "rough": 0.859,
+  "ao": 0.941,
+  "normal": true,
+  "bytes": {
+   "c1024": 205742,
+   "c512": 72767,
+   "n512": 175830,
+   "o512": 62406
+  },
+  "credit": "Poly Haven, \"Wood Textured Concrete\" (Dimitrios Savva), CC0, https://polyhaven.com/a/wood_textured_concrete"
+ },
+ "asphalt": {
+  "size": [
+   3,
+   3
+  ],
+  "avg": [
+   0.1056,
+   0.1032,
+   0.0923
+  ],
+  "rough": 0.771,
+  "ao": 0.722,
+  "normal": true,
+  "bytes": {
+   "c1024": 245180,
+   "c512": 87226,
+   "n512": 301836,
+   "o512": 79126
+  },
+  "credit": "Poly Haven, \"Asphalt 02\" (Rob Tuytel), CC0, https://polyhaven.com/a/asphalt_02"
+ }
+}

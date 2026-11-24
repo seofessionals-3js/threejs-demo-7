@@ -1,0 +1,28 @@
+<!doctype html>
+<!-- A plain look at one processed model: tools/viewer/?m=armchair[&lite][&yaw=30]. Not part of the site. -->
+<meta charset="utf-8"><title>model</title>
+<style>html,body{margin:0;height:100%;background:#d9d6d0}canvas{display:block}</style>
+<script type="importmap">{ "imports": { "three": "../../vendor/three/three.module.min.js", "three/addons/": "../../vendor/three/addons/" } }</script>
+<canvas id="c"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+const q = new URLSearchParams(location.search), name = q.get('m') || 'armchair';
+const r = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+r.setSize(innerWidth, innerHeight); r.toneMapping = THREE.ACESFilmicToneMapping; r.setClearColor(0xd9d6d0);
+const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 50);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8478, 2.2)); const sun = new THREE.DirectionalLight(0xfff2dd, 2.6); sun.position.set(2, 4, 3); scene.add(sun);
+const loader = new GLTFLoader().setDRACOLoader(new DRACOLoader().setDecoderPath('../../vendor/three/addons/libs/draco/gltf/')).setKTX2Loader(new KTX2Loader().setTranscoderPath('../../vendor/three/addons/libs/basis/').detectSupport(r));
+loader.load(`../../assets/models/${name}${q.has('lite') ? '.lite' : ''}.glb`, (g) => {
+  scene.add(g.scene);
+  const b = new THREE.Box3().setFromObject(g.scene), c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3()), d = Math.max(s.x, s.y, s.z) * 2.6;
+  const yaw = (+(q.get('yaw') ?? 35)) * Math.PI / 180;
+  cam.position.set(c.x + Math.sin(yaw) * d, c.y + d * 0.42, c.z + Math.cos(yaw) * d); cam.lookAt(c);
+  scene.add(new THREE.AxesHelper(Math.max(s.x, s.z) * 0.8));        // red x, green y, blue z
+  const grid = new THREE.GridHelper(4, 16, 0x777777, 0xaaaaaa); grid.position.y = b.min.y; scene.add(grid);
+  let n = 0; g.scene.traverse((o) => { if (o.isMesh) n += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+  r.render(scene, cam); setTimeout(() => { r.render(scene, cam); window.__done = { tris: n, size: s.toArray().map((v) => +v.toFixed(2)) }; }, 600);
+}, undefined, (e) => { window.__done = { error: String(e) }; });
+</script>
