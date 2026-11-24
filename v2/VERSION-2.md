@@ -2,7 +2,7 @@
 
 Version 2 ist derselbe Wohnungsfinder mit denselben Seiten, Adressen und Rundgängen wie Version 1. Geändert hat sich, woraus die Häuser gemacht sind: Statt gezeichneter Muster tragen Fassaden, Böden und Einbauten jetzt **fotografierte Oberflächen**, und ein Teil der Möbel sind **3D-Modelle** statt Kästen. Alle Texturen und Modelle sind gemeinfrei (CC0) und stammen von [Poly Haven](https://polyhaven.com) und [ambientCG](https://ambientcg.com).
 
-Dieser Stand liegt auf einem eigenen Branch. `main` und damit die veröffentlichte Seite sind unverändert.
+Version 2 liegt vollständig im Ordner `v2/`, mit eigener Engine, eigenen Daten und eigenen Bibliotheken. Die Seiten von Version 1 eine Ebene höher sind Datei für Datei unverändert, ihre Adressen auch.
 
 ## Was neu ist
 

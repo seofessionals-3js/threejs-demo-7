@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de" class="locked">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#dfd2ba" />
+  <meta name="color-scheme" content="only light" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%232a2522'/%3E%3Cpath d='M6 26V14l10-8 10 8v12h-7v-7h-6v7z' fill='%23dfd2ba'/%3E%3Crect x='14' y='20' width='4' height='6' fill='%23a5432b'/%3E%3C/svg%3E">
+  <title>Wohnungsfinder · Eine Tür</title>
+  <meta name="description" content="Eine Vorderansicht, die Tiefe gewinnt, die Sonne einfängt und Sie bis zur Tür führt. Variante A von Die Ansicht." />
+  <link rel="preload" href="../vendor/fonts/ChakraPetch-600.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="../vendor/fonts/IBMPlexMono-500.woff2" as="font" type="font/woff2" crossorigin />
+  <!-- three.js and the fonts are part of the site: no CDN and no font service, nothing is loaded from anywhere else.
+       The import map stands before every module and preload: a cached module would otherwise be resolved without it -->
+  <script type="importmap">
+    { "imports": {
+      "three": "../vendor/three/three.module.min.js",
+      "three/addons/": "../vendor/three/addons/"
+    } }
+  </script>
+  <link rel="modulepreload" href="../vendor/three/three.module.min.js" />
+  <link rel="modulepreload" href="../engine/elevation.js" />
+  <link rel="modulepreload" href="../engine/quality.js" />
+  <link rel="modulepreload" href="../engine/interior.js" />
+  <link rel="stylesheet" href="../engine/page.css" />
+</head>
+<body>
+  <canvas id="gl" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="loader" id="loader">
+    <p>PLAN // A-201 &nbsp;·&nbsp; No. 7 Kreidegasse</p>
+    <p class="soft">Plotte Vorderansicht 1:50 &nbsp;<span id="loadPct">0%</span></p>
+  </div>
+
+  <header class="topbar has-nav">
+    <a class="mark" href="#">No. 7<small>Kreidegasse · A-201</small></a>
+    <nav class="topnav" aria-label="Wohnungsfinder">
+      <a class="pill ghost" href="../dortmund/">Zur Karte</a>
+      <a class="pill" href="#">Besichtigung buchen</a>
+    </nav>
+  </header>
+
+  <section class="hero" aria-label="No. 7 Kreidegasse, Vorderansicht">
+    <p class="kicker mono">No. 7 Kreidegasse <span class="soft">&nbsp;·&nbsp; Vorderansicht 1:50</span></p>
+    <h1><span class="mask"><span>Sechs Meter Straße.</span></span><span class="mask"><span>Eine <em>Tür.</em></span></span></h1>
+  </section>
+
+  <div class="pins" id="pins" aria-hidden="true"></div>
+
+  <div class="tb" aria-hidden="true">
+    <div><span>Projekt</span>No. 7 Kreidegasse</div>
+    <div><span>Zeichnung</span>Vorderansicht</div>
+    <div><span>Maßstab</span>1 : 50</div>
+    <div><span>Blatt</span>A-201</div>
+  </div>
+
+  <div class="hint" aria-hidden="true">Scrollen <i></i></div>
+  <div id="beats"></div>
+  <main class="track" id="track"></main>
+
+  <script type="module" src="page.js"></script>
+<script>
+  // a browser without import maps cannot load the page: say so instead of leaving the loader standing
+  setTimeout(function () {
+    if (window.__boot || (window.HTMLScriptElement && HTMLScriptElement.supports && HTMLScriptElement.supports('importmap'))) return;
+    var l = document.getElementById('loader'), p = document.createElement('p');
+    p.style.cssText = 'max-width:520px;margin:14px auto 0;font:500 13px/1.5 sans-serif;letter-spacing:0;text-transform:none';
+    p.textContent = 'Diese Seite braucht einen aktuellen Browser: Chrome, Edge, Firefox oder Safari ab Version 16.4.';
+    if (l) (l.querySelector('.ld') || l).appendChild(p);
+  }, 4000);
+</script>
+</body>
+</html>

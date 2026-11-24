@@ -4,7 +4,7 @@ Ein Wohnungsfinder in three.js, wie ihn ein Bauunternehmen oder Bauträger für 
 
 [**Live ansehen**](https://seofessionals-3js.github.io/threejs-demo-7/) · [**Die Karte im Einzelnen**](dortmund/README.md) · [**Startprompt**](PROMPT.md)
 
-> **Version 2** (fotografierte Oberflächen, Möbelmodelle, Draco und KTX2) liegt auf einem eigenen Branch und ist in [`VERSION-2.md`](VERSION-2.md) beschrieben. Die veröffentlichte Seite ist Version 1.
+> **Version 2** mit fotografierten Oberflächen und Möbelmodellen liegt im Ordner [`v2/`](v2/) ([live](https://seofessionals-3js.github.io/threejs-demo-7/v2/), [was neu ist](v2/VERSION-2.md)). Die Seiten hier sind Version 1 und unverändert.
 
 Das ist ein eigenes Projekt. Das Repository heißt nur noch `threejs-demo-7`, damit seine Adressen gültig bleiben: **an den Adressen der Seiten ändert sich nichts.** Alle Seiten sprechen einander relativ an, das Projekt läuft also unter jedem Namen und jeder Adresse.
 

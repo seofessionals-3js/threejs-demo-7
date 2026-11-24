@@ -281,8 +281,7 @@ export function buildInterior(K, c) {
   const B = (x0, y0, z0, x1, y1, z1) => (doorL ? box(lo(x0, x1), lo(y0, y1), lo(z0, z1), hi(x0, x1), hi(y0, y1), hi(z0, z1)) : box(6 - hi(x0, x1), lo(y0, y1), lo(z0, z1), 6 - lo(x0, x1), hi(y0, y1), hi(z0, z1)));
   // edge lines are only drawn for a house that is outlined in Rötel (b-the-row): everywhere else nobody sees them
   const LK = O.realLines ? 1 : 0, NC = { cast: false };
-  let PARENT = g;                                   // where G() and A() put what they make (the furniture has a node of its own, see furnish)
-  const G = (geo, m, lw = 0.5, o) => add(geo, m, lw * LK, { parent: PARENT, lineColor: O.lineColor, realLines: O.realLines, ...o });
+  const G = (geo, m, lw = 0.5, o) => add(geo, m, lw * LK, { parent: g, lineColor: O.lineColor, realLines: O.realLines, ...o });
   const A = (x0, y0, z0, x1, y1, z1, m, lw = 0.5, o) => G(B(x0, y0, z0, x1, y1, z1), m, lw, o);
   const cyl = (r0, r1, h, seg, x, y, z) => new THREE.CylinderGeometry(r0, r1, h, seg).translate(X(x), y, z);
 
@@ -296,45 +295,12 @@ export function buildInterior(K, c) {
     wall: inn('plaster', fit.wall[0]), ceil: inn('plaster'),
     accent: fit.accent[0] === 'own' ? inn(v.wall || 'brick', own) : inn(fit.accent[0], fit.accent[1]),
     steel: inn('steel', fit.metal[0]), dark: inn('steel'),
-    sofa: inn('linen', fit.sofa[0]), cush: inn('linen', fit.cush[0]), cush2: inn('linen', fit.cush2[0]), rug: inn('linen', { ...fit.rug[0], tex: 'carpet' }), white: inn('linen'),
+    sofa: inn('linen', fit.sofa[0]), cush: inn('linen', fit.cush[0]), cush2: inn('linen', fit.cush2[0]), rug: inn('linen', fit.rug[0]), white: inn('linen'),
     art: inn('plain', { color: fit.art }), door: inn('lacquer', v.doorColor ? { color: v.doorColor } : {}),
     basalt: inn('stone', { color: 0x2f2c2a }), glow: inn('interior', { realOnly: true }), clear: inn('glass', { clear: true }), mirror: inn('glass'), leaf: inn('foliage'),
-    brick: out(v.wall || 'brick', own), cope: out('stone'), paving: out('paving'), lawn: out('plain', { color: 0x86995f, tex: 'grass' }), gravel: out('plain', { color: 0xc9c1b1, tex: 'gravel' }),
+    brick: out(v.wall || 'brick', own), cope: out('stone'), paving: out('paving'), lawn: out('plain', { color: 0x86995f }), gravel: out('plain', { color: 0xc9c1b1 }),
     gSteel: out('steel'), gWood: out('wood'), gBasalt: out('stone', { color: 0x2f2c2a }), gGlow: out('interior', { realOnly: true }), gLeaf: out('foliage'),
   };
-
-  /* ---------- furniture that can be a model ----------
-     A chair, an armchair, a low table, a plant, a lamp: each is noted as a piece and built at the end (furnish), from
-     its model (K.placeModel, CC0 from Poly Haven) if that is loaded, from boxes if it is not. When the models have
-     arrived, the boxes go and the pieces are built once more. Everything else (walls, kitchens, beds, shelves) is
-     built in place and wears photographed surfaces.
-     piece(name, x, y, z, face, scale, boxes, o): the foot of the model at (x, y, z) (y may be a function: the top of
-     something that is itself a piece), its front looking `face` ('x+' 'x-' 'z+' 'z-' or degrees); scale: a number, or
-     the size it shall have { w, d, h } (the smallest factor counts; stretch: each axis its own); boxes: what stands
-     there without the model; o.after(top): what is put on it once it stands (top: its height). */
-  const FU = K.FURNITURE || {}, YAW = { 'z+': 0, 'x+': 90, 'z-': 180, 'x-': -90 };
-  const gF = new THREE.Group(); gF.userData.host = true; g.add(gF);
-  const pieces = [];
-  const piece = (name, x, y, z, face, scale, boxes, o = {}) => pieces.push({ name, x, y, z, face, scale, boxes, o });
-  const putPiece = (p) => {
-    const f = FU[p.name]; if (!f || !K.modelOf || !K.modelOf(p.name)) return false;
-    const w0 = f.max[0] - f.min[0], h0 = f.max[1] - f.min[1], d0 = f.max[2] - f.min[2], sc = p.scale;
-    let s = [1, 1, 1];
-    if (typeof sc === 'number') s = [sc, sc, sc];
-    else if (sc) { const r = [sc.w && sc.w / w0, sc.h && sc.h / h0, sc.d && sc.d / d0], u = lo(...r.filter(Boolean), sc.max || 9); s = sc.stretch ? [r[0] || u, r[1] || u, r[2] || u] : [u, u, u]; }
-    const yaw = (typeof p.face === 'number' ? p.face : YAW[p.face]) * (doorL ? 1 : -1), a = yaw * Math.PI / 180, y = typeof p.y === 'function' ? p.y() : p.y;
-    const cx = (f.min[0] + f.max[0]) / 2 * s[0], cz = (f.min[2] + f.max[2]) / 2 * s[2];                 // (the middle of its box comes to stand on the spot)
-    K.placeModel(p.name, [X(p.x) - (cx * Math.cos(a) + cz * Math.sin(a)), y - f.min[1] * s[1], p.z - (-cx * Math.sin(a) + cz * Math.cos(a))], yaw, s,
-      { parent: gF, in: p.o.in ?? 1, color: p.o.color, recolor: p.o.recolor, glowPart: p.o.glowPart, glow: p.o.glow, cast: p.o.cast });
-    if (p.o.shade !== false && typeof p.y !== 'function') {                                              // its shadow on the floor
-      const q = Math.abs(Math.round(yaw / 90) * 90 - yaw) < 1, turned = q && Math.abs(Math.round(yaw / 90)) % 2 === 1;
-      const hw = (q ? (turned ? d0 * s[2] : w0 * s[0]) : hi(w0 * s[0], d0 * s[2])) / 2 + 0.09, hd = (q ? (turned ? w0 * s[0] : d0 * s[2]) : hi(w0 * s[0], d0 * s[2])) / 2 + 0.09;
-      K.shade(X(p.x) - hw, p.z - hd, X(p.x) + hw, p.z + hd, y + 0.021, gF);
-    }
-    if (p.o.after) p.o.after(y + h0 * s[1]);
-    return true;
-  };
-  const furnish = () => { PARENT = gF; pieces.forEach((p) => { if (!putPiece(p)) p.boxes(); }); PARENT = g; };
 
   /* ---------- pieces ---------- */
   // a local frame for things that stand against something: u runs along it, d comes out of it.
@@ -343,7 +309,6 @@ export function buildInterior(K, c) {
     const L = (u0, d0, y0, u1, d1, y1) => (o === 'E' ? B(a - d1, y0, b - u1, a - d0, y1, b - u0) : o === 'W' ? B(a + d0, y0, b - u1, a + d1, y1, b - u0)
       : o === 'N' ? B(b + u0, y0, a - d1, b + u1, y1, a - d0) : B(b + u0, y0, a + d0, b + u1, y1, a + d1));
     L.at = (u, d) => (o === 'E' ? [a - d, b - u] : o === 'W' ? [a + d, b - u] : o === 'N' ? [b + u, a - d] : [b + u, a + d]);
-    L.face = { E: 'x-', W: 'x+', N: 'z-', S: 'z+' }[o];                    // the way something standing against it looks
     return L;
   };
   // a balustrade: glass with a rail on top
@@ -402,11 +367,6 @@ export function buildInterior(K, c) {
     seg(s, a1, yf, y1);
   }
   function sofa(L, len, style = 0) {
-    const [sx, sz] = L.at(len / 2, 0.46);
-    // two of the three makes are the buttoned sofa (a model), in the colour of the house's cloth; the third stays the low platform with loose cushions
-    if (style !== 1) piece('sofa', sx, G0, sz, L.face, { w: len, d: 0.92, h: 0.76, stretch: true }, () => sofaBoxes(L, len, style), { recolor: fit.sofa[0].color ?? 0xcdc5b5 }); else pieces.push({ boxes: () => sofaBoxes(L, len, style), o: {} });
-  }
-  function sofaBoxes(L, len, style) {
     const y = G0;
     if (style === 1) {                              // a low platform, a mattress, loose cushions
       G(L(0, 0, y + 0.02, len, 1.0, y + 0.2), M.wood2); G(L(0.06, 0.06, y + 0.2, len - 0.06, 0.96, y + 0.38), M.sofa);
@@ -425,42 +385,31 @@ export function buildInterior(K, c) {
     G(L(u0 + 0.08, 0.4, y + 0.42, u0 + 0.42, 0.6, y + 0.72), M.cush, 0.4); G(L(len - u0 - 0.42, 0.4, y + 0.42, len - u0 - 0.08, 0.6, y + 0.72), M.cush2, 0.4);
     if (style === 2) { G(L(0.02, 0.86, y + 0.02, 0.86, 1.15, y + 0.14), M.wood2); G(L(0.03, 0.86, y + 0.14, 0.85, 1.15, y + 0.42), M.sofa); }   // one seat is longer: a chaise
   }
-  function armchair(L, y = G0, kind = fit.n % 2 ? 'armchair' : 'lounge') {
-    const [ax, az] = L.at(0.35, 0.44);
-    piece(kind, ax, y, az, L.face, { w: 0.8, d: 0.88, max: 1 }, () => {
-      G(L(0, 0, y + 0.02, 0.7, 0.65, y + 0.3), M.wood2); G(L(0.03, 0.03, y + 0.26, 0.67, 0.6, y + 0.44), M.cush); G(L(0.03, 0, y + 0.44, 0.67, 0.16, y + 0.84), M.cush);
-    });
+  function armchair(L, y = G0) {
+    G(L(0, 0, y + 0.02, 0.7, 0.65, y + 0.3), M.wood2); G(L(0.03, 0.03, y + 0.26, 0.67, 0.6, y + 0.44), M.cush); G(L(0.03, 0, y + 0.44, 0.67, 0.16, y + 0.84), M.cush);
   }
   function coffee(cx, cz, style = 0) {
-    // what lies on it: a book, a cup. top: the height of the table
-    const deco = (top) => { A(cx - 0.16, top, cz - 0.2, cx + 0.16, top + 0.04, cz + 0.18, M.art, 0.35); G(cyl(0.08, 0.06, 0.16, 12, cx, top + 0.08, cz + 0.36), M.steel, 0.35); };
-    const boxes = () => {
-      const y = G0;
-      if (style === 1) { G(cyl(0.46, 0.46, 0.05, 28, cx, y + 0.335, cz), M.stone, 0.6); G(cyl(0.2, 0.27, 0.31, 20, cx, y + 0.155, cz), M.wood2, 0.4); }
-      else if (style === 2) { A(cx - 0.3, y, cz - 0.62, cx + 0.3, y + 0.34, cz - 0.04, M.wood2); A(cx - 0.26, y, cz + 0.06, cx + 0.26, y + 0.26, cz + 0.58, M.stone); }
-      else { A(cx - 0.25, y + 0.02, cz - 0.6, cx + 0.25, y + 0.28, cz + 0.6, M.wood2, 0.4); A(cx - 0.3, y + 0.28, cz - 0.66, cx + 0.3, y + 0.34, cz + 0.66, M.stone, 0.6); }
-      deco(G0 + 0.34);
-    };
-    if (style === 0) piece('table_oak', cx, G0, cz, 'z+', 1, boxes, { after: deco });
-    else if (style === 1) piece('table_round', cx, G0, cz, 'z+', { w: 0.96 }, boxes, { after: deco });
-    else pieces.push({ boxes, o: {} });
+    const y = G0;
+    if (style === 1) { G(cyl(0.46, 0.46, 0.05, 28, cx, y + 0.335, cz), M.stone, 0.6); G(cyl(0.2, 0.27, 0.31, 20, cx, y + 0.155, cz), M.wood2, 0.4); }
+    else if (style === 2) { A(cx - 0.3, y, cz - 0.62, cx + 0.3, y + 0.34, cz - 0.04, M.wood2); A(cx - 0.26, y, cz + 0.06, cx + 0.26, y + 0.26, cz + 0.58, M.stone); }
+    else { A(cx - 0.25, y + 0.02, cz - 0.6, cx + 0.25, y + 0.28, cz + 0.6, M.wood2, 0.4); A(cx - 0.3, y + 0.28, cz - 0.66, cx + 0.3, y + 0.34, cz + 0.66, M.stone, 0.6); }
+    A(cx - 0.16, y + 0.34, cz - 0.2, cx + 0.16, y + 0.38, cz + 0.18, M.art, 0.35);
+    G(cyl(0.08, 0.06, 0.16, 12, cx, y + 0.42, cz + 0.36), M.steel, 0.35);
   }
   // a slab chair. face: the way the sitter looks
   function chair(cx, cz, face) {
-    piece('chair', cx, G0, cz, face, { h: 0.92 }, () => {
-      const y = G0, s = 0.21, t = 0.045;
-      const at = (side) => (side === 'x-' ? [cx - s, cz - s, cx - s + t, cz + s] : side === 'x+' ? [cx + s - t, cz - s, cx + s, cz + s] : side === 'z-' ? [cx - s, cz - s, cx + s, cz - s + t] : [cx - s, cz + s - t, cx + s, cz + s]);
-      const opp = { 'x+': 'x-', 'x-': 'x+', 'z+': 'z-', 'z-': 'z+' }, bk = at(opp[face]), fr = at(face);
-      A(bk[0], y, bk[1], bk[2], y + 0.84, bk[3], M.wood2, 0.45); A(fr[0], y, fr[1], fr[2], y + 0.46, fr[3], M.wood2, 0.45);
-      const b = opp[face], pad = [cx - s + (b === 'x-' ? t : 0), cz - s + (b === 'z-' ? t : 0), cx + s - (b === 'x+' ? t : 0), cz + s - (b === 'z+' ? t : 0)];   // the seat ends at the back, not in it
-      A(pad[0], y + 0.46, pad[1], pad[2], y + 0.51, pad[3], M.white, 0.35);
-    });
+    const y = G0, s = 0.21, t = 0.045;
+    const at = (side) => (side === 'x-' ? [cx - s, cz - s, cx - s + t, cz + s] : side === 'x+' ? [cx + s - t, cz - s, cx + s, cz + s] : side === 'z-' ? [cx - s, cz - s, cx + s, cz - s + t] : [cx - s, cz + s - t, cx + s, cz + s]);
+    const opp = { 'x+': 'x-', 'x-': 'x+', 'z+': 'z-', 'z-': 'z+' }, bk = at(opp[face]), fr = at(face);
+    A(bk[0], y, bk[1], bk[2], y + 0.84, bk[3], M.wood2, 0.45); A(fr[0], y, fr[1], fr[2], y + 0.46, fr[3], M.wood2, 0.45);
+    const b = opp[face], pad = [cx - s + (b === 'x-' ? t : 0), cz - s + (b === 'z-' ? t : 0), cx + s - (b === 'x+' ? t : 0), cz + s - (b === 'z+' ? t : 0)];   // the seat ends at the back, not in it
+    A(pad[0], y + 0.46, pad[1], pad[2], y + 0.51, pad[3], M.white, 0.35);
   }
   function pend(x, y, z, top, style = 0) {
     A(x - 0.006, y, z - 0.006, x + 0.006, top, z + 0.006, M.steel, 0);
     if (style === 1) { G(cyl(0.03, 0.17, 0.2, 20, x, y - 0.02, z), M.steel, 0.3); G(cyl(0.15, 0.15, 0.012, 20, x, y - 0.127, z), M.glow, 0, NC); }
     else if (style === 2) G(cyl(0.1, 0.1, 0.3, 20, x, y - 0.05, z), M.glow, 0, NC);
-    else piece('lamp', x, y - 0.216 * 0.68, z, 0, 0.68, () => G(new THREE.SphereGeometry(0.12, 14, 10).translate(X(x), y, z), M.glow, 0, NC), { glowPart: /globe/, glow: 0.95, cast: false, shade: false });
+    else G(new THREE.SphereGeometry(0.12, 14, 10).translate(X(x), y, z), M.glow, 0, NC);
   }
   // a table for six (or a round one for four) with the lamps over it. The long side follows the longer side of the rectangle
   function dining(x0, z0, x1, z1, style = 0, top = SL) {
@@ -517,11 +466,9 @@ export function buildInterior(K, c) {
   }
   const vase = (x, y, z) => new THREE.LatheGeometry([[0, 0], [0.07, 0], [0.125, 0.1], [0.115, 0.24], [0.05, 0.34], [0.06, 0.4]].map((q) => new THREE.Vector2(q[0], q[1])), 20).translate(X(x), y, z);
   function sideboard(L, len, h = 0.75) {
-    const [bx, bz] = L.at(len / 2, 0.24), hm = lo(h, 0.72), top = () => G0 + (K.modelOf && K.modelOf('sideboard') ? hm : h + 0.04);
-    piece('sideboard', bx, G0, bz, L.face, { w: len, h: hm, d: 0.48, stretch: true }, () => { G(L(0, 0, G0, len, 0.46, G0 + h), M.wood, 0.6); G(L(-0.02, 0, G0 + h, len + 0.02, 0.48, G0 + h + 0.04), M.stone); });
+    G(L(0, 0, G0, len, 0.46, G0 + h), M.wood, 0.6); G(L(-0.02, 0, G0 + h, len + 0.02, 0.48, G0 + h + 0.04), M.stone);
     const [x, z] = L.at(len * 0.28, 0.24), [x2, z2] = L.at(len * 0.66, 0.24);
-    piece(['vase_a', 'vase_b', 'vase_c'][fit.n % 3], x, top, z, 30, 1, () => G(vase(x, top(), z), M.art, 0), { color: fit.n % 2 ? fit.art : undefined });
-    piece('plant_c', x2, top, z2, 70, 1, () => G(cyl(0.07, 0.09, 0.2, 12, x2, top() + 0.1, z2), M.basalt, 0.4));
+    G(vase(x, G0 + h + 0.04, z), M.art, 0); G(cyl(0.07, 0.09, 0.2, 12, x2, G0 + h + 0.14, z2), M.basalt, 0.4);
   }
   // a wall of books: uprights, shelves, books of three cloths
   function bookWall(L, len, y0, y1, seed = 71) {
@@ -548,13 +495,10 @@ export function buildInterior(K, c) {
     else { G(L(u - w * 0.3, 0.052, y - h * 0.26, u - w * 0.02, 0.06, y + h * 0.26), M.art, 0); G(L(u + w * 0.05, 0.052, y - h * 0.18, u + w * 0.3, 0.06, y + h * 0.18), M.cush2, 0); }
   }
   // a plant in a pot
-  function plant(x, z, h = 1.5, m = M.leaf, pot = M.basalt, o, y = G0) {
-    const tall = h >= 1.4, garden = m !== M.leaf;
-    piece(tall ? 'plant_a' : 'plant_b', x, y, z, Math.round(x * 97 + z * 31) % 360, { h: lo(h, tall ? 1.8 : 1.05) }, () => {
-      const R = mulberry(Math.round(x * 97 + z * 31) + 5);
-      G(cyl(0.2, 0.15, 0.36, 12, x, y + 0.18, z), pot, 0.4, o); G(cyl(0.02, 0.03, h - 0.4, 6, x, y + 0.36 + (h - 0.4) / 2, z), M.wood2, 0, o);
-      for (let i = 0; i < 7; i++) { const a = R() * 6.283, r = 0.1 + R() * 0.22; G(new THREE.IcosahedronGeometry(0.15 + R() * 0.12, 0).translate(X(x + Math.cos(a) * r), y + h - 0.35 + R() * 0.5, z + Math.sin(a) * r), m, 0, o); }
-    }, { in: garden ? 0.3 : 1, cast: false });      // (no shadow: its leaves are cards with holes, their shadow would be the cards)
+  function plant(x, z, h = 1.5, m = M.leaf, pot = M.basalt, o) {
+    const R = mulberry(Math.round(x * 97 + z * 31) + 5);
+    G(cyl(0.2, 0.15, 0.36, 12, x, G0 + 0.18, z), pot, 0.4, o); G(cyl(0.02, 0.03, h - 0.4, 6, x, G0 + 0.36 + (h - 0.4) / 2, z), M.wood2, 0, o);
+    for (let i = 0; i < 7; i++) { const a = R() * 6.283, r = 0.1 + R() * 0.22; G(new THREE.IcosahedronGeometry(0.15 + R() * 0.12, 0).translate(X(x + Math.cos(a) * r), G0 + h - 0.35 + R() * 0.5, z + Math.sin(a) * r), m, 0, o); }
   }
   // a bed with its head against a wall: a low frame, the mattress, a quilt folded back, two pillows, a padded head
   function bed(L, w = 1.7, y = L1) {
@@ -624,7 +568,7 @@ export function buildInterior(K, c) {
     tile: inn('travertine', { color: 0xb1aa9d, tx: [3, 0.6, 0.6, 0], rough: 0.55 }), wtile: inn('travertine', { color: 0xe8e4dc, tx: [3, 0.6, 0.3, 0], rough: 0.42 }),
     white: inn('lacquer', { color: 0xf3f1ec, rough: 0.34 }), water: inn('lacquer', { color: 0xc6d6d4, rough: 0.2 }), door: inn('lacquer', { color: 0xf0ede6, rough: 0.5 }),
     linen: inn('linen'), throw: inn('linen', { color: 0x8c9787 }), sand: inn('linen', { color: 0xcdbf9f, tx: [6, 0.06, 0, 0.12] }),
-    rug: inn('linen', { color: 0xddd6c8, tex: 'carpet' }), drape: inn('linen', { color: 0xebe6da, tx: [1, 0.09, 0, 0.07] }),
+    rug: inn('linen', { color: 0xddd6c8, tx: [3, 0.1, 0, 0.22] }), drape: inn('linen', { color: 0xebe6da, tx: [1, 0.09, 0, 0.07] }),
   };
   // The street wall and the garden wall upstairs, plastered inside, with white reveals and a white board in every
   // opening. The openings of the street wall are those of the facade (v.first), the windows to the garden the plan's
@@ -686,9 +630,7 @@ export function buildInterior(K, c) {
     }
     mb(3.0, 0.012, 0.45, 5.3, 0.03, 2.9, UM.rug, 0.4);
     mb(3.7, 0, 3.3, 5.49, 2.45, D, UM.oak, 0.6); for (const sj of [4.3, 4.9]) mb(sj - 0.004, 0.08, 3.292, sj + 0.004, 2.41, 3.3, M.dark);   // the wardrobe
-    piece(fit.n % 2 ? 'lounge' : 'armchair', x0 + sx * 2.74, L1, z0 + kz * 0.72, sx > 0 ? 'x+' : 'x-', { w: 0.8, d: 0.86, max: 1 }, () => {     // the chair at the window
-      mb(2.32, 0.02, 0.35, 2.98, 0.3, 1.0, UM.oak, 0.4); mb(2.42, 0.26, 0.38, 2.96, 0.44, 0.97, UM.sand); mb(2.3, 0.3, 0.35, 2.46, 0.86, 1.0, UM.sand, 0.4);
-    });
+    mb(2.32, 0.02, 0.35, 2.98, 0.3, 1.0, UM.oak, 0.4); mb(2.42, 0.26, 0.38, 2.96, 0.44, 0.97, UM.sand); mb(2.3, 0.3, 0.35, 2.46, 0.86, 1.0, UM.sand, 0.4);   // the chair
     mb(2.4, 0, 1.14, 2.44, 1.5, 1.18, M.dark); G(new THREE.SphereGeometry(0.12, 14, 10).translate(X(x0 + sx * 2.42), L1 + 1.6, z0 + kz * 1.16), M.glow, 0, NC);
     mb(2.3, 1.12, 1.55, 2.335, 2.0, 2.75, M.dark, 0.5); mb(2.335, 1.17, 1.6, 2.347, 1.95, 2.7, UM.linen); mb(2.347, 1.3, 1.72, 2.355, 1.82, 2.12, UM.throw); mb(2.347, 1.38, 2.2, 2.355, 1.74, 2.56, UM.sand);   // a picture
     disc(0.24, 0.03, 3.9, H - 0.015, 1.75, M.glow, NC); disc(0.27, 0.02, 3.9, H - 0.01, 1.75, M.dark, NC);
@@ -710,7 +652,7 @@ export function buildInterior(K, c) {
     mb(0.012, 1.2, 1.12, 0.03, 2.05, 2.18, M.mirror, 0.4); mb(0.03, 2.1, 1.12, 0.07, 2.13, 2.18, M.glow, 0, NC);
     for (const [ya, yb, ta, tb] of [[1.17, 1.2, 1.09, 2.21], [2.05, 2.08, 1.09, 2.21], [1.2, 2.05, 1.09, 1.12], [1.2, 2.05, 2.18, 2.21]]) mb(0.012, ya, ta, 0.036, yb, tb, M.dark);   // its frame
     mb(0.62, 0.026, 0.98, 1.5, 0.04, 1.52, UM.sand, 0.3);                                           // a mat before the tub
-    mb(1.95, 0.54, 0.2, 2.15, 0.62, 0.56, UM.linen, 0.3); mb(1.96, 0.62, 0.22, 2.14, 0.68, 0.54, UM.throw, 0.3); piece('plant_c', x0 + sx * 0.2, L1 + 0.54, z0 + kz * 0.62, 40, 1, () => disc(0.05, 0.16, 0.2, 0.62, 0.62, M.dark), { shade: false });   // towels on its edge, a plant
+    mb(1.95, 0.54, 0.2, 2.15, 0.62, 0.56, UM.linen, 0.3); mb(1.96, 0.62, 0.22, 2.14, 0.68, 0.54, UM.throw, 0.3); disc(0.05, 0.16, 0.2, 0.62, 0.62, M.dark);   // towels on its edge, a vase
     mb(2.05, 0, 0.92, 2.188, 1.2, 1.58, UM.wtile, 0.4); mb(1.55, 0.14, 1.07, 2.05, 0.42, 1.43, UM.white, 0.4); mb(2.04, 0.94, 1.17, 2.05, 1.05, 1.33, M.dark);   // the WC before its wall
     for (const t of [1.8, 2.27]) mb(2.155, 0.6, t, 2.185, 1.75, t + 0.03, M.dark);                 // a ladder for the towels
     for (let y = 0.7; y < 1.7; y += 0.2) mb(2.16, y, 1.8, 2.18, y + 0.025, 2.3, M.dark);
@@ -929,18 +871,9 @@ export function buildInterior(K, c) {
     A(3.6, 0.14, -17.52, 5.76, 0.66, -14.9, M.brick, 0.6); A(3.56, 0.66, -17.52, 5.76, 0.73, -14.86, M.cope); A(3.74, 0.66, -17.4, 5.64, 0.75, -15.04, M.gLeaf, 0);
     tree(X(5.0), -17.1, 4.0, 0.62, { parent: g, leaves: leafSet });
     A(0.5, 0.56, -16.5, 0.98, 0.62, -14.9, M.gWood); A(0.56, 0.14, -16.42, 0.92, 0.56, -16.34, M.gSteel, 0.4); A(0.56, 0.14, -15.06, 0.92, 0.56, -14.98, M.gSteel, 0.4);
-    if (st.garden === 2) { A(0.3, 0.14, -17.5, 3.5, 0.2, -16.9, M.gravel); for (let k = 0; k < 3; k++) plant(0.8 + k * 1.1, -17.2, 1.0, M.gLeaf, M.cope, undefined, 0.2); }
+    if (st.garden === 2) { A(0.3, 0.14, -17.5, 3.5, 0.2, -16.9, M.gravel); for (let k = 0; k < 3; k++) plant(0.8 + k * 1.1, -17.2, 1.0, M.gLeaf, M.cope); }
   }
   A(3.28, 0.14, -14.84, 3.4, 0.78, -14.72, M.gSteel, 0.4); A(3.3, 0.62, -14.82, 3.38, 0.74, -14.74, M.gGlow, 0, NC);   // a bollard lamp
 
-  furnish();
-  // the models this house still lacks are fetched when its rooms are shown for the first time; then it is furnished again
-  let asked = false;
-  const wantModels = () => {
-    if (asked || !K.MODELS_ON) return; asked = true;
-    const want = [...new Set(pieces.map((p) => p.name))].filter((n) => n && FU[n] && !K.modelOf(n));
-    if (want.length) Promise.all(want.map((n) => K.loadModel(n))).then(() => { K.clearNode(gF); furnish(); K.touch(); });
-  };
-
-  return { gDoorL, gDoorR, plan, variant: V, fit, M, inn, wantModels };
+  return { gDoorL, gDoorR, plan, variant: V, fit, M, inn };
 }
