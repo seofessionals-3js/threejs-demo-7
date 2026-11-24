@@ -295,10 +295,10 @@ export function buildInterior(K, c) {
     wall: inn('plaster', fit.wall[0]), ceil: inn('plaster'),
     accent: fit.accent[0] === 'own' ? inn(v.wall || 'brick', own) : inn(fit.accent[0], fit.accent[1]),
     steel: inn('steel', fit.metal[0]), dark: inn('steel'),
-    sofa: inn('linen', fit.sofa[0]), cush: inn('linen', fit.cush[0]), cush2: inn('linen', fit.cush2[0]), rug: inn('linen', fit.rug[0]), white: inn('linen'),
+    sofa: inn('linen', fit.sofa[0]), cush: inn('linen', fit.cush[0]), cush2: inn('linen', fit.cush2[0]), rug: inn('linen', { ...fit.rug[0], tex: 'carpet' }), white: inn('linen'),
     art: inn('plain', { color: fit.art }), door: inn('lacquer', v.doorColor ? { color: v.doorColor } : {}),
     basalt: inn('stone', { color: 0x2f2c2a }), glow: inn('interior', { realOnly: true }), clear: inn('glass', { clear: true }), mirror: inn('glass'), leaf: inn('foliage'),
-    brick: out(v.wall || 'brick', own), cope: out('stone'), paving: out('paving'), lawn: out('plain', { color: 0x86995f }), gravel: out('plain', { color: 0xc9c1b1 }),
+    brick: out(v.wall || 'brick', own), cope: out('stone'), paving: out('paving'), lawn: out('plain', { color: 0x86995f, tex: 'grass' }), gravel: out('plain', { color: 0xc9c1b1, tex: 'gravel' }),
     gSteel: out('steel'), gWood: out('wood'), gBasalt: out('stone', { color: 0x2f2c2a }), gGlow: out('interior', { realOnly: true }), gLeaf: out('foliage'),
   };
 
@@ -568,7 +568,7 @@ export function buildInterior(K, c) {
     tile: inn('travertine', { color: 0xb1aa9d, tx: [3, 0.6, 0.6, 0], rough: 0.55 }), wtile: inn('travertine', { color: 0xe8e4dc, tx: [3, 0.6, 0.3, 0], rough: 0.42 }),
     white: inn('lacquer', { color: 0xf3f1ec, rough: 0.34 }), water: inn('lacquer', { color: 0xc6d6d4, rough: 0.2 }), door: inn('lacquer', { color: 0xf0ede6, rough: 0.5 }),
     linen: inn('linen'), throw: inn('linen', { color: 0x8c9787 }), sand: inn('linen', { color: 0xcdbf9f, tx: [6, 0.06, 0, 0.12] }),
-    rug: inn('linen', { color: 0xddd6c8, tx: [3, 0.1, 0, 0.22] }), drape: inn('linen', { color: 0xebe6da, tx: [1, 0.09, 0, 0.07] }),
+    rug: inn('linen', { color: 0xddd6c8, tex: 'carpet' }), drape: inn('linen', { color: 0xebe6da, tx: [1, 0.09, 0, 0.07] }),
   };
   // The street wall and the garden wall upstairs, plastered inside, with white reveals and a white board in every
   // opening. The openings of the street wall are those of the facade (v.first), the windows to the garden the plan's

@@ -1,0 +1,19 @@
+{
+  "name": "wohnungsfinder-assets",
+  "private": true,
+  "type": "module",
+  "description": "Fetches CC0 textures and models (Poly Haven, ambientCG) and compresses them for the site: KTX2 (Basis) textures, Draco meshes.",
+  "scripts": {
+    "textures": "node textures.mjs",
+    "models": "node models.mjs"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "draco3dgltf": "^1.5.9",
+    "ktx2-encoder": "^0.6.0",
+    "meshoptimizer": "^1.3.0",
+    "sharp": "^0.35.5"
+  }
+}
