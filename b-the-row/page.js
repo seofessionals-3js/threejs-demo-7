@@ -31,7 +31,10 @@ STATUS.forEach((s, i) => {
 });
 
 // Plot 04 has its door on the right, so plot4.key() mirrors the walk that a-one-door takes.
-const KEYS = [
+// (after the kitchen the way leads upstairs and back: UP says where in the scroll the bedroom, the bath and the foot of
+// the stair stand, the plan of the house says how to get there: plot4.wayUp)
+const UP = { rear: 645, bed: 887, bath: 1007, down: 1217, glass: 1297 }, KITCHEN = [[2.75, 2.0, -6.5], -3, 0, 58, 2.5];
+const KEYS = S.turnShort([
   { p: 0, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [18, 2, 0], minW: 37 } },
   { p: 18, t: [18, 6.6, 0], fh: 21.5, fov: 2, phone: { t: [18, 2, 0], minW: 37 } },
   { p: 110, t: [17, 4.2, 0], fh: 12.6, fov: 14, yaw: 22, pitch: -4, phone: { t: [22, 4.2, 0], minW: 14, yaw: 28 } },
@@ -40,15 +43,16 @@ const KEYS = [
   plot4.key(405, [1.78, 1.72, 1.55], 2, -1, 54, 2.65),
   plot4.key(480, [1.72, 1.96, -2.35], -8, -9, 56, 2.2),
   plot4.key(560, [2.0, 1.94, -3.1], -46, -1, 58, 2.35),
-  plot4.key(645, [2.75, 2.0, -6.5], -3, 0, 58, 2.5),
-];
+  ...plot4.wayUp(UP, KITCHEN, KITCHEN),                 // in the kitchen, up to the bedroom and the bath, down again
+  plot4.key(UP.glass, ...KITCHEN),                      // and back in the kitchen, the garden ahead
+]);
 
 const LATE = new THREE.Vector3(-1.45, 0.62, 0.78).normalize();
 const sunDir = new THREE.Vector3();
 const late = new THREE.Color(0xffd9a8), white = new THREE.Color(0xfff1dc);
 
 run(S, {
-  length: 660,
+  length: UP.glass + 15,
   heroOut: [14, 64],
   radar: {
     ox: 18,
@@ -58,7 +62,8 @@ run(S, {
       { id: 'entry', label: 'HAUS 04', tag: 'HAUS 04 EINGANG', at: 405, u0: 0.0, u1: 1.3 },
       { id: 'hall', label: 'HALLE', tag: 'HALLE +0.30M', at: 520, u0: 1.3, u1: 6.0 },
       { id: 'kitchen', label: 'KÜCHE', tag: 'KÜCHE +0.30M', at: 645, u0: 6.0, u1: 12.0 },
-      { id: 'garden', label: 'GARTEN', tag: 'SÜDGARTEN', at: 655, u0: 12.0, u1: 17.8 },
+      { id: 'up', label: 'OBEN', tag: 'OBERGESCHOSS +3.40M', at: UP.bed, u0: 99, u1: 99 },
+      { id: 'garden', label: 'GARTEN', tag: 'SÜDGARTEN', at: UP.glass + 10, u0: 12.0, u1: 17.8 },
     ],
   },
   frame(p) {
@@ -73,7 +78,7 @@ run(S, {
     S.setSun(sunDir);
     S.sun.color.copy(white).lerp(late, m);
     S.sun.intensity = lerp(3.2, 3.0, m);
-    plot4.setDoor(smooth(span(p, 365, 435)));
+    plot4.setDoor(smooth(span(p, 365, 435)) * (1 - smooth(span(p, 494, 544))));      // (it closes behind the lens: open, its leaves would stand before the stair)
     plot4.setGardenDoor(smooth(span(p, 565, 640)));
   },
   beats: [
@@ -82,6 +87,8 @@ run(S, {
     { from: 268, to: 350, html: '<span class="n">03 &nbsp;·&nbsp; Haus 04</span><p>Drei Schlafzimmer und ein Garten nach Süden. In <em>Rötel</em> umrissen.</p><div class="row"><div><span>Schlafzimmer</span>3</div><div><span>Wohnfläche</span>118 m²</div><div><span>Status</span>Frei</div></div>' },
     { from: 368, to: 465, html: '<span class="n">04 &nbsp;·&nbsp; Offene Tür</span><p>Haus 04 ist das Musterhaus. Zwei Steinstufen hinauf und durch die <em>Glastür.</em></p>' },
     { from: 482, to: 575, html: '<span class="n">05 &nbsp;·&nbsp; In Haus 04</span><p>Eine Halle über zwei Geschosse, eine Treppe aus gefaltetem Stahl, unter der Galerie der <em>Wohnraum.</em></p>' },
-    { from: 588, to: 690, html: '<span class="n">06 &nbsp;·&nbsp; Küche zum Südgarten</span><p>Küche mit Essplatz. Die Glaswand öffnet sie über die ganze Breite zum ummauerten Garten.</p><div class="row"><div><span>Haus</span>04 von 06</div><div><span>Garten</span>Südlage</div><div><span>Status</span>Frei</div></div><a class="pill solid" href="#">Haus 04 reservieren</a>' },
+    { from: 588, to: 700, html: '<span class="n">06 &nbsp;·&nbsp; Küche zum Südgarten</span><p>Küche mit Essplatz. Die Glaswand öffnet sie über die ganze Breite zum ummauerten Garten.</p><div class="row"><div><span>Haus</span>04 von 06</div><div><span>Garten</span>Südlage</div><div><span>Status</span>Frei</div></div><a class="pill solid" href="#">Haus 04 reservieren</a>' },
+    { from: UP.bed - 92, to: UP.bath + 64, html: '<span class="n">07 &nbsp;·&nbsp; Oben</span><p>Die Treppe hinauf: das Schlafzimmer am Garten, gegenüber die Ankleide, und durch sie hindurch das <em>Bad.</em></p><div class="row"><div><span>Ebene</span>+3.40 m</div><div><span>Schlafen</span>13 m²</div><div><span>Bad</span>9 m²</div></div>' },
+    { from: UP.down + 30, to: UP.glass + 60, html: '<span class="n">08 &nbsp;·&nbsp; Haus 04</span><p>Wieder unten, die Küche und der Garten voraus. Haus 04 ist das Musterhaus der Reihe und noch <em>frei.</em></p><a class="pill solid" href="#">Haus 04 reservieren</a>' },
   ],
 });

@@ -81,7 +81,9 @@ S.aimSun(MID, 4, Math.max(30, LEN));
 
 mark('built');
 let pNow = 0, KEYS = [];
-const P = { choose: [286, 340], approach: 372, entry: 448, hall: 523, turn: 603, rear: 688, glass: 760, garden: 830, end: WALK ? 846 : 352 };
+// (the street and the rooms downstairs stand where they always stood: links with ?at= still arrive there. After the
+// rooms downstairs the way leads up: to the bedroom (bed), the bath, back down (down), then out to the garden)
+const P = { choose: [286, 340], approach: 372, entry: 448, hall: 523, turn: 603, rear: 688, bed: 930, bath: 1050, down: 1260, glass: 1350, garden: 1420, end: WALK ? 1436 : 352 };
 function keysFor(i) {
   const wide = LEN + 4;
   const street = [
@@ -100,11 +102,13 @@ function keysFor(i) {
   // that turns to the room while it is still between them has a door leaf across the picture (on an upright screen,
   // across half of it). So there is a station just before the edges, and the turn belongs to the last step.
   const h = T.hall, door = [[lerp(1.78, h[0][0], 0.5), lerp(1.72, h[0][1], 0.6), -1.75], h[1] * 0.25, lerp(-1, h[2], 0.5), lerp(54, h[3], 0.6), lerp(2.65, h[4], 0.6)];
-  return [...street,
+  const keys = [...street,
     { p: P.approach, t: [xOf(i) + 3, 3.6, -0.3], fh: 9.6, fov: 28, yaw: 0, pitch: -4, phone: { minW: 7.6 } },
     H.key(P.entry, [1.78, 1.72, 1.55], 2, -1, 54, 2.65, { ease: (u) => u * u }),                 // (no halt at the station in between)
     H.key(lerp(P.entry, P.hall, 0.66), door[0], door[1], door[2], door[3], door[4], { ease: (u) => u * (2 - u) }),
-    k(P.hall, T.hall), k(P.turn, T.turn), k(P.rear, T.rear), k(P.glass, T.glass), k(P.garden, T.garden)];
+    // after the rooms downstairs the way leads up to the bedroom and the bath and down again (H.wayUp, from the plan)
+    k(P.hall, T.hall), k(P.turn, T.turn), ...H.wayUp(P, T.rear, T.glass), k(P.glass, T.glass), k(P.garden, T.garden)];
+  return S.turnShort(keys);
 }
 
 // ---- the page around the row
@@ -179,7 +183,11 @@ function fill() {
     if (beatEls[3]) beatEls[3].innerHTML = `<span class="n">04 &nbsp;·&nbsp; Haus ${h.no}</span><p>Haus ${h.no} ist <em>frei.</em> Zwei Steinstufen hinauf und durch die Glastür.</p>${facts}`;
     if (beatEls[4]) beatEls[4].innerHTML = `<span class="n">05 &nbsp;·&nbsp; In Haus ${h.no}</span><p>${pl.text[0]}</p><div class="row"><div><span>Boden</span>${fit.list[0][1]}</div><div><span>Einbauten</span>${fit.list[1][1]}</div><div><span>Treppe</span>${fit.list[3][1]}</div></div>`;
     if (beatEls[5]) beatEls[5].innerHTML = `<span class="n">06 &nbsp;·&nbsp; Zum Garten</span><p>${pl.text[1]}</p><div class="row"><div><span>Arbeitsplatte</span>${fit.list[2][1]}</div><div><span>Akzentwand</span>${fit.list[4][1]}</div><div><span>Beschläge</span>${fit.list[5][1]}</div></div>`;
-    if (beatEls[6]) beatEls[6].innerHTML = `<span class="n">07 &nbsp;·&nbsp; Haus ${h.no} · ${PR.name}</span><p>Die Glaswand fährt auf: ein ummauerter Garten nach Süden, ${PLOT} m² <em>Grundstück.</em></p>`
+    if (beatEls[6]) {
+      const og = schedule(sel).og, pick = ['Schlafen', 'Bad', 'Ankleide', 'Kind', 'Kind 1', 'Galerie', 'Studio', 'Arbeiten'].map((n) => og.find((r) => r[0] === n)).filter(Boolean).slice(0, 3);
+      beatEls[6].innerHTML = `<span class="n">07 &nbsp;·&nbsp; Oben in Haus ${h.no}</span><p>${pl.upText}</p><div class="row">${pick.map((r) => `<div><span>${r[0]}</span>${m2(r[1])}</div>`).join('')}</div>`;
+    }
+    if (beatEls[7]) beatEls[7].innerHTML = `<span class="n">08 &nbsp;·&nbsp; Haus ${h.no} · ${PR.name}</span><p>Die Glaswand fährt auf: ein ummauerter Garten nach Süden, ${PLOT} m² <em>Grundstück.</em></p>`
       + `<div class="row"><div><span>Haus</span>${h.no} von ${String(all.length).padStart(2, '0')}</div><div><span>Kaufpreis</span>${h.price || 'auf Anfrage'}</div><div><span>Status</span>${stHtml(h)}</div></div>`
       + `<button class="pill solid" type="button" data-act="ask">Besichtigung anfragen</button> <button class="pill" type="button" data-act="sheet">Exposé</button>`;
     fillKit();
@@ -429,6 +437,7 @@ radar = {
     { id: 'entry', label: 'HAUS', tag: 'EINGANG', at: Math.min(P.entry, P.end), u0: 0.0, u1: 1.3 },
     { id: 'hall', label: 'VORN', tag: 'VORN +0.30M', at: Math.min(P.hall + 40, P.end), u0: 1.3, u1: 6.0 },
     { id: 'kitchen', label: 'HINTEN', tag: 'HINTEN +0.30M', at: Math.min(P.rear, P.end), u0: 6.0, u1: 12.0 },
+    ...(WALK ? [{ id: 'up', label: 'OBEN', tag: 'OBERGESCHOSS +3.40M', at: P.bed, u0: 99, u1: 99 }] : []),   // (no strip of the plot: the storey above it. The engine lights it while the lens is up there)
     { id: 'garden', label: 'GARTEN', tag: 'SÜDGARTEN', at: Math.min(P.garden, P.end), u0: 12.0, u1: 17.8 },
   ],
 };
@@ -460,7 +469,9 @@ run(S, {
       S.sun.color.copy(late).lerp(white, Math.min(1, up * 1.5)); S.sun.intensity = lerp(2.3, 3.3, up);
     }
     S.setSun(sunDir);
-    const d = mode ? 0 : smooth(span(p, P.entry - 40, P.entry + 30)), g = mode ? 0 : smooth(span(p, P.rear + 14, P.glass - 6));
+    // the two leaves of the front door open for the lens and close behind it (open, they would stand before the stair);
+    // the garden glass slides open when the lens comes down again and walks towards it
+    const d = mode ? 0 : smooth(span(p, P.entry - 40, P.entry + 30)) * (1 - smooth(span(p, P.hall + 14, P.hall + 64))), g = mode ? 0 : smooth(span(p, P.down + 20, P.glass - 4));
     houses.forEach((H, i) => { if (H.walkable) { H.setDoor(i === sel ? d : 0); H.setGardenDoor(i === sel ? g : 0); } });
   },
   beats: [
@@ -470,8 +481,9 @@ run(S, {
     ...(WALK ? [
       { from: P.approach + 8, to: P.entry + 28, html: '' },
       { from: P.entry + 44, to: P.turn + 34, html: '' },
-      { from: P.turn + 50, to: P.glass + 10, html: '' },
-      { from: P.glass + 26, to: P.end + 40, html: '' },
+      { from: P.turn + 50, to: P.rear + 46, html: '' },
+      { from: P.bed - 92, to: P.bath + 64, html: '' },
+      { from: P.down + 40, to: P.end + 40, html: '' },
     ] : []),
   ],
 });
