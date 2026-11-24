@@ -112,15 +112,17 @@ export function fitFor(n = 0, plan = 'A', wall = 'brick') {
 // way() takes what a plan has of its own (pre: to the head of its stair, post: from the landing down to its foot) and
 // puts the rooms in between. side: where the stair comes up ('W' | 'E'), wall: where the rooms lie ('street' | 'rear').
 // In the suite a place is (s, t) and a look h: 0 towards the windows, 90 across the house, away from the stair.
+// The lens leaves a room backwards, still looking into it, and only turns on the landing (back: how far from the
+// doors the landing lets it step): turning in the doorway it would look at nothing but the wall beside it.
 const GARDEN = [[2.6, 2.0, -13.2], -24, -5, 56, 2.45];
 const REAR2 = [[0.85, 4.3, 2.35, 5.85], [3.65, 4.3, 5.15, 5.85]], EY = 1.95, UY = L1 + 1.62;
-const way = (pre, side, wall, post, d) => {
+const way = (pre, side, wall, post, d, back = 5.0) => {
   const sx = side === 'W' ? 1 : -1, x0 = side === 'W' ? 0.24 : 5.76, kz = wall === 'street' ? -1 : 1, z0 = wall === 'street' ? -0.43 : -11.97;
   const k = (s, t, h, pitch, lens = 58) => { const r = h * Math.PI / 180; return [[x0 + sx * s, UY, z0 + kz * t], Math.atan2(-sx * Math.sin(r), kz * Math.cos(r)) * 180 / Math.PI, pitch, lens, 2.4]; };
   return {
     a: [...pre, k(3.0, 4.55, 4, 5)], bed: k(3.0, 3.05, 46, 17, 62),
-    b: [k(3.0, 4.5, -70, 6), k(1.64, 4.55, -6, 6)], bath: k(1.64, 2.8, -10, 21, 62),
-    c: [k(1.64, 4.55, 175, 6), ...post], d,
+    b: [k(3.0, Math.min(4.7, back), 22, 8), k(2.55, back, back > 4.8 ? -45 : -58, 6), k(1.64, 4.55, -6, 6)], bath: k(1.64, 2.8, -10, 21, 62),
+    c: [k(1.64, 4.4, -6, 9), k(1.7, back, 168, 6), ...post], d,
   };
 };
 const UPTEXT = 'Oben zwei Türen nebeneinander: das Schlafzimmer mit einer Wand aus Eichenlamellen, das Bad mit der Wanne am <em>Fenster.</em>';
@@ -166,9 +168,9 @@ export const PLANS = {
       og: [['Flur', 0.24, -5.55, 5.76, -4.43], ['Schlafen', 0.24, -4.33, 3.46, -0.4], ['Bad', 3.56, -3.5, 5.76, -0.4], ['Kind 1', 0.24, -12, 2.95, -6.75], ['Kind 2', 3.05, -12, 5.76, -6.75]],
     },
     rear: REAR2, upText: UPTEXT,
-    up: way([[[0.95, EY, -6.1], -90, -14], [[2.45, 2.72, -6.1], -90, -16], [[5.3, UY, -6.1], -165, 6], [[5.33, UY, -5.0], -215, 6]], 'E', 'street',
-      [[[5.33, UY, -5.0], 0, 10], [[5.3, UY, -6.1], 90, 26], [[2.45, 2.72, -6.1], 80, 16], [[0.95, EY, -6.1], 25, 4]],
-      [[[1.1, 1.9, -8.4], 10, 3]]),
+    up: way([[[0.95, EY, -6.1], -90, -14], [[2.45, 2.72, -6.1], -90, -16], [[5.3, UY, -6.1], -205, 6], [[5.33, UY, -5.0], -245, 6]], 'E', 'street',
+      [[[5.33, UY, -5.0], 40, 10], [[5.3, UY, -6.1], 90, 26], [[2.45, 2.72, -6.1], 80, 16], [[0.95, EY, -6.1], 5, 4]],
+      [[[1.1, 1.9, -8.4], 2, 3]], 4.6),
     radar: { rects: [[5.6, 1.6, 6.6, 5.76], [2.6, 4.86, 5.0, 5.72], [6.72, 1.75, 7.36, 5.75], [9.3, 2.6, 10.3, 4.8]], dash: '' },
   },
   D: {
@@ -182,7 +184,7 @@ export const PLANS = {
     },
     rear: REAR2, upText: UPTEXT,
     up: way([[[2.95, EY, -9.6], -20, 3], [[4.2, EY, -10.45], -110, 0], [[5.31, EY, -10.38], -180, -16], [[5.33, 2.55, -9.15], -180, -18], [[5.33, UY, -5.64], -230, 8], [[4.3, UY, -5.75], -275, 6]], 'E', 'rear',
-      [[[3.6, UY, -5.85], -110, 14], [[4.3, UY, -5.75], -140, 12], [[5.33, UY, -5.64], -40, 30], [[5.33, 2.55, -9.15], 0, 26], [[5.31, EY, -10.38], 20, 5]],
+      [[[3.6, UY, -5.85], -110, 14], [[4.3, UY, -5.75], -140, 12], [[5.33, UY, -5.64], 110, 16], [[5.33, 4.52, -6.35], 8, 26], [[5.33, 2.55, -9.15], 0, 26], [[5.31, EY, -10.38], 20, 5]],
       [[[4.2, EY, -10.45], 25, 4]]),
     radar: { rects: [[5.9, 4.84, 10.0, 5.74], [2.0, 3.3, 4.4, 4.16], [0.7, 5.44, 5.0, 5.76], ISLAND_W, [10.7, 3.3, 11.5, 4.7]], dash: 'M0.4 3.1 H5.2 V5.76' },
   },
@@ -231,9 +233,9 @@ const VARIANTS = {
       radar: { rects: [[5.6, 1.6, 6.6, 5.76], [2.2, 3.3, 4.6, 4.3], [0.7, 5.44, 5.3, 5.76], [6.72, 1.75, 7.36, 5.75], [9.3, 2.6, 10.3, 4.8]], dash: '' } },
     { name: 'Ostgang', claim: 'Treppe quer im Haus, der Durchgang an der Ostwand',
       tour: { hall: [[1.9, 1.72, -2.6], -30, -2, 58, 2.3], turn: [[5.08, 1.72, -5.0], 5, -1, 58, 2.3], rear: [[4.85, 1.8, -9.0], 112, -2, 62, 2.4], glass: [[3.7, 1.95, -10.8], 8, 0, 57, 2.5] },
-      up: way([[[5.05, EY, -6.1], 90, -14], [[3.55, 2.72, -6.1], 90, -16], [[0.7, UY, -6.1], 165, 6], [[0.67, UY, -5.0], 215, 6]], 'W', 'street',
-        [[[0.67, UY, -5.0], 0, 10], [[0.7, UY, -6.1], -90, 26], [[3.55, 2.72, -6.1], -80, 16], [[5.05, EY, -6.1], -25, 4]],
-        [[[4.9, 1.9, -8.4], -10, 3]]),
+      up: way([[[5.05, EY, -6.1], 90, -14], [[3.55, 2.72, -6.1], 90, -16], [[0.7, UY, -6.1], 205, 6], [[0.67, UY, -5.0], 245, 6]], 'W', 'street',
+        [[[0.67, UY, -5.0], -40, 10], [[0.7, UY, -6.1], -90, 26], [[3.55, 2.72, -6.1], -80, 16], [[5.05, EY, -6.1], -5, 4]],
+        [[[4.9, 1.9, -8.4], -2, 3]], 4.6),
       text: ['Der Wohnraum liegt vorn an der Straße. Die Treppe steht quer im Haus, der Weg nach hinten führt an der Ostwand <em>vorbei.</em>', PLANS.C.text[1]],
       rooms: { eg: [['Wohnen', 0.24, -5.6, 5.76, -0.4], ['Treppe', 0.24, -6.6, 4.4, -5.6], ['Wohnküche', 0.24, -12, 5.76, -6.7]],
         og: [['Flur', 0.24, -5.55, 5.76, -4.43], ['Bad', 0.24, -3.5, 2.44, -0.4], ['Schlafen', 2.54, -4.33, 5.76, -0.4], ['Kind 1', 0.24, -12, 2.95, -6.75], ['Kind 2', 3.05, -12, 5.76, -6.75]] },
@@ -325,7 +327,7 @@ export function buildInterior(K, c) {
       const a = a0 + dir * i * go, b = a + dir * (i === n - 1 ? 0.1 : go), y = G0 + i * rise;
       if (style === 0) { G(bx(a - 0.014, a + 0.014, y, y + rise), tm); G(bx(a, b, y + rise - 0.028, y + rise), tm); }
       else if (style === 1) G(bx(a - dir * 0.03, b, y + rise - 0.065, y + rise), tm);
-      else { G(bx(a, b, G0, y + rise - 0.03), tm); G(bx(a - dir * 0.02, b, y + rise - 0.03, y + rise), M.stone); G(bx(a - dir * 0.021, a + dir * 0.014, y + rise - 0.012, y + rise + 0.002), M.dark, 0); }   // (a dark edge on every tread: from above a pale stair would be one pale slope)
+      else { G(bx(a, b, G0, y + rise - 0.03), tm); G(bx(a - dir * 0.02, b, y + rise - 0.03, y + rise), M.stone); G(bx(a - dir * 0.021, a + dir * 0.014, y + rise - 0.012, y + rise + 0.002, w0 + 0.002, w1 - 0.002), M.dark, 0); }   // (a dark edge on every tread: from above a pale stair would be one pale slope)
       if (open == null) continue;
       if (style === 1) { G(bx(a, b, y + rise, y + rise + 1.0, open - 0.008, open + 0.008), M.clear, 0, NC); G(bx(a, b, y + rise + 1.0, y + rise + 1.04, open - 0.025, open + 0.025), M.steel, 0.35); }
       else if (style === 2) G(bx(a, b, y + rise - 0.03, y + rise + 0.95, open - 0.04, open + 0.04), tm);      // a solid stair has a solid guard
@@ -341,12 +343,14 @@ export function buildInterior(K, c) {
   // at `from` (a) or at `to` (b), on the + or on the - side of the wall.
   function part(along, p, a0, a1, doors = [], y0 = L1, y1 = CEIL, m = M.wall) {
     const t = 0.05, seg = (s0, s1, ya, yb) => { if (s1 - s0 > 0.01) (along === 'x' ? A(s0, ya, p - t, s1, yb, p + t, m) : A(p - t, ya, s0, p + t, yb, s1, m)); };
+    const yf = y0 === L1 ? L1 + 0.012 : y0;                                    // upstairs the wall stands on the boards (at the edge of a floor both would lie in one plane)
     // a piece of the door: s along the wall, d across it
     const P = (s0, d0, ya, s1, d1, yb, mm, lw = 0) => (along === 'x' ? A(s0, ya, p + d0, s1, yb, p + d1, mm, lw) : A(p + d0, ya, s0, p + d1, yb, s1, mm, lw));
     const leafM = y0 >= L1 ? UM.door : M.door;                                 // upstairs every door is white, in every house
     let s = a0;
     [...doors].sort((d, e) => d[0] - e[0]).forEach(([d0, d1, leaf = true]) => {
-      seg(s, d0, y0, y1); seg(d0, d1, y0 + 2.1, y1); s = d1;
+      const fr = leaf === false ? 0 : 0.02;                                    // the wall ends inside the frame, not flush with it
+      seg(s, d0 - fr, yf, y1); seg(d0 - fr, d1 + fr, y0 + 2.1 + fr, y1); s = d1 + fr;
       if (leaf === false) return;
       const f = t + 0.012;
       P(d0 - 0.05, -f, y0, d0, f, y0 + 2.15, M.dark); P(d1, -f, y0, d1 + 0.05, f, y0 + 2.15, M.dark); P(d0 - 0.05, -f, y0 + 2.1, d1 + 0.05, f, y0 + 2.15, M.dark);
@@ -360,7 +364,7 @@ export function buildInterior(K, c) {
         P(e, sg * (f + w - 0.16), y0 + 0.98, e + 0.045, sg * (f + w - 0.03), y0 + 1.02, M.steel);
       }
     });
-    seg(s, a1, y0, y1);
+    seg(s, a1, yf, y1);
   }
   function sofa(L, len, style = 0) {
     const y = G0;
@@ -398,7 +402,8 @@ export function buildInterior(K, c) {
     const at = (side) => (side === 'x-' ? [cx - s, cz - s, cx - s + t, cz + s] : side === 'x+' ? [cx + s - t, cz - s, cx + s, cz + s] : side === 'z-' ? [cx - s, cz - s, cx + s, cz - s + t] : [cx - s, cz + s - t, cx + s, cz + s]);
     const opp = { 'x+': 'x-', 'x-': 'x+', 'z+': 'z-', 'z-': 'z+' }, bk = at(opp[face]), fr = at(face);
     A(bk[0], y, bk[1], bk[2], y + 0.84, bk[3], M.wood2, 0.45); A(fr[0], y, fr[1], fr[2], y + 0.46, fr[3], M.wood2, 0.45);
-    A(cx - s, y + 0.46, cz - s, cx + s, y + 0.51, cz + s, M.white, 0.35);
+    const b = opp[face], pad = [cx - s + (b === 'x-' ? t : 0), cz - s + (b === 'z-' ? t : 0), cx + s - (b === 'x+' ? t : 0), cz + s - (b === 'z+' ? t : 0)];   // the seat ends at the back, not in it
+    A(pad[0], y + 0.46, pad[1], pad[2], y + 0.51, pad[3], M.white, 0.35);
   }
   function pend(x, y, z, top, style = 0) {
     A(x - 0.006, y, z - 0.006, x + 0.006, top, z + 0.006, M.steel, 0);
@@ -498,7 +503,7 @@ export function buildInterior(K, c) {
   // a bed with its head against a wall: a low frame, the mattress, a quilt folded back, two pillows, a padded head
   function bed(L, w = 1.7, y = L1) {
     G(L(0, 0, y, w, 2.1, y + 0.25), M.wood2); G(L(0.03, 0.06, y + 0.25, w - 0.03, 2.08, y + 0.44), M.white); G(L(-0.08, 0, y, w + 0.08, 0.07, y + 1.05), M.sofa, 0.5);
-    G(L(0.03, 0.85, y + 0.44, w - 0.03, 2.08, y + 0.47), M.sofa, 0.4); G(L(0.03, 0.7, y + 0.44, w - 0.03, 0.86, y + 0.5), M.white, 0.3);
+    G(L(0.03, 0.85, y + 0.44, w - 0.03, 2.08, y + 0.47), M.sofa, 0.4); G(L(0.03, 0.7, y + 0.44, w - 0.03, 0.85, y + 0.5), M.white, 0.3);
     G(L(0.1, 0.12, y + 0.44, w / 2 - 0.05, 0.5, y + 0.56), M.cush, 0.3); G(L(w / 2 + 0.05, 0.12, y + 0.44, w - 0.1, 0.5, y + 0.56), M.cush, 0.3);
   }
   const wardrobe = (L, len, h = 2.3, y = L1) => { G(L(0, 0, y, len, 0.6, y + h), M.wood, 0.6); for (let u = 0.6; u < len - 0.2; u += 0.6) G(L(u - 0.004, 0.6, y + 0.06, u + 0.004, 0.606, y + h - 0.04), M.dark, 0); };
@@ -506,7 +511,7 @@ export function buildInterior(K, c) {
   const accentW = (z0, z1, y0 = G0, y1 = CEIL) => A(0.24, y0, z0, 0.262, y1, z1, M.accent);
   const accentE = (z0, z1, y0 = G0, y1 = SL) => A(5.738, y0, z0, 5.76, y1, z1, M.accent);
   const upper = (x0, z0, x1, z1) => { A(x0, SL, z0, x1, L1, z1, M.ceil, 0.6); A(x0, L1, z0, x1, L1 + 0.012, z1, M.up, 0); };
-  const bench = (x1 = 5.76) => A(3.3, 0.92, -0.74, x1, 1.0, -0.2, M.wood, 0.6);            // a deep bench under the street window
+  const bench = (x1 = 5.76) => A(3.3, 0.92, -0.74, x1, 1.004, -0.2, M.wood, 0.6);            // a deep bench under the street window
   // a chimney breast against a party wall ('W' / 'E') from z0 to z1, up to y1, with its hearth and its fire
   const chimney = (side, z0, z1, y1 = CEIL, hd = 0.5) => {
     const L = frame(side, side === 'W' ? 0.24 : 5.76, z1), len = z1 - z0;
@@ -539,10 +544,10 @@ export function buildInterior(K, c) {
   A(0.0, 0.0, -12.0, 6.0, G0, -0.4, M.floor);
   A(0.72, G0 - 0.005, -1.75, 2.68, G0 + 0.006, -1.3, M.basalt, 0);                       // a stone mat inside the door
   A(0.0, G0, -12.0, 0.24, CEIL, -0.4, M.wall); A(5.76, G0, -12.0, 6.0, CEIL, -0.4, M.wall);
-  A(0.24, CEIL, -12.0, 5.76, CEIL + 0.2, -0.4, M.ceil, 0);
+  A(0.24, CEIL, -12.0, 5.76, CEIL + 0.1, -0.4, M.ceil, 0);                               // (thin enough to end behind the coping of the lowest back wall)
   A(0.24, G0, -1.3, 0.3, 3.0, -0.4, M.wall, 0);                                           // between party wall and the porch cheek
   A(0.24, SL, -1.3, 3.1, L1, -0.4, M.ceil, 0.6); A(0.24, L1, -1.3, 3.1, L1 + 0.012, -0.4, M.up, 0);   // the floor over the porch
-  A(0.24, G0, -11.9, 0.26, G0 + 0.09, -1.3, M.dark, 0); A(5.74, G0, -11.9, 5.76, G0 + 0.09, -0.4, M.dark, 0);   // skirtings: a shadow gap
+  A(0.24, G0, -11.89, 0.26, G0 + 0.09, -1.3, M.dark, 0); A(5.74, G0, -11.89, 5.76, G0 + 0.09, -0.4, M.dark, 0);   // skirtings: a shadow gap
   A(3.1, G0, -0.43, 5.76, 1.0, -0.4, M.wall, 0); A(3.1, 3.0, -0.43, 5.76, SL, -0.4, M.wall, 0);   // the street wall, plastered inside
   A(3.1, 1.0, -0.43, 3.55, 3.0, -0.4, M.wall, 0); A(5.5, 1.0, -0.43, 5.76, 3.0, -0.4, M.wall, 0);
 
@@ -575,14 +580,14 @@ export function buildInterior(K, c) {
     add(K.panel(Rm(0.24, st ? L1 : SL, 5.76, CEIL), holes.map((h) => Rm(...h)), st ? -0.43 : -12.0, st ? -0.4 : -11.97), UM.wall, 0, { parent: g, cast: false });
     holes.forEach(([x0, y0, x1, y1]) => {
       A(x0, y0, za, x0 + 0.012, y1, zb, UM.wall, 0, NC); A(x1 - 0.012, y0, za, x1, y1, zb, UM.wall, 0, NC); A(x0, y1 - 0.012, za, x1, y1, zb, UM.wall, 0, NC);
-      A(x0 - 0.02, y0 - 0.025, lo(za, zb, zi), x1 + 0.02, y0 + 0.012, hi(za, zb, zi), UM.white, 0, NC);
+      A(x0 - 0.02, y0 - 0.025, lo(za, zb, zi), x1 + 0.02, y0 + 0.016, hi(za, zb, zi), UM.white, 0, NC);      // (4 mm over the stone sill of the window)
     });
   };
   if (plan !== 'B') rear.forEach(([x0, y0, x1, y1]) => {
     const z = -12.2, mx = (x0 + x1) / 2;                                        // the frame stands in the outer third of the wall
     for (const b of [[x0, y0, x1, y0 + 0.05], [x0, y1 - 0.05, x1, y1], [x0, y0, x0 + 0.05, y1], [x1 - 0.05, y0, x1, y1], [mx - 0.025, y0, mx + 0.025, y1]]) A(b[0], b[1], z - 0.03, b[2], b[3], z + 0.03, M.dark, 0);
     A(x0 + 0.05, y0 + 0.05, z - 0.006, x1 - 0.05, y1 - 0.05, z + 0.006, M.clear, 0, NC);
-    A(x0 - 0.05, y0 - 0.05, -12.38, x1 + 0.05, y0, -12.23, M.cope, 0);         // the sill outside
+    A(x0 - 0.05, y0 - 0.05, -12.38, x1 + 0.05, y0 + 0.004, -12.23, M.cope, 0); // the sill outside
   });
   let suiteWall = null;
   function suite(side, wall, store) {
@@ -598,14 +603,14 @@ export function buildInterior(K, c) {
     });
     lining(wall, open.map(([c0, ya, c1, yb]) => [lo(x0 + sx * c0, x0 + sx * c1), ya, hi(x0 + sx * c0, x0 + sx * c1), yb]));
     // ---- the walls: the one with the doors (t = D), the one between the rooms, the corner behind the stair
-    const doors = [...(store ? [[0.12, 0.92]] : []), [1.2, 2.14], [2.5, 3.5]];
+    const doors = [...(store ? [[0.12, 0.92]] : []), [1.2, 2.14], [2.5, 3.5]], FL = 0.012;      // (the walls stand on the boards)
     let at = store ? 0 : 1.04;
     doors.forEach(([d0, d1]) => {
-      mb(at, 0, D, d0, H, D + 0.1, UM.wall); mb(d0, 2.1, D, d1, H, D + 0.1, UM.wall); at = d1;
+      mb(at, FL, D, d0 - 0.02, H, D + 0.1, UM.wall); mb(d0 - 0.02, 2.12, D, d1 + 0.02, H, D + 0.1, UM.wall); at = d1 + 0.02;   // (the wall ends inside the frame)
       mb(d0 - 0.05, 0, D - 0.012, d0, 2.15, D + 0.112, M.dark); mb(d1, 0, D - 0.012, d1 + 0.05, 2.15, D + 0.112, M.dark); mb(d0 - 0.05, 2.1, D - 0.012, d1 + 0.05, 2.15, D + 0.112, M.dark);
     });
-    mb(at, 0, D, 5.52, H, D + 0.1, UM.wall);
-    mb(2.2, 0, 0, 2.3, H, D, UM.wall); mb(1.04, 0, 2.55, 1.14, H, D, UM.wall); mb(0, 0, 2.55, 1.14, H, 2.65, UM.wall);
+    mb(at, FL, D, 5.52, H, D + 0.1, UM.wall);
+    mb(2.2, FL, 0, 2.3, H, D, UM.wall); mb(1.04, FL, 2.55, 1.14, H, D, UM.wall); mb(0, FL, 2.55, 1.14, H, 2.65, UM.wall);
     // the leaves: bath and bedroom stand open, each folded back against a wall of its room; the store room is shut
     mb(2.1, 0, D - 0.94, 2.14, 2.08, D - 0.012, UM.door, 0.4); mb(2.07, 0.98, D - 0.9, 2.1, 1.02, D - 0.78, M.dark);
     mb(2.5, 0, D - 0.98, 2.54, 2.08, D - 0.012, UM.door, 0.4); mb(2.54, 0.98, D - 0.94, 2.57, 1.02, D - 0.82, M.dark);
@@ -613,7 +618,7 @@ export function buildInterior(K, c) {
 
     // ---- the bedroom (s 2.3 ... 5.52): a wall of oak slats, the bed before it, a wardrobe beside the door, a chair at the window
     mb(5.49, 0, 0, 5.52, H, D, UM.slat, 0.4);
-    mb(5.41, 0, 0.65, 5.49, 1.12, 2.65, UM.sand, 0.5);                                              // the padded head
+    mb(5.41, 0, 0.7, 5.49, 1.12, 2.62, UM.sand, 0.5);                                              // the padded head
     mb(3.39, 0.06, 0.75, 5.41, 0.28, 2.55, UM.oak, 0.5); mb(3.47, 0, 0.83, 5.35, 0.06, 2.47, M.dark);   // the frame on its plinth
     mb(3.42, 0.28, 0.78, 5.4, 0.47, 2.52, UM.linen); mb(3.41, 0.47, 0.76, 4.72, 0.53, 2.54, UM.linen, 0.3); mb(4.6, 0.53, 0.76, 4.76, 0.57, 2.54, UM.linen);   // mattress, quilt, its fold
     mb(3.4, 0.53, 0.74, 3.95, 0.56, 2.56, UM.throw, 0.3);                                           // a blanket across the foot
@@ -629,7 +634,7 @@ export function buildInterior(K, c) {
     mb(2.4, 0, 1.14, 2.44, 1.5, 1.18, M.dark); G(new THREE.SphereGeometry(0.12, 14, 10).translate(X(x0 + sx * 2.42), L1 + 1.6, z0 + kz * 1.16), M.glow, 0, NC);
     mb(2.3, 1.12, 1.55, 2.335, 2.0, 2.75, M.dark, 0.5); mb(2.335, 1.17, 1.6, 2.347, 1.95, 2.7, UM.linen); mb(2.347, 1.3, 1.72, 2.355, 1.82, 2.12, UM.throw); mb(2.347, 1.38, 2.2, 2.355, 1.74, 2.56, UM.sand);   // a picture
     disc(0.24, 0.03, 3.9, H - 0.015, 1.75, M.glow, NC); disc(0.27, 0.02, 3.9, H - 0.01, 1.75, M.dark, NC);
-    mb(2.3, 0, 0, 2.312, 0.07, 2.9, UM.oak); mb(3.5, 0, D - 0.012, 3.7, 0.07, D, UM.oak); mb(2.3, 0, 0, 5.49, 0.07, 0.012, UM.oak);   // skirtings
+    mb(2.3, 0, 0, 2.312, 0.07, 2.9, UM.oak); mb(3.55, 0, D - 0.012, 3.7, 0.07, D, UM.oak); mb(2.3, 0, 0, 5.49, 0.07, 0.012, UM.oak);   // skirtings
     open.filter(([c0]) => c0 >= 2.3).forEach(([c0, , c1]) => {                                    // linen at the window, on a rail
       if (c0 - 0.36 >= 2.32) mb(c0 - 0.36, 0.03, 0.04, c0 - 0.02, H - 0.06, 0.1, UM.drape, 0.4);
       if (c1 + 0.36 <= 5.47) mb(c1 + 0.02, 0.03, 0.04, c1 + 0.36, H - 0.06, 0.1, UM.drape, 0.4);
@@ -750,6 +755,9 @@ export function buildInterior(K, c) {
     part('x', -6.7, 0.24, 5.76, rev ? [[0.28, 1.05], [4.3, 5.2]] : [[0.8, 1.7], [4.95, 5.72]]); part('z', 3.0, -12.0, -6.75);
     suite(rev ? 'W' : 'E', 'street', true);
     bed(frame('W', 0.24, -8.0), 1.2); bed(frame('E', 5.76, -8.0), 1.2);
+    // a long picture on their wall, over the stair: the corridor looks at it; another one at the foot of the stair
+    art(frame('S', -6.65, 0), rev ? 2.7 : 3.3, L1 + 1.5, 1.9, 1.0, (st.art + 2) % 3);
+    if (rev) art(frame('E', 5.76, -5.55), 0.55, 1.95, 0.9, 1.2, st.art); else art(frame('W', 0.24, -5.55), 0.55, 1.95, 0.9, 1.2, st.art);
     // the living room
     if (V === 4) {
       A(3.05, G0, -3.2, 3.15, SL, -1.2, M.wall); part('x', -3.2, 3.15, 5.76, [[3.4, 4.3, false]], G0, SL);
@@ -846,7 +854,7 @@ export function buildInterior(K, c) {
   add(box(2.9, 1.1, -11.93, 2.93, 1.5, -11.9), M.dark, 0, { parent: gDoorL }); add(box(3.07, 1.1, -11.93, 3.1, 1.5, -11.9), M.dark, 0, { parent: gDoorR });
 
   /* ---------- the garden: a terrace, a step down, walls of the house's own material ---------- */
-  A(0.0, 0.0, -14.4, 6.0, G0 - 0.02, -12.08, M.paving);
+  A(0.24, 0.0, -14.4, 5.76, G0 - 0.02, -12.3, M.paving); A(0.0, 0.0, -12.3, 6.0, G0 - 0.02, -12.08, M.paving);   // (between the garden walls, not in them)
   A(0.22, 0.14, -14.46, 5.78, G0 - 0.015, -14.34, M.gBasalt);
   A(0.0, 0.14, -17.8, 0.24, 2.5, -12.3, M.brick, 0.6); A(-0.02, 2.5, -17.82, 0.26, 2.58, -12.3, M.cope);
   A(5.76, 0.14, -17.8, 6.0, 2.5, -12.3, M.brick, 0.6); A(5.74, 2.5, -17.82, 6.02, 2.58, -12.3, M.cope);
