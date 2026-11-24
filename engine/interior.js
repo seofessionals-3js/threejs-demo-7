@@ -326,6 +326,11 @@ export function buildInterior(K, c) {
     const cx = (f.min[0] + f.max[0]) / 2 * s[0], cz = (f.min[2] + f.max[2]) / 2 * s[2];                 // (the middle of its box comes to stand on the spot)
     K.placeModel(p.name, [X(p.x) - (cx * Math.cos(a) + cz * Math.sin(a)), y - f.min[1] * s[1], p.z - (-cx * Math.sin(a) + cz * Math.cos(a))], yaw, s,
       { parent: gF, in: p.o.in ?? 1, color: p.o.color, glowPart: p.o.glowPart, glow: p.o.glow, cast: p.o.cast });
+    if (p.o.shade !== false && typeof p.y !== 'function') {                                              // its shadow on the floor
+      const q = Math.abs(Math.round(yaw / 90) * 90 - yaw) < 1, turned = q && Math.abs(Math.round(yaw / 90)) % 2 === 1;
+      const hw = (q ? (turned ? d0 * s[2] : w0 * s[0]) : hi(w0 * s[0], d0 * s[2])) / 2 + 0.09, hd = (q ? (turned ? w0 * s[0] : d0 * s[2]) : hi(w0 * s[0], d0 * s[2])) / 2 + 0.09;
+      K.shade(X(p.x) - hw, p.z - hd, X(p.x) + hw, p.z + hd, y + 0.021, gF);
+    }
     if (p.o.after) p.o.after(y + h0 * s[1]);
     return true;
   };
@@ -454,7 +459,7 @@ export function buildInterior(K, c) {
     A(x - 0.006, y, z - 0.006, x + 0.006, top, z + 0.006, M.steel, 0);
     if (style === 1) { G(cyl(0.03, 0.17, 0.2, 20, x, y - 0.02, z), M.steel, 0.3); G(cyl(0.15, 0.15, 0.012, 20, x, y - 0.127, z), M.glow, 0, NC); }
     else if (style === 2) G(cyl(0.1, 0.1, 0.3, 20, x, y - 0.05, z), M.glow, 0, NC);
-    else piece('lamp', x, y - 0.216 * 0.68, z, 0, 0.68, () => G(new THREE.SphereGeometry(0.12, 14, 10).translate(X(x), y, z), M.glow, 0, NC), { glowPart: /globe/, glow: 0.95, cast: false });
+    else piece('lamp', x, y - 0.216 * 0.68, z, 0, 0.68, () => G(new THREE.SphereGeometry(0.12, 14, 10).translate(X(x), y, z), M.glow, 0, NC), { glowPart: /globe/, glow: 0.95, cast: false, shade: false });
   }
   // a table for six (or a round one for four) with the lamps over it. The long side follows the longer side of the rectangle
   function dining(x0, z0, x1, z1, style = 0, top = SL) {
@@ -704,7 +709,7 @@ export function buildInterior(K, c) {
     mb(0.012, 1.2, 1.12, 0.03, 2.05, 2.18, M.mirror, 0.4); mb(0.03, 2.1, 1.12, 0.07, 2.13, 2.18, M.glow, 0, NC);
     for (const [ya, yb, ta, tb] of [[1.17, 1.2, 1.09, 2.21], [2.05, 2.08, 1.09, 2.21], [1.2, 2.05, 1.09, 1.12], [1.2, 2.05, 2.18, 2.21]]) mb(0.012, ya, ta, 0.036, yb, tb, M.dark);   // its frame
     mb(0.62, 0.026, 0.98, 1.5, 0.04, 1.52, UM.sand, 0.3);                                           // a mat before the tub
-    mb(1.95, 0.54, 0.2, 2.15, 0.62, 0.56, UM.linen, 0.3); mb(1.96, 0.62, 0.22, 2.14, 0.68, 0.54, UM.throw, 0.3); piece('plant_c', x0 + sx * 0.2, L1 + 0.54, z0 + kz * 0.62, 40, 1, () => disc(0.05, 0.16, 0.2, 0.62, 0.62, M.dark));   // towels on its edge, a plant
+    mb(1.95, 0.54, 0.2, 2.15, 0.62, 0.56, UM.linen, 0.3); mb(1.96, 0.62, 0.22, 2.14, 0.68, 0.54, UM.throw, 0.3); piece('plant_c', x0 + sx * 0.2, L1 + 0.54, z0 + kz * 0.62, 40, 1, () => disc(0.05, 0.16, 0.2, 0.62, 0.62, M.dark), { shade: false });   // towels on its edge, a plant
     mb(2.05, 0, 0.92, 2.188, 1.2, 1.58, UM.wtile, 0.4); mb(1.55, 0.14, 1.07, 2.05, 0.42, 1.43, UM.white, 0.4); mb(2.04, 0.94, 1.17, 2.05, 1.05, 1.33, M.dark);   // the WC before its wall
     for (const t of [1.8, 2.27]) mb(2.155, 0.6, t, 2.185, 1.75, t + 0.03, M.dark);                 // a ladder for the towels
     for (let y = 0.7; y < 1.7; y += 0.2) mb(2.16, y, 1.8, 2.18, y + 0.025, 2.3, M.dark);
@@ -928,10 +933,13 @@ export function buildInterior(K, c) {
   A(3.28, 0.14, -14.84, 3.4, 0.78, -14.72, M.gSteel, 0.4); A(3.3, 0.62, -14.82, 3.38, 0.74, -14.74, M.gGlow, 0, NC);   // a bollard lamp
 
   furnish();
-  if (K.MODELS_ON) {
+  // the models this house still lacks are fetched when its rooms are shown for the first time; then it is furnished again
+  let asked = false;
+  const wantModels = () => {
+    if (asked || !K.MODELS_ON) return; asked = true;
     const want = [...new Set(pieces.map((p) => p.name))].filter((n) => n && FU[n] && !K.modelOf(n));
     if (want.length) Promise.all(want.map((n) => K.loadModel(n))).then(() => { K.clearNode(gF); furnish(); K.touch(); });
-  }
+  };
 
-  return { gDoorL, gDoorR, plan, variant: V, fit, M, inn };
+  return { gDoorL, gDoorR, plan, variant: V, fit, M, inn, wantModels };
 }

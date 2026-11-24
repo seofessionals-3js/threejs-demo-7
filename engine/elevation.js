@@ -247,7 +247,7 @@ export function createStage(cfg = {}) {
     uWipe: { value: new THREE.Vector2(...(cfg.wipe || [-12, 8])) },
     uDetailIn: { value: 1 },
     uDepthCue: { value: 0 },
-    uBump: { value: 1.25 }, uTexN: { value: 1.0 },
+    uBump: { value: 1.25 }, uTexN: { value: 1.0 }, uGlass: { value: 1.0 },
     uLive: { value: 1 },                       // 0 while the whole picture is still drawing: the lit model is not shaded at all
     uShTexel: { value: 0.012 },                // one texel of the shadow map, in metres
     uShRange: { value: 200 },                  // depth of the shadow camera, in metres
@@ -363,12 +363,13 @@ export function createStage(cfg = {}) {
   const TEX_ON = !Q.has('notex') && cfg.textures !== false && !safeMode;
   const TEX_NRM = TEX_ON && (Q.has('nrm') ? Q.get('nrm') !== '0' : !low);      // the relief: not on a phone (a third of the download, one more look-up per pixel)
   const TEX_URL = new URL('../assets/tex/', import.meta.url).href;
+  if (TEX_ON) U.uGlass.value = 0.62;                 // beside photographed walls a pane is darker than on the paper model
   const px1 = (r, g, b, srgb) => { const t = new THREE.DataTexture(new Uint8Array([r, g, b, 255]), 1, 1); t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.needsUpdate = true; return t; };
   const toS = (v) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
   const FLAT_N = px1(128, 128, 255), SURF = {}, texQueue = [];
   let ktx = null, texGo = false, texBusy = 0;
   const ktxLoader = () => ktx || (ktx = import('three/addons/loaders/KTX2Loader.js').then(({ KTX2Loader }) => new KTX2Loader().setTranscoderPath(new URL('../vendor/three/addons/libs/basis/', import.meta.url).href).setWorkerLimit(low ? 2 : 4).detectSupport(renderer)));
-  // the pictures are fetched once the sheet is on the screen (texStart), a few at a time, in the order they were asked for
+  // the pictures are fetched once the sheet is on the screen (texStart), a few at a time, in the order they were first drawn
   function texPump() {
     if (!texGo || lost) return;
     while (texBusy < (low ? 2 : 4) && texQueue.length) {
@@ -377,7 +378,7 @@ export function createStage(cfg = {}) {
         .then((L) => {
           const an = Math.min(low ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
           const put = (slot, file) => L.loadAsync(TEX_URL + s.name + '/' + file).then((t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = an; slot.value = t; dirty = true; });
-          return Promise.all([put(s.col, 'c1024.ktx2'), put(s.orm, 'o512.ktx2'), TEX_NRM && s.d.n ? put(s.nrm, 'n512.ktx2') : 0]);
+          return Promise.all([put(s.col, low ? 'c512.ktx2' : 'c1024.ktx2'), put(s.orm, 'o512.ktx2'), TEX_NRM && s.d.n ? put(s.nrm, 'n512.ktx2') : 0]);      // (a phone: colour at 512 px, a third of the bytes)
         })
         .catch((e) => console.warn('surface', s.name, e && e.message))
         .then(() => { texBusy--; s.state = 2; texPump(); });
@@ -389,10 +390,12 @@ export function createStage(cfg = {}) {
     const d = SURFACES[name]; if (!d) return null;
     const key = name + (flat ? '|flat' : '');
     if (SURF[key]) return SURF[key];
-    const s = SURF[key] = { name, d, state: 0, col: { value: px1(toS(d.a[0]), toS(d.a[1]), toS(d.a[2]), true) }, orm: { value: px1(Math.round(255 * d.o), Math.round(255 * d.r), 0) }, nrm: { value: FLAT_N } };
-    if (!flat) { s.state = 1; texQueue.push(s); texPump(); }
-    return s;
+    return (SURF[key] = { name, d, flat, state: 0, col: { value: px1(toS(d.a[0]), toS(d.a[1]), toS(d.a[2]), true) }, orm: { value: px1(Math.round(255 * d.o), Math.round(255 * d.r), 0) }, nrm: { value: FLAT_N } });
   }
+  // the picture is fetched when something that wears it is drawn for the first time (not while the shaders are warmed
+  // up, when everything is drawn once): the rooms of a house nobody has looked into cost nothing
+  let warming = false;
+  const wantSurface = (s) => { if (s.state || s.flat || warming) return; s.state = 1; texQueue.push(s); texPump(); };
   // Which photograph a material wears: by its kind, the variant of its pattern (o.tx[0]) and its tone. o.tex names one
   // outright (or forbids it with false). Returns [name, turned by 90 degrees].
   function surfaceOf(kind, o, c) {
@@ -434,7 +437,7 @@ export function createStage(cfg = {}) {
         vWP = (modelMatrix * wpp).xyz;
         vWN = normalize(mat3(modelMatrix) * objectNormal);
         vSky = vec4(elevSky(vWN, 1.0), 0.87 + 0.13 * dot(vWN, vec3(0.45, 0.65, 0.61)));`);
-      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\n#define ELEV_SHINY ${shiny}\n#define ELEV_TEX ${tex}\n#define ELEV_NRM ${nrm}\nvarying vec3 vWP; varying vec3 vWN; varying vec4 vSky; uniform vec3 uHemiSky; uniform vec3 uHemiGround; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx;\n#if ELEV_TEX == 1\nuniform sampler2D tCol; uniform sampler2D tOrm; uniform sampler2D tNrm; uniform vec4 uTex; uniform vec4 uTexK; uniform float uTexN;\n#endif\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0; float elevAo = 1.0; vec3 elevTn = vec3(0.0, 0.0, 1.0);\n${GLSL_COMMON}${GLSL_KINDS}${GLSL_SKY}
+      sh.fragmentShader = `#define KIND ${K}\n#define CLEAR ${clear}\n#define ELEV_TAPS ${high ? 16 : 4}\n#define ELEV_LOW ${low ? 1 : 0}\n#define ELEV_SHINY ${shiny}\n#define ELEV_TEX ${tex}\n#define ELEV_NRM ${nrm}\nvarying vec3 vWP; varying vec3 vWN; varying vec4 vSky; uniform vec3 uHemiSky; uniform vec3 uHemiGround; uniform float uBump; uniform float uShTexel; uniform float uShRange; uniform float uFill; uniform float uEnv;\nuniform vec4 uFx; uniform vec4 uTx; uniform float uGlass;\n#if ELEV_TEX == 1\nuniform sampler2D tCol; uniform sampler2D tOrm; uniform sampler2D tNrm; uniform vec4 uTex; uniform vec4 uTexK; uniform float uTexN;\n#endif\nfloat elevH = 0.0; float elevRough = -1.0; float elevNear = 0.0; float elevAo = 1.0; vec3 elevTn = vec3(0.0, 0.0, 1.0);\n${GLSL_COMMON}${GLSL_KINDS}${GLSL_SKY}
       ` + sh.fragmentShader
           // the sun's shadow, read once per pixel and used twice: by the light of the real model and by the hatching.
           // The depth bias follows the slope of the surface to the sun, so a brick 60 mm proud keeps its small shadow.
@@ -700,6 +703,7 @@ export function createStage(cfg = {}) {
                 float roomVar = 0.6 + 0.4 * sin(vWP.x * 1.7 + floor((vWP.y - 0.45) / 3.0) * 2.3);
                 diffuseColor.rgb = skyRefl + vec3(0.30, 0.25, 0.17) * warmZone * roomVar * mix(0.75, 0.25, uFx.x);
                 diffuseColor.rgb += 0.05 * sstep(0.18, 0.0, abs(fract((vWP.x - vWP.y * 0.6) / 2.7) - 0.5));
+                diffuseColor.rgb *= uGlass;
               #elif KIND == 9
                 diffuseColor.rgb *= 0.94 + 0.10 * vnoise(q * 45.0);
               #endif
@@ -879,6 +883,27 @@ export function createStage(cfg = {}) {
     md.parts.forEach((p) => add(p.geo.clone().applyMatrix4(M), modelMat(p.src, { in: o.in, color: o.color, glow: o.glowPart && o.glowPart.test(p.src.name) ? (o.glow || 1) : 0 }), 0, { parent: o.parent, cast: o.cast }));
     return true;
   }
+  // A soft dark patch on the floor under a piece of furniture: the room light comes from everywhere and throws no
+  // shadow, so without it a chair hovers. One small texture, one material; the patches of a house are one mesh.
+  let SHADE = null;
+  function shadeMat() {
+    if (SHADE) return SHADE;
+    const n = 64, c = document.createElement('canvas'); c.width = c.height = n;
+    const cx = c.getContext('2d'), img = cx.createImageData(n, n), edge = (t) => { const k = Math.min(1, Math.max(0, (1 - t) / 0.55)); return k * k * (3 - 2 * k); };
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) img.data[(j * n + i) * 4 + 3] = Math.round(255 * edge(Math.abs(i - (n - 1) / 2) / ((n - 1) / 2)) * edge(Math.abs(j - (n - 1) / 2) / ((n - 1) / 2)));
+    cx.putImageData(img, 0, 0);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    const m = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 1, metalness: 0, map: t, transparent: true, opacity: 0.62, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    m.envMapIntensity = 0;
+    Object.assign(m.userData, { kind: 'model', model: true });
+    dress(m, KIND.model, 0, 0, 0, 0, new THREE.Vector4(0, 1, 0, 0), new THREE.Vector4(), null);
+    return (SHADE = m);
+  }
+  // the patch: a rectangle (x0, z0) ... (x1, z1) lying at height y, in the coordinates of `parent`
+  function shade(x0, z0, x1, z1, y, parent) {
+    if (!MODELS_ON) return;
+    add(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2).translate((x0 + x1) / 2, y, (z0 + z1) / 2), shadeMat(), 0, { parent, cast: false, receive: false, order: 3 });
+  }
   // everything that was built under a node goes (the boxes that stood in for the models)
   function clearNode(node) {
     flush();
@@ -913,6 +938,7 @@ export function createStage(cfg = {}) {
       uTex: { value: new THREE.Vector4(1 / (sf.d.s[0] * sz), 1 / (sf.d.s[1] * sz), sOf[1], o.texContrast ?? sf.d.c ?? 1) },
       uTexK: { value: new THREE.Vector4(1 / Math.max(sf.d.a[0], 0.004), 1 / Math.max(sf.d.a[1], 0.004), 1 / Math.max(sf.d.a[2], 0.004), m.roughness / Math.max(sf.d.r, 0.08)) } } : null;
     m.userData.surface = sf ? sf.name : null;
+    if (sf && !sf.flat) m.onBeforeRender = () => wantSurface(sf);
     dress(m, K, clear, shiny, tex, nrm, fx, tx, texU);
     return (MATS[key] = m);
   }
@@ -1278,11 +1304,11 @@ export function createStage(cfg = {}) {
       // two floor plates in it: on the building site (cut) a house that cannot be entered is a shell with its floors
       if (!faint) { const sl = mat('plain', { color: 0xcfc8ba }); add(box(0.05, 0, -11.95, 5.95, G0, pz - 0.17), sl, 0, { parent: g, cast: false }); add(box(0.05, L1 - 0.25, -11.95, 5.95, L1, pz - 0.17), sl, 0, { parent: g, cast: false }); }
     }
-    const sync = () => { const on = !!inside && shown && live === true; if (gi.visible !== on) { gi.visible = on; gBack.visible = !on; shadowDirty = true; dirty = true; } };
+    const sync = () => { const on = !!inside && shown && live === true; if (gi.visible !== on) { gi.visible = on; gBack.visible = !on; shadowDirty = true; dirty = true; } if (on && inside.wantModels) inside.wantModels(); };   // (its furniture is fetched when its rooms are first shown)
     if (show) syncs.push(sync);
     const rooms = () => {
       if (inside || !show) return;
-      inside = buildInterior({ THREE, add, box, panel, mat, tree, mulberry, FURNITURE, MODELS_ON, loadModel, modelOf, placeModel, clearNode, touch: () => { pending = true; dirty = true; } }, { g: gi, doorL, PAR, O, v, plan: v.plan, variant: v.variant, fit: v.fit });
+      inside = buildInterior({ THREE, add, box, panel, mat, tree, mulberry, FURNITURE, MODELS_ON, loadModel, modelOf, placeModel, clearNode, shade, touch: () => { pending = true; dirty = true; } }, { g: gi, doorL, PAR, O, v, plan: v.plan, variant: v.variant, fit: v.fit });
       pending = true; sync(); dirty = true;
     };
     if (show && v.interior !== 'later') rooms();
@@ -1528,7 +1554,7 @@ export function createStage(cfg = {}) {
   function warmModels() {
     if (!MODELS_ON) return [];
     const w = px1(255, 255, 255, true), l = px1(255, 255, 255);
-    return [0, 1].map((leaf) => modelMat(new THREE.MeshStandardMaterial({ map: w, normalMap: FLAT_N, roughnessMap: l, metalnessMap: l, aoMap: l, alphaTest: leaf ? 0.5 : 0, side: leaf ? THREE.DoubleSide : THREE.FrontSide }), { in: 1 }));
+    return [shadeMat(), ...[0, 1].map((leaf) => modelMat(new THREE.MeshStandardMaterial({ map: w, normalMap: FLAT_N, roughnessMap: l, metalnessMap: l, aoMap: l, alphaTest: leaf ? 0.5 : 0, side: leaf ? THREE.DoubleSide : THREE.FrontSide }), { in: 1 }))];
   }
   // before the first frame: everything visible once, so every buffer is on the GPU and every shader is built
   // while the loader still covers the sheet. One small triangle of every kind of material goes along, so a house
@@ -1543,13 +1569,13 @@ export function createStage(cfg = {}) {
     { const me = new THREE.Mesh(tri, mat('foliage', { noCut: true })); me.castShadow = true; me.customDepthMaterial = DEPTH_TREE; tmp.add(me); }
     flush();
     const hidden = []; root.traverse((n) => { if (!n.visible) { hidden.push(n); n.visible = true; } });
-    U.uLive.value = 1;
+    U.uLive.value = 1; warming = true;
     try { if (renderer.compileAsync) await renderer.compileAsync(scene, camera); else renderer.compile(scene, camera); } catch (e) { renderer.compile(scene, camera); }
     renderer.shadowMap.needsUpdate = true;
     renderer.render(scene, camera);
     hidden.forEach((n) => { n.visible = false; });
     root.remove(tmp);
-    live = null; shadowDirty = true; dirty = true;
+    live = null; shadowDirty = true; dirty = true; warming = false;
     texStart();
   }
 
@@ -1561,7 +1587,7 @@ export function createStage(cfg = {}) {
     mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, cut, camAt, setCam, viewKey, turnShort, pin, placePins,
     flush, warm, render,
     get surfaces() { return Object.values(SURF).map((s) => [s.name, s.state]); },
-    get loading() { return texBusy + texQueue.length + modelLoads; },          // pictures and models still on their way
+    get loading() { return texBusy + texQueue.length + modelLoads + (dirty || pending ? 1 : 0); },          // pictures and models still on their way
   }));
   return S;
 }
