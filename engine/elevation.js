@@ -36,6 +36,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { tier, low, high, startDpr, pinnedDpr, governor, visible, safeMode, enterSafeMode } from './quality.js';
 import { buildInterior, PLANS, planInfo, fitFor, FLOORS, WOODS, STONES } from './interior.js';
 import { SURFACES } from './surfaces.js';
+import { FURNITURE } from './furniture.js';
 
 export { THREE, mergeGeometries, PLANS, planInfo, fitFor, FLOORS, WOODS, STONES };
 export const Q = new URLSearchParams(location.search);
@@ -328,7 +329,7 @@ export function createStage(cfg = {}) {
   /* ---------- materials ---------- */
   const KIND = {
     plain: 0, brick: 1, stone: 2, glass: 3, zinc: 4, wood: 5, paving: 6,
-    sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14, lacquer: 15,
+    sky: 7, foliage: 8, steel: 9, interior: 10, oakFloor: 11, plaster: 12, travertine: 13, linen: 14, lacquer: 15, model: 16,
   };
   const BASE = {
     // late October on the Kreidegasse: white brick, pale stone, zinc, oak, black steel (oxide red only on the front door), plaster, lawn and one russet maple
@@ -348,6 +349,7 @@ export function createStage(cfg = {}) {
     travertine: { color: 0xefebe2, roughness: 0.5 },
     linen: { color: 0xf2efe8, roughness: 0.92 },
     lacquer: { color: 0x9a3f2a, roughness: 0.36, metalness: 0.12 },
+    model: { color: 0xffffff, roughness: 0.8 },
   };
   const MATS = {};
 
@@ -365,12 +367,13 @@ export function createStage(cfg = {}) {
   const toS = (v) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055));
   const FLAT_N = px1(128, 128, 255), SURF = {}, texQueue = [];
   let ktx = null, texGo = false, texBusy = 0;
+  const ktxLoader = () => ktx || (ktx = import('three/addons/loaders/KTX2Loader.js').then(({ KTX2Loader }) => new KTX2Loader().setTranscoderPath(new URL('../vendor/three/addons/libs/basis/', import.meta.url).href).setWorkerLimit(low ? 2 : 4).detectSupport(renderer)));
   // the pictures are fetched once the sheet is on the screen (texStart), a few at a time, in the order they were asked for
   function texPump() {
     if (!texGo || lost) return;
     while (texBusy < (low ? 2 : 4) && texQueue.length) {
       const s = texQueue.shift(); texBusy++;
-      (ktx || (ktx = import('three/addons/loaders/KTX2Loader.js').then(({ KTX2Loader }) => new KTX2Loader().setTranscoderPath(new URL('../vendor/three/addons/libs/basis/', import.meta.url).href).setWorkerLimit(low ? 2 : 4).detectSupport(renderer))))
+      ktxLoader()
         .then((L) => {
           const an = Math.min(low ? 4 : 8, renderer.capabilities.getMaxAnisotropy());
           const put = (slot, file) => L.loadAsync(TEX_URL + s.name + '/' + file).then((t) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = an; slot.value = t; dirty = true; });
@@ -413,34 +416,10 @@ export function createStage(cfg = {}) {
       default: return null;
     }
   }
-  // o: color, tx (pattern and its measures, see GLSL_KINDS), rough, metal, faint (a neighbour, drawn lightly), realOnly / drawOnly
-  // (only on one side of the scan), clear (glass you can see through), noCut (a tree: stays when a house is cut),
-  // in (how much of the room light it gets)
-  function mat(kind, o = {}) {
-    const key = [kind, o.color ?? '', o.faint ? 1 : 0, o.realOnly ? 1 : o.drawOnly ? 2 : 0, o.clear ? (o.door ? 2 : 1) : 0, o.noCut ? 1 : 0, o.in || 0, (o.tx || []).join(','), o.rough ?? '', o.metal ?? '', o.tex ?? '', o.texSize ?? '', o.texFlat ? 1 : 0].join('|');
-    if (MATS[key]) return MATS[key];
-    const m = new THREE.MeshStandardMaterial({ ...BASE[kind], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
-    m.envMapIntensity = ({ glass: 1.55, steel: 0.8, zinc: 0.8, wood: 0.8, oakFloor: 0.6, travertine: 0.5, lacquer: 0.7 }[kind] || 0.45) * (cfg.envScale || 1);
-    if (o.color != null) m.color.setHex(o.color);
-    if (o.rough != null) m.roughness = o.rough;
-    if (o.metal != null) m.metalness = o.metal;
-    // clear glass: a sheet you can see through once the scan has made it real. On the drawing it is paper like everything else
-    const clear = o.clear ? 1 : 0;
-    if (kind === 'sky') m.toneMapped = false;
-    if (clear) { m.transparent = true; m.opacity = 0.17; m.depthWrite = !!o.door; }
-    const fx = new THREE.Vector4(o.faint ? 1 : 0, o.realOnly ? 1 : o.drawOnly ? 2 : 0, o.noCut ? 1 : 0, o.in || 0);
-    const tx = new THREE.Vector4(...[0, 1, 2, 3].map((i) => (o.tx && o.tx[i]) || 0));
-    Object.assign(m.userData, { drawOnly: !!o.drawOnly, sky: kind === 'sky', noCut: !!o.noCut, kind });
-    const K = KIND[kind];
-    const shiny = m.roughness < 0.7 || m.metalness > 0.02 ? 1 : 0;        // does it mirror the sky? (see ELEV_SHINY in the shader)
-    // the photograph it wears, if any: uTex (tiles per metre in u and v, turned, how much of its light and dark is kept),
-    // uTexK (one over the mean colour of the picture; the roughness of the material over the mean one of the picture)
-    const sOf = TEX_ON && !clear ? surfaceOf(kind, o, m.color) : null, sf = sOf ? surface(sOf[0], !!o.faint || !!o.texFlat) : null;
-    const tex = sf ? 1 : 0, nrm = sf && TEX_NRM && sf.d.n && !o.faint ? 1 : 0, sz = o.texSize || 1;
-    const texU = sf ? { tCol: sf.col, tOrm: sf.orm, tNrm: sf.nrm,
-      uTex: { value: new THREE.Vector4(1 / (sf.d.s[0] * sz), 1 / (sf.d.s[1] * sz), sOf[1], o.texContrast ?? sf.d.c ?? 1) },
-      uTexK: { value: new THREE.Vector4(1 / Math.max(sf.d.a[0], 0.004), 1 / Math.max(sf.d.a[1], 0.004), 1 / Math.max(sf.d.a[2], 0.004), m.roughness / Math.max(sf.d.r, 0.08)) } } : null;
-    m.userData.surface = sf ? sf.name : null;
+  // The shader every lit material of the sheet shares: three's standard material with the scan, the sun's shadow read
+  // once, the sky as a formula, the one room light, the cut of the plan and, by kind, a pattern or a photograph.
+  // K: the kind (KIND), fx / tx: its uFx and uTx, texU: the uniforms of the photograph it wears (or null).
+  function dress(m, K, clear, shiny, tex, nrm, fx, tx, texU) {
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
       if (texU) Object.assign(sh.uniforms, texU);
@@ -755,6 +734,9 @@ export function createStage(cfg = {}) {
             #endif`)
           .replace('#include <aomap_fragment>', `#include <aomap_fragment>
             {
+              #if KIND == 16 && defined( USE_AOMAP )
+                elevAo = ambientOcclusion;                 // a model brings the shade of its own folds
+              #endif
               // the sky and the ground: their light on the surface (the sky worked out per corner, vSky) ...
               reflectedLight.indirectDiffuse += (vSky.rgb * uEnv + mix(uHemiGround, uHemiSky, 0.5 + 0.5 * dot(geometryNormal, viewMatrix[1].xyz)) * RECIPROCAL_PI) * material.diffuseColor;   // (viewMatrix[1]: up, as the lens sees it)
               // ... and the picture of the sky in it. What shines (glass, metal, lacquer, a sealed floor) looks the sky up in
@@ -838,6 +820,100 @@ export function createStage(cfg = {}) {
             }`);
     };
     m.customProgramCacheKey = () => `elev-${tier}-${K}-${clear}-${shiny}-${tex}${nrm}`;
+  }
+
+  /* ---------- furniture: models instead of boxes ----------
+     CC0 models from Poly Haven (assets/models/CREDITS.md), made light by tools/models.mjs: a few thousand triangles
+     each, the mesh packed with Draco, the textures KTX2. A phone gets the files without a relief map (.lite).
+     A model is a list of parts (a geometry in metres, the material it came with). placeModel() bakes a copy into the
+     batch of its house like any box, so twelve chairs are still one draw call. ?nomodels: the boxes of version 1. */
+  const MODELS_ON = !Q.has('nomodels') && cfg.models !== false && !safeMode;
+  const MODEL_URL = new URL('../assets/models/', import.meta.url).href, MODELS = {}, MMATS = {};
+  let gltf = null, modelLoads = 0;
+  function loadModel(name) {
+    if (!MODELS_ON || !FURNITURE[name]) return Promise.resolve();
+    if (MODELS[name]) return MODELS[name].promise;
+    const rec = MODELS[name] = { parts: null };
+    modelLoads++;
+    rec.promise = (gltf || (gltf = Promise.all([import('three/addons/loaders/GLTFLoader.js'), import('three/addons/loaders/DRACOLoader.js'), ktxLoader()])
+      .then(([G, D, k]) => new G.GLTFLoader().setDRACOLoader(new D.DRACOLoader().setDecoderPath(new URL('../vendor/three/addons/libs/draco/gltf/', import.meta.url).href)).setKTX2Loader(k))))
+      .then((L) => L.loadAsync(MODEL_URL + name + (TEX_NRM ? '' : '.lite') + '.glb'))
+      .then((g) => {
+        g.scene.updateMatrixWorld(true);
+        const parts = [], an = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+        g.scene.traverse((o) => {
+          if (!o.isMesh) return;
+          const geo = o.geometry.clone().applyMatrix4(o.matrixWorld);
+          Object.keys(geo.attributes).forEach((k) => { if (k !== 'position' && k !== 'normal' && k !== 'uv') geo.deleteAttribute(k); });
+          ['map', 'normalMap', 'roughnessMap', 'aoMap'].forEach((k) => { if (o.material[k]) o.material[k].anisotropy = an; });
+          parts.push({ geo, src: o.material });
+        });
+        rec.parts = parts;
+      })
+      .catch((e) => console.warn('model', name, e && e.message))
+      .then(() => { modelLoads--; });
+    return rec.promise;
+  }
+  const modelOf = (name) => (MODELS[name] && MODELS[name].parts ? MODELS[name] : null);
+  // the material of a part, lit like everything else on the sheet. o.in: how much of the room light it gets, o.color: a
+  // tint over its own colour, o.glow: it shines (the globe of a lamp)
+  function modelMat(src, o = {}) {
+    const key = [src.uuid, o.in || 0, o.color ?? '', o.glow || 0].join('|');
+    if (MMATS[key]) return MMATS[key];
+    const m = new THREE.MeshStandardMaterial({ color: src.color, roughness: src.roughness, metalness: src.metalness, map: src.map, normalMap: TEX_NRM ? src.normalMap : null,
+      roughnessMap: src.roughnessMap, metalnessMap: src.metalnessMap, aoMap: src.aoMap, alphaTest: src.alphaTest, side: src.side });
+    if (m.normalMap) m.normalScale.copy(src.normalScale);
+    if (o.color != null) m.color.multiply(new THREE.Color(o.color));
+    if (o.glow) { m.emissive.setHex(0xfff1dd); m.emissiveIntensity = o.glow; }
+    m.envMapIntensity = 0.6 * (cfg.envScale || 1);
+    Object.assign(m.userData, { kind: 'model', model: true });
+    dress(m, KIND.model, 0, 1, 0, 0, new THREE.Vector4(0, 1, 0, o.in || 0), new THREE.Vector4(), null);     // (uFx.y = 1: only on the real side of the scan. A drawing has no leather)
+    return (MMATS[key] = m);
+  }
+  // a copy of a model into a house. at: where its foot stands, yaw: degrees about the upright axis (0: its front looks
+  // to the street), scale: a number or [x, y, z]. o: parent, in, color, glow (a part whose name matches o.glowPart shines)
+  function placeModel(name, at, yaw = 0, scale = 1, o = {}) {
+    const md = modelOf(name); if (!md) return false;
+    const sc = Array.isArray(scale) ? scale : [scale, scale, scale];
+    const M = new THREE.Matrix4().compose(new THREE.Vector3(...at), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw * Math.PI / 180), new THREE.Vector3(...sc));
+    md.parts.forEach((p) => add(p.geo.clone().applyMatrix4(M), modelMat(p.src, { in: o.in, color: o.color, glow: o.glowPart && o.glowPart.test(p.src.name) ? (o.glow || 1) : 0 }), 0, { parent: o.parent, cast: o.cast }));
+    return true;
+  }
+  // everything that was built under a node goes (the boxes that stood in for the models)
+  function clearNode(node) {
+    flush();
+    [...node.children].forEach((c) => { node.remove(c); if (c.geometry) c.geometry.dispose(); });
+    shadowDirty = true; dirty = true;
+  }
+  // o: color, tx (pattern and its measures, see GLSL_KINDS), rough, metal, faint (a neighbour, drawn lightly), realOnly / drawOnly
+  // (only on one side of the scan), clear (glass you can see through), noCut (a tree: stays when a house is cut),
+  // in (how much of the room light it gets)
+  function mat(kind, o = {}) {
+    const key = [kind, o.color ?? '', o.faint ? 1 : 0, o.realOnly ? 1 : o.drawOnly ? 2 : 0, o.clear ? (o.door ? 2 : 1) : 0, o.noCut ? 1 : 0, o.in || 0, (o.tx || []).join(','), o.rough ?? '', o.metal ?? '', o.tex ?? '', o.texSize ?? '', o.texFlat ? 1 : 0].join('|');
+    if (MATS[key]) return MATS[key];
+    const m = new THREE.MeshStandardMaterial({ ...BASE[kind], polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 1 });
+    m.envMapIntensity = ({ glass: 1.55, steel: 0.8, zinc: 0.8, wood: 0.8, oakFloor: 0.6, travertine: 0.5, lacquer: 0.7 }[kind] || 0.45) * (cfg.envScale || 1);
+    if (o.color != null) m.color.setHex(o.color);
+    if (o.rough != null) m.roughness = o.rough;
+    if (o.metal != null) m.metalness = o.metal;
+    // clear glass: a sheet you can see through once the scan has made it real. On the drawing it is paper like everything else
+    const clear = o.clear ? 1 : 0;
+    if (kind === 'sky') m.toneMapped = false;
+    if (clear) { m.transparent = true; m.opacity = 0.17; m.depthWrite = !!o.door; }
+    const fx = new THREE.Vector4(o.faint ? 1 : 0, o.realOnly ? 1 : o.drawOnly ? 2 : 0, o.noCut ? 1 : 0, o.in || 0);
+    const tx = new THREE.Vector4(...[0, 1, 2, 3].map((i) => (o.tx && o.tx[i]) || 0));
+    Object.assign(m.userData, { drawOnly: !!o.drawOnly, sky: kind === 'sky', noCut: !!o.noCut, kind });
+    const K = KIND[kind];
+    const shiny = m.roughness < 0.7 || m.metalness > 0.02 ? 1 : 0;        // does it mirror the sky? (see ELEV_SHINY in the shader)
+    // the photograph it wears, if any: uTex (tiles per metre in u and v, turned, how much of its light and dark is kept),
+    // uTexK (one over the mean colour of the picture; the roughness of the material over the mean one of the picture)
+    const sOf = TEX_ON && !clear ? surfaceOf(kind, o, m.color) : null, sf = sOf ? surface(sOf[0], !!o.faint || !!o.texFlat) : null;
+    const tex = sf ? 1 : 0, nrm = sf && TEX_NRM && sf.d.n && !o.faint ? 1 : 0, sz = o.texSize || 1;
+    const texU = sf ? { tCol: sf.col, tOrm: sf.orm, tNrm: sf.nrm,
+      uTex: { value: new THREE.Vector4(1 / (sf.d.s[0] * sz), 1 / (sf.d.s[1] * sz), sOf[1], o.texContrast ?? sf.d.c ?? 1) },
+      uTexK: { value: new THREE.Vector4(1 / Math.max(sf.d.a[0], 0.004), 1 / Math.max(sf.d.a[1], 0.004), 1 / Math.max(sf.d.a[2], 0.004), m.roughness / Math.max(sf.d.r, 0.08)) } } : null;
+    m.userData.surface = sf ? sf.name : null;
+    dress(m, K, clear, shiny, tex, nrm, fx, tx, texU);
     return (MATS[key] = m);
   }
 
@@ -929,7 +1005,7 @@ export function createStage(cfg = {}) {
     MB.forEach((b) => {
       const geos = b.items.map(({ geo, parent }) => {
         // position and normal are all the shaders read. Everything gets an index, so boxes and extrusions merge.
-        Object.keys(geo.attributes).forEach((k) => { if (k !== 'position' && k !== 'normal') geo.deleteAttribute(k); });
+        Object.keys(geo.attributes).forEach((k) => { if (k !== 'position' && k !== 'normal' && !(k === 'uv' && b.m.userData.model)) geo.deleteAttribute(k); });   // (a model keeps where its textures lie)
         if (!geo.index) { const n = geo.attributes.position.count, ix = new Uint32Array(n); for (let i = 0; i < n; i++) ix[i] = i; geo.setIndex(new THREE.BufferAttribute(ix, 1)); }
         const rel = relTo(parent, b.host);
         if (!isIdentity(rel)) geo.applyMatrix4(rel);
@@ -1206,7 +1282,7 @@ export function createStage(cfg = {}) {
     if (show) syncs.push(sync);
     const rooms = () => {
       if (inside || !show) return;
-      inside = buildInterior({ THREE, add, box, panel, mat, tree, mulberry }, { g: gi, doorL, PAR, O, v, plan: v.plan, variant: v.variant, fit: v.fit });
+      inside = buildInterior({ THREE, add, box, panel, mat, tree, mulberry, FURNITURE, MODELS_ON, loadModel, modelOf, placeModel, clearNode, touch: () => { pending = true; dirty = true; } }, { g: gi, doorL, PAR, O, v, plan: v.plan, variant: v.variant, fit: v.fit });
       pending = true; sync(); dirty = true;
     };
     if (show && v.interior !== 'later') rooms();
@@ -1448,6 +1524,12 @@ export function createStage(cfg = {}) {
     renderer.render(scene, camera);
     dirty = false;
   }
+  // the two shaders the models need (solid; leaves with holes, seen from both sides), with textures of one pixel
+  function warmModels() {
+    if (!MODELS_ON) return [];
+    const w = px1(255, 255, 255, true), l = px1(255, 255, 255);
+    return [0, 1].map((leaf) => modelMat(new THREE.MeshStandardMaterial({ map: w, normalMap: FLAT_N, roughnessMap: l, metalnessMap: l, aoMap: l, alphaTest: leaf ? 0.5 : 0, side: leaf ? THREE.DoubleSide : THREE.FrontSide }), { in: 1 }));
+  }
   // before the first frame: everything visible once, so every buffer is on the GPU and every shader is built
   // while the loader still covers the sheet. One small triangle of every kind of material goes along, so a house
   // that gets its rooms later never needs a shader that is not there yet.
@@ -1457,7 +1539,7 @@ export function createStage(cfg = {}) {
     tri.setAttribute('position', new THREE.Float32BufferAttribute([0, -9, 0, 0.01, -9, 0, 0, -9, 0.01], 3));
     tri.setAttribute('normal', new THREE.Float32BufferAttribute([0, 1, 0, 0, 1, 0, 0, 1, 0], 3));
     // (a kind that wears a photograph in one place and a pattern in another needs both shaders)
-    [...Object.keys(KIND).map((k) => mat(k, { texFlat: true })), mat('glass', { clear: true }), mat('glass', { clear: true, door: true }), mat('zinc', { tx: [1, 0, 0, 0], texFlat: true }), mat('plain', { tex: 'grass', texFlat: true })].forEach((m) => { const me = new THREE.Mesh(tri, m); me.castShadow = true; me.customDepthMaterial = DEPTH; tmp.add(me); });
+    [...Object.keys(KIND).filter((k) => k !== 'model').map((k) => mat(k, { texFlat: true })), ...warmModels(), mat('glass', { clear: true }), mat('glass', { clear: true, door: true }), mat('zinc', { tx: [1, 0, 0, 0], texFlat: true }), mat('plain', { tex: 'grass', texFlat: true })].forEach((m) => { const me = new THREE.Mesh(tri, m); me.castShadow = true; me.customDepthMaterial = DEPTH; tmp.add(me); });
     { const me = new THREE.Mesh(tri, mat('foliage', { noCut: true })); me.castShadow = true; me.customDepthMaterial = DEPTH_TREE; tmp.add(me); }
     flush();
     const hidden = []; root.traverse((n) => { if (!n.visible) { hidden.push(n); n.visible = true; } });
@@ -1479,6 +1561,7 @@ export function createStage(cfg = {}) {
     mat, lineMat, add, lines, loop, box, panel, house, street, figure, tree, aimSun, setSun, cut, camAt, setCam, viewKey, turnShort, pin, placePins,
     flush, warm, render,
     get surfaces() { return Object.values(SURF).map((s) => [s.name, s.state]); },
+    get loading() { return texBusy + texQueue.length + modelLoads; },          // pictures and models still on their way
   }));
   return S;
 }
