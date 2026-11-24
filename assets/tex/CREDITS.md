@@ -8,7 +8,7 @@ All textures are CC0 (public domain). Thank you to Poly Haven and ambientCG.
 | `tex/brick_long` | Poly Haven, "Brick Wall 11" (Rob Tuytel) | CC0 | https://polyhaven.com/a/brick_wall_11 |
 | `tex/brick_dark` | Poly Haven, "Brick Wall 10" (Dimitrios Savva) | CC0 | https://polyhaven.com/a/brick_wall_10 |
 | `tex/brick_white` | Poly Haven, "Whitewashed Brick" (Charlotte Baglioni) | CC0 | https://polyhaven.com/a/whitewashed_brick |
-| `tex/brick_red` | Poly Haven, "Brick Wall 001" (Rob Tuytel, Dimitrios Savva) | CC0 | https://polyhaven.com/a/brick_wall_001 |
+| `tex/brick_red` | ambientCG, "Bricks101" | CC0 | https://ambientcg.com/a/Bricks101 |
 | `tex/render` | ambientCG, "Plaster001" | CC0 | https://ambientcg.com/a/Plaster001 |
 | `tex/render_rough` | Poly Haven, "White Stucco 02" (Dimitrios Savva) | CC0 | https://polyhaven.com/a/white_stucco_02 |
 | `tex/boards` | Poly Haven, "White Planks Clean" (Rob Tuytel) | CC0 | https://polyhaven.com/a/white_planks_clean |

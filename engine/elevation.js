@@ -433,12 +433,12 @@ export function createStage(cfg = {}) {
     Object.assign(m.userData, { drawOnly: !!o.drawOnly, sky: kind === 'sky', noCut: !!o.noCut, kind });
     const K = KIND[kind];
     const shiny = m.roughness < 0.7 || m.metalness > 0.02 ? 1 : 0;        // does it mirror the sky? (see ELEV_SHINY in the shader)
-    // the photograph it wears, if any: uTex (tiles per metre in u and v, turned, how much of the house's own colour),
+    // the photograph it wears, if any: uTex (tiles per metre in u and v, turned, how much of its light and dark is kept),
     // uTexK (one over the mean colour of the picture; the roughness of the material over the mean one of the picture)
     const sOf = TEX_ON && !clear ? surfaceOf(kind, o, m.color) : null, sf = sOf ? surface(sOf[0], !!o.faint || !!o.texFlat) : null;
     const tex = sf ? 1 : 0, nrm = sf && TEX_NRM && sf.d.n && !o.faint ? 1 : 0, sz = o.texSize || 1;
     const texU = sf ? { tCol: sf.col, tOrm: sf.orm, tNrm: sf.nrm,
-      uTex: { value: new THREE.Vector4(1 / (sf.d.s[0] * sz), 1 / (sf.d.s[1] * sz), sOf[1], o.texTint ?? 1) },
+      uTex: { value: new THREE.Vector4(1 / (sf.d.s[0] * sz), 1 / (sf.d.s[1] * sz), sOf[1], o.texContrast ?? sf.d.c ?? 1) },
       uTexK: { value: new THREE.Vector4(1 / Math.max(sf.d.a[0], 0.004), 1 / Math.max(sf.d.a[1], 0.004), 1 / Math.max(sf.d.a[2], 0.004), m.roughness / Math.max(sf.d.r, 0.08)) } } : null;
     m.userData.surface = sf ? sf.name : null;
     m.onBeforeCompile = (sh) => {
@@ -545,7 +545,7 @@ export function createStage(cfg = {}) {
                 #endif
                 vec2 tq = (uTex.z > 0.5 ? vec2(tq0.y, -tq0.x) : vec2(tq0.x, -tq0.y)) * uTex.xy + tofs;
                 vec3 tcol = texture2D(tCol, tq).rgb, torm = texture2D(tOrm, tq).rgb;
-                diffuseColor.rgb = mix(tcol, tcol * diffuseColor.rgb * uTexK.rgb, uTex.w) * tmul;
+                diffuseColor.rgb *= mix(vec3(1.0), tcol * uTexK.rgb, uTex.w) * tmul;          // the colour of the house, the light and dark of the picture
                 elevRough = clamp(torm.g * uTexK.w, 0.05, 1.0);
                 elevAo = torm.r;
                 #if ELEV_NRM == 1

@@ -73,8 +73,9 @@ for (const [name, def] of Object.entries(LIST)) {
   fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 1));
 }
 // what the engine has to know before a single picture is there: s the metres a tile covers, a its mean colour
-// (linear), r its mean roughness, o its mean shade, n whether it has a relief
-const lines = Object.keys(LIST).filter((k) => manifest[k]).map((k) => { const m = manifest[k]; return `  ${k}: { s: [${m.size.join(', ')}], a: [${m.avg.join(', ')}], r: ${m.rough}, o: ${m.ao}, n: ${m.normal ? 1 : 0} },`; });
+// (linear), r its mean roughness, o its mean shade, n whether it has a relief, c how much of the light and dark
+// of the picture is kept when it is tinted (a render with deep pits would look like cork at full strength)
+const lines = Object.keys(LIST).filter((k) => manifest[k]).map((k) => { const m = manifest[k]; return `  ${k}: { s: [${m.size.join(', ')}], a: [${m.avg.join(', ')}], r: ${m.rough}, o: ${m.ao}, n: ${m.normal ? 1 : 0}, c: ${LIST[k].contrast ?? 1} },`; });
 fs.writeFileSync(path.join(HERE, '..', 'engine', 'surfaces.js'), `// Written by tools/textures.mjs: the photographed surfaces under assets/tex/ (sources and licences: assets/CREDITS.md).\nexport const SURFACES = {\n${lines.join('\n')}\n};\n`);
 const credits = Object.keys(LIST).filter((k) => manifest[k]).map((k) => `| \`tex/${k}\` | ${manifest[k].credit.replace(/, CC0, /, ' | CC0 | ')} |`);
 fs.writeFileSync(path.join(OUT, 'CREDITS.md'), `# Surfaces\n\nAll textures are CC0 (public domain). Thank you to Poly Haven and ambientCG.\n\n| Files | Source | Licence | Link |\n|---|---|---|---|\n${credits.join('\n')}\n`);

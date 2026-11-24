@@ -85,24 +85,24 @@
  },
  "brick_red": {
   "size": [
-   3,
-   3
+   1.25,
+   1.25
   ],
   "avg": [
-   0.1381,
-   0.0748,
-   0.0498
+   0.3636,
+   0.1693,
+   0.1063
   ],
-  "rough": 0.912,
-  "ao": 0.899,
+  "rough": 0.628,
+  "ao": 0.955,
   "normal": true,
   "bytes": {
-   "c1024": 260366,
-   "c512": 91590,
-   "n512": 303698,
-   "o512": 65374
+   "c1024": 241305,
+   "c512": 83889,
+   "n512": 228339,
+   "o512": 68171
   },
-  "credit": "Poly Haven, \"Brick Wall 001\" (Rob Tuytel, Dimitrios Savva), CC0, https://polyhaven.com/a/brick_wall_001"
+  "credit": "ambientCG, \"Bricks101\", CC0, https://ambientcg.com/a/Bricks101"
  },
  "render": {
   "size": [
