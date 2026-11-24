@@ -41,7 +41,8 @@ Worauf es mir ankommt:
   Eckmarken, eine Live-Anzeige von Sonne und Objektiv und ein kleiner Grundriss, der zeigt,
   wo die Kamera ist.
 - Das Haus ist schlicht und hat zwei Geschosse. Die Kamera kommt nie näher als 40 cm an eine
-  Fläche. Baue eine Prüfung ein, die das über den ganzen Weg misst.
+  Fläche. Baue eine Prüfung ein, die das über den ganzen Weg misst. Keine zwei Flächen
+  verschiedener Farbe liegen in derselben Ebene übereinander (das flimmert): prüfe auch das.
 - Nur three.js 0.160 von einem CDN, keine weitere Bibliothek, einfache Dateien, kein
   Build-Schritt. Das Scrollen bleibt das der Seite und wird im Code geglättet. Keine
   Bilddateien, jede Textur wird im Code gezeichnet.

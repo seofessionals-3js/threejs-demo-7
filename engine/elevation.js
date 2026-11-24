@@ -929,7 +929,7 @@ export function createStage(cfg = {}) {
     add(bx(EX[0] - 0.2, G0, pz, EX[0], 3.0, -T), brick, lw, O);
     add(bx(EX[1], G0, pz, EX[1] + 0.2, 3.0, -T), brick, lw, O);
     add(bx(EX[0] - 0.2, 3.0, pz, EX[1] + 0.2, 3.15, -T), st, lw, O);
-    add(bx(EX[0], G0 - 0.15, pz, EX[1], G0, 0), base, lw, O);
+    add(bx(EX[0], G0 - 0.15, pz, EX[1], G0 + 0.004, 0), base, lw, O);      // (4 mm over the wall and the floor of the house, which both run under it: two faces in one plane flicker)
     const sp = new THREE.Shape([[0, 0], [0.6, 0], [0.6, 0.15], [0.3, 0.15], [0.3, 0.3], [0, 0.3]].map((p) => new THREE.Vector2(p[0], p[1])));
     add(new THREE.ExtrudeGeometry(sp, { depth: EX[1] - EX[0], bevelEnabled: false }).rotateY(-Math.PI / 2).translate(Math.max(X(EX[0]), X(EX[1])), 0, 0), base, lw, O);
     if (!faint) {
@@ -944,7 +944,9 @@ export function createStage(cfg = {}) {
     // the door: a steel portal, and in it two leaves of glass in frames of the door's colour, 2.0 m by 2.55 m together.
     // A house that can be entered has leaves that swing and glass you can see through.
     const show = !faint && v.interior !== false;
-    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), mat('steel', { faint, color: DC }), lw, O);
+    const portal = mat('steel', { faint, color: DC });
+    add(panel(R4(EX[0], G0, EX[1], 3.0), [R4(DX[0], G0, DX[1], 2.86)], pz - 0.1, pz), portal, lw, O);
+    add(bx(DX[0], G0 - 0.02, pz - 0.1, DX[1], G0 + 0.006, pz), portal, 0, { parent: g });      // its threshold, over the floor
     const hA = Math.min(X(DX[0]), X(DX[1])) + 0.012, hB = Math.max(X(DX[0]), X(DX[1])) - 0.012, wL = (hB - hA) / 2 - 0.004;
     const red = mat('lacquer', v.doorColor ? { faint, color: DC } : { faint }), doorGlass = show ? mat('glass', { clear: true, door: true }) : mat('glass', { faint });
     const leaves = [1, -1].map((s) => {
@@ -972,7 +974,7 @@ export function createStage(cfg = {}) {
     // upstairs
     if (first === 'frame') {
       add(panel([0.72, 3.77, 5.28, 6.18], [[0.9, 3.95, 5.1, 6.0]], 0, 0.38), mat('stone', { faint, color: v.stone ?? 0xd6cfc0 }), LW, O);
-      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.9, 3.95, 5.1, 6.0]], 0, 0.22), mat('stone', { faint, color: 0xc2baa9 }), 0, { parent: g });
+      if (!faint) add(panel([0.85, 3.9, 5.15, 6.05], [[0.903, 3.953, 5.097, 5.997]], 0, 0.22), mat('stone', { faint, color: 0xc2baa9 }), 0, { parent: g });   // a darker lining of the reveal, 3 mm inside it
       windowIn(g, 0.9, 3.95, 5.1, 6.0, 0.16, { ...W, panes: 3, transom: 5.4 });
     } else {
       if (first === 'bay') {
@@ -1011,10 +1013,10 @@ export function createStage(cfg = {}) {
       // one slope that rises to the street: a band of wall above the eaves with a strip of clerestory glass
       add(panel([0, PAR, 6, PAR + 1.55], [[0.9, PAR + 0.42, 5.1, PAR + 1.2]], -T, 0), brick, LW, O);
       windowIn(g, 0.9, PAR + 0.42, 5.1, PAR + 1.2, 0.14, { ...W, panes: 4 });
-      add(alongX(new THREE.Shape(V2([[0.75, PAR + 1.55], [0.75, PAR + 1.8], [-9.56, PAR + 0.4], [-9.56, PAR + 0.15]])), 6, 6), rm, LW, O);
+      add(alongX(new THREE.Shape(V2([[0.75, PAR + 1.55], [0.75, PAR + 1.8], [-9.56, PAR + 0.4], [-9.56, PAR + 0.15]])), 6.002, 6.001), rm, LW, O);      // (a millimetre over the ends of the wall it cuts through)
     } else if (roof !== 'none') {
       // eaves, then a roof that falls to the street, and a chimney on the ridge
-      add(box(0, PAR - 0.03, -T, 6, PAR + 0.1, 0.36), rm, LW, O);
+      add(box(0, PAR - 0.03, 0, 6, PAR + 0.1, 0.36), rm, LW, O); add(box(0, PAR, -T, 6, PAR + 0.1, 0), rm, 0, { parent: g });   // (in two pieces: none of it lies in the wall)
       add(alongX(new THREE.Shape(V2([[0.36, PAR + 0.1], [-4.6, PAR + RH], [-9.56, PAR + 0.1]])), 6, 6), rm, LW, O);
       if (v.chimney !== false) {
         add(bx(4.5, PAR + RH - 0.9, -5.0, 5.3, PAR + RH + 0.85, -4.2), brick, lw, O);
@@ -1038,7 +1040,7 @@ export function createStage(cfg = {}) {
     } else {
       // a parapet with a stone coping, and the flat roof behind it
       add(box(0, PAR, -T - 0.04, 6, PAR + 0.085, 0.055), st, LW, O);
-      if (!faint) { add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g }); add(box(0, PAR - 0.34, -9.6, 6, PAR - 0.2, -T), mat('paving', { color: 0xbdb6a8 }), 0, { parent: g }); }
+      if (!faint) { add(box(0, PAR - 0.035, 0, 6, PAR, 0.028), st, 0, { parent: g }); add(box(0, PAR - 0.3, -9.5, 6, PAR - 0.2, -T), mat('paving', { color: 0xbdb6a8 }), 0, { parent: g }); }
       if (v.terrace) {
         // a roof terrace: a guard of steel behind the coping, and the head of the stair
         const rail = [box(0.08, PAR + 1.02, -0.34, 5.92, PAR + 1.06, -0.28)];
@@ -1058,8 +1060,8 @@ export function createStage(cfg = {}) {
     // over the last bay. Where somebody goes in, it has the windows of the rooms upstairs (the plan says which).
     if (!faint) {
       add(panel([0, show ? L1 - 0.25 : 0, 6, PAR - 0.3], show ? (planInfo(PLANS[v.plan] ? v.plan : 'A', v.variant || 0).rear || []).map((h) => R4(...h)) : [], -12.3, -12.0), brick, 0, { parent: g });
-      add(box(-0.02, PAR - 0.3, -12.34, 6.02, PAR - 0.22, -11.98), st, 0, { parent: g });
-      add(box(0, PAR - 0.34, -12.0, 6, PAR - 0.2, -9.5), zm, 0, { parent: g });
+      add(box(-0.02, PAR - 0.3, -12.34, 6.02, PAR - 0.22, -12.0), st, 0, { parent: g });
+      add(box(0, PAR - 0.3, -12.0, 6, PAR - 0.2, -9.5), zm, 0, { parent: g });
     }
 
     // The rooms. Only a house that can be entered has any. Its rooms are a node of their own (gi): hidden while the
