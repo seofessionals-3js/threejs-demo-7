@@ -184,7 +184,7 @@ function fill() {
     if (beatEls[4]) beatEls[4].innerHTML = `<span class="n">05 &nbsp;·&nbsp; In Haus ${h.no}</span><p>${pl.text[0]}</p><div class="row"><div><span>Boden</span>${fit.list[0][1]}</div><div><span>Einbauten</span>${fit.list[1][1]}</div><div><span>Treppe</span>${fit.list[3][1]}</div></div>`;
     if (beatEls[5]) beatEls[5].innerHTML = `<span class="n">06 &nbsp;·&nbsp; Zum Garten</span><p>${pl.text[1]}</p><div class="row"><div><span>Arbeitsplatte</span>${fit.list[2][1]}</div><div><span>Akzentwand</span>${fit.list[4][1]}</div><div><span>Beschläge</span>${fit.list[5][1]}</div></div>`;
     if (beatEls[6]) {
-      const og = schedule(sel).og, pick = ['Schlafen', 'Bad', 'Ankleide', 'Kind', 'Kind 1', 'Galerie', 'Studio', 'Arbeiten'].map((n) => og.find((r) => r[0] === n)).filter(Boolean).slice(0, 3);
+      const og = schedule(sel).og, pick = ['Schlafen', 'Bad', 'Kind 1', 'Galerie', 'Studio', 'Arbeiten', 'Flur'].map((n) => og.find((r) => r[0] === n)).filter(Boolean).slice(0, 3);
       beatEls[6].innerHTML = `<span class="n">07 &nbsp;·&nbsp; Oben in Haus ${h.no}</span><p>${pl.upText}</p><div class="row">${pick.map((r) => `<div><span>${r[0]}</span>${m2(r[1])}</div>`).join('')}</div>`;
     }
     if (beatEls[7]) beatEls[7].innerHTML = `<span class="n">08 &nbsp;·&nbsp; Haus ${h.no} · ${PR.name}</span><p>Die Glaswand fährt auf: ein ummauerter Garten nach Süden, ${PLOT} m² <em>Grundstück.</em></p>`

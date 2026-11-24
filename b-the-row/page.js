@@ -88,7 +88,7 @@ run(S, {
     { from: 368, to: 465, html: '<span class="n">04 &nbsp;·&nbsp; Offene Tür</span><p>Haus 04 ist das Musterhaus. Zwei Steinstufen hinauf und durch die <em>Glastür.</em></p>' },
     { from: 482, to: 575, html: '<span class="n">05 &nbsp;·&nbsp; In Haus 04</span><p>Eine Halle über zwei Geschosse, eine Treppe aus gefaltetem Stahl, unter der Galerie der <em>Wohnraum.</em></p>' },
     { from: 588, to: 700, html: '<span class="n">06 &nbsp;·&nbsp; Küche zum Südgarten</span><p>Küche mit Essplatz. Die Glaswand öffnet sie über die ganze Breite zum ummauerten Garten.</p><div class="row"><div><span>Haus</span>04 von 06</div><div><span>Garten</span>Südlage</div><div><span>Status</span>Frei</div></div><a class="pill solid" href="#">Haus 04 reservieren</a>' },
-    { from: UP.bed - 92, to: UP.bath + 64, html: '<span class="n">07 &nbsp;·&nbsp; Oben</span><p>Die Treppe hinauf: das Schlafzimmer am Garten, gegenüber die Ankleide, und durch sie hindurch das <em>Bad.</em></p><div class="row"><div><span>Ebene</span>+3.40 m</div><div><span>Schlafen</span>13 m²</div><div><span>Bad</span>9 m²</div></div>' },
+    { from: UP.bed - 92, to: UP.bath + 64, html: '<span class="n">07 &nbsp;·&nbsp; Oben</span><p>Die Treppe hinauf. Oben zwei Türen nebeneinander: das Schlafzimmer mit einer Wand aus Eichenlamellen, das Bad mit der Wanne am <em>Fenster.</em></p><div class="row"><div><span>Ebene</span>+3.40 m</div><div><span>Schlafen</span>12,6 m²</div><div><span>Bad</span>7 m²</div></div>' },
     { from: UP.down + 30, to: UP.glass + 60, html: '<span class="n">08 &nbsp;·&nbsp; Haus 04</span><p>Wieder unten, die Küche und der Garten voraus. Haus 04 ist das Musterhaus der Reihe und noch <em>frei.</em></p><a class="pill solid" href="#">Haus 04 reservieren</a>' },
   ],
 });
